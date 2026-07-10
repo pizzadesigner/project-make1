@@ -190,6 +190,38 @@ a:hover {
   border-bottom: 1px solid var(--color-border);
 }
 
+.project-table thead th {
+  padding: 0;
+}
+
+.project-table__sort {
+  width: 100%;
+  text-align: left;
+  padding: var(--space-3);
+  background: none;
+  border: 0;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.project-table__sort:hover {
+  color: var(--color-text);
+}
+
+.project-table th[aria-sort='ascending'] .project-table__sort::after {
+  content: ' ▲';
+}
+
+.project-table th[aria-sort='descending'] .project-table__sort::after {
+  content: ' ▼';
+}
+
+.project-table tbody tr:hover {
+  background: var(--color-surface);
+}
+
 @media (max-width: 720px) {
   .view {
     padding: var(--space-5) var(--space-4);
