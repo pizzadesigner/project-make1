@@ -75,8 +75,15 @@ through `t()`; numbers and currency are formatted with `Intl.NumberFormat`.
 
 ## Geodata and licences
 
-Country geometry in `public/geo/` is derived from
-[world-atlas](https://github.com/topojson/world-atlas) (Natural Earth,
-1:50m), which is in the **public domain** — no attribution is required, though
-Natural Earth is credited here as a courtesy. Only the simplified TopoJSON is
-committed; rebuild it with `npm run geo:build`.
+Two geodata sources, both fetched once at build time and committed simplified —
+never fetched from a CDN at runtime:
+
+- **Country outlines** (`public/geo/europe-countries.topo.json`) from
+  [world-atlas](https://github.com/topojson/world-atlas) (Natural Earth 1:50m),
+  **public domain**. Rebuild with `npm run geo:build`.
+- **City silhouettes** (`public/geo/cities/*.geo.json`) from
+  **OpenStreetMap** via Nominatim, licensed **ODbL**. Rebuild with
+  `npm run cities:build`.
+
+> Map data © OpenStreetMap contributors, available under the Open Database
+> License (ODbL). See <https://www.openstreetmap.org/copyright>.

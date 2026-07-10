@@ -17,6 +17,8 @@
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "check": "npm run lint:js && npm run lint:css && npm run format:check && npm run test:run",
+    "geo:build": "node scripts/geo-build.mjs",
+    "cities:build": "node scripts/cities-build.mjs",
     "prepare": "simple-git-hooks"
   },
   "simple-git-hooks": {

@@ -2,6 +2,10 @@
 @import './components/europe-map.css';
 @import './components/tooltip.css';
 @import './components/filter-bar.css';
+@import './components/city-view.css';
+@import './components/source-chip.css';
+@import './components/line-chart.css';
+@import './components/city-silhouette.css';
 
 /* Global base layer: resets, page chrome, and the shared building blocks
  * (buttons, panels, skeletons, states) the view shells rely on. Component-

@@ -24,3 +24,13 @@ export async function loadDataset() {
   ]);
   return { ...validateDataset({ projectRows, metricRows, peerRows }), geo };
 }
+
+/**
+ * Fetch one city's committed boundary silhouette (GeoJSON). Loaded on demand by
+ * the city view, not on boot.
+ * @param {string} citySlug
+ * @returns {Promise<import('geojson').Feature>}
+ */
+export function loadCitySilhouette(citySlug) {
+  return json(`${import.meta.env.BASE_URL}geo/cities/${citySlug}.geo.json`);
+}
