@@ -8,6 +8,7 @@ import './styles/base.css';
 import { getState, setState, subscribe } from './store.js';
 import { startRouter, navigate } from './router.js';
 import { setLocale } from './lib/i18n.js';
+import { loadDataset } from './data/load.js';
 import * as mapView from './views/mapView.js';
 import * as cityView from './views/cityView.js';
 import * as listView from './views/listView.js';
@@ -42,10 +43,24 @@ function render(state) {
   mounted = { name, handle: view.render(root, viewProps(state)) };
 }
 
+async function loadData() {
+  setState({ status: 'loading' });
+  try {
+    const { projects, metrics, peers } = await loadDataset();
+    setState({ status: 'ready', projects, metrics, peers });
+  } catch (error) {
+    // Loud in dev so bad data is impossible to miss; a graceful error state
+    // in prod so the app never renders half-populated cards.
+    if (import.meta.env.DEV) throw error;
+    setState({ status: 'error', error });
+  }
+}
+
 function boot() {
   setLocale(getState().locale);
   subscribe(render);
   startRouter((route) => setState({ route }));
+  loadData();
 }
 
 boot();

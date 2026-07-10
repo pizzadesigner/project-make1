@@ -26,5 +26,15 @@
   "state.empty": "Keine Projekte entsprechen diesem Filter",
   "notFound.heading": "Seite nicht gefunden",
   "notFound.body": "Dieser Link verweist auf keine bekannte Ansicht.",
-  "value.missing": "—"
+  "value.missing": "—",
+  "sdg.target.11.1": "Sicherer und bezahlbarer Wohnraum",
+  "sdg.target.11.2": "Nachhaltige Verkehrssysteme",
+  "sdg.target.11.3": "Inklusive und nachhaltige Stadtentwicklung",
+  "sdg.target.11.4": "Kultur- und Naturerbe schützen",
+  "sdg.target.11.5": "Auswirkungen von Katastrophen verringern",
+  "sdg.target.11.6": "Umweltbelastung der Städte verringern",
+  "sdg.target.11.7": "Sichere und inklusive Grün- und öffentliche Räume",
+  "sdg.target.11.a": "Starke nationale und regionale Entwicklungsplanung",
+  "sdg.target.11.b": "Integrierte Politik für Inklusion und Resilienz",
+  "sdg.target.11.c": "Am wenigsten entwickelte Länder beim nachhaltigen Bauen unterstützen"
 }

@@ -26,5 +26,15 @@
   "state.empty": "No projects match this filter",
   "notFound.heading": "Page not found",
   "notFound.body": "That link does not point to a known view.",
-  "value.missing": "—"
+  "value.missing": "—",
+  "sdg.target.11.1": "Safe and affordable housing",
+  "sdg.target.11.2": "Sustainable transport systems",
+  "sdg.target.11.3": "Inclusive and sustainable urbanization",
+  "sdg.target.11.4": "Protect cultural and natural heritage",
+  "sdg.target.11.5": "Reduce the impact of disasters",
+  "sdg.target.11.6": "Reduce the environmental impact of cities",
+  "sdg.target.11.7": "Safe and inclusive green and public spaces",
+  "sdg.target.11.a": "Strong national and regional development planning",
+  "sdg.target.11.b": "Integrated policies for inclusion and resilience",
+  "sdg.target.11.c": "Support least-developed countries to build sustainably"
 }

@@ -7,7 +7,7 @@ export default [
   js.configs.recommended,
   prettier,
   {
-    files: ['**/*.js'],
+    files: ['**/*.js', '**/*.mjs'],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'module',
@@ -21,15 +21,19 @@ export default [
     },
   },
   {
-    files: ['**/*.test.js', 'src/**/*.test.js'],
+    files: ['**/*.test.js'],
     languageOptions: {
       globals: { ...globals.node, ...globals.vitest },
     },
   },
   {
-    files: ['*.config.js', 'scripts/**/*.js'],
+    files: ['*.config.js', 'scripts/**/*.{js,mjs}'],
     languageOptions: {
       globals: { ...globals.node },
+    },
+    rules: {
+      // dump-data.mjs is a developer inspection tool — console output is the point.
+      'no-console': 'off',
     },
   },
 ];
