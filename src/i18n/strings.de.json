@@ -8,6 +8,8 @@
   "map.resetView": "Ansicht zurücksetzen",
   "map.markerCountOne": "{count} Projekt",
   "map.markerCountMany": "{count} Projekte",
+  "filter.legend": "Nach SDG-11-Ziel filtern",
+  "filter.all": "Alle Ziele",
   "sdg11.panelTitle": "Was ist SDG 11?",
   "sdg11.panelBody": "Das Nachhaltigkeitsziel 11 will Städte und Siedlungen inklusiv, sicher, widerstandsfähig und nachhaltig gestalten. Dieses Dashboard zeigt reale Projekte, die eine Stadt übernehmen kann.",
   "list.heading": "Alle Projekte",

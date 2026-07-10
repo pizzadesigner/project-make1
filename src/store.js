@@ -9,6 +9,7 @@
  * @property {import('./data/types.js').Project[]} projects
  * @property {import('./data/types.js').Metric[]} metrics
  * @property {import('./data/types.js').PeerCity[]} peers
+ * @property {object|null} geo  Committed Europe TopoJSON, or null until loaded.
  * @property {string|null} filterTarget  Active SDG 11 target filter, or null.
  * @property {'en'|'de'} locale
  * @property {Error|null} error
@@ -21,6 +22,7 @@ const state = {
   projects: [],
   metrics: [],
   peers: [],
+  geo: null,
   filterTarget: null,
   locale: 'en',
   error: null,

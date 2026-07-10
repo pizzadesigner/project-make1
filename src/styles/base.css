@@ -1,3 +1,8 @@
+/* Component sheets first (@import must precede other rules). */
+@import './components/europe-map.css';
+@import './components/tooltip.css';
+@import './components/filter-bar.css';
+
 /* Global base layer: resets, page chrome, and the shared building blocks
  * (buttons, panels, skeletons, states) the view shells rely on. Component-
  * specific rules live in styles/components/*.css. */

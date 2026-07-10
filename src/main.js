@@ -25,8 +25,12 @@ const root = document.querySelector('#app');
 
 let mounted = null; // { name, handle }
 
+function setFilterTarget(target) {
+  setState({ filterTarget: target });
+}
+
 function viewProps(state) {
-  return { ...state, navigate };
+  return { ...state, navigate, setFilterTarget };
 }
 
 function render(state) {
@@ -46,8 +50,8 @@ function render(state) {
 async function loadData() {
   setState({ status: 'loading' });
   try {
-    const { projects, metrics, peers } = await loadDataset();
-    setState({ status: 'ready', projects, metrics, peers });
+    const { projects, metrics, peers, geo } = await loadDataset();
+    setState({ status: 'ready', projects, metrics, peers, geo });
   } catch (error) {
     // Loud in dev so bad data is impossible to miss; a graceful error state
     // in prod so the app never renders half-populated cards.

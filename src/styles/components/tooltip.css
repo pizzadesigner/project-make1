@@ -1,0 +1,25 @@
+/* Map tooltip, anchored within the positioned .europe-map container. */
+
+.tooltip {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - var(--space-3)));
+  pointer-events: none;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  display: grid;
+  gap: 2px;
+  z-index: 2;
+}
+
+.tooltip[hidden] {
+  display: none;
+}
+
+.tooltip span {
+  color: var(--color-text-muted);
+}

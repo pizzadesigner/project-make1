@@ -23,7 +23,8 @@
     "pre-commit": "npm run check"
   },
   "dependencies": {
-    "d3": "^7.9.0"
+    "d3": "^7.9.0",
+    "topojson-client": "^3.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
@@ -32,11 +33,13 @@
     "eslint-config-prettier": "^9.1.0",
     "globals": "^15.14.0",
     "jsdom": "^25.0.1",
+    "mapshaper": "^0.7.44",
     "prettier": "^3.4.2",
     "simple-git-hooks": "^2.11.1",
     "stylelint": "^16.12.0",
     "stylelint-config-standard": "^36.0.1",
     "vite": "^6.0.5",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "world-atlas": "^2.0.2"
   }
 }
