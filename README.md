@@ -32,6 +32,14 @@ npm run data:dump  # parse + validate the CSVs and print the domain objects
 `npm run check` must pass before every commit (enforced by a `simple-git-hooks`
 pre-commit hook).
 
+## Deploying
+
+The site is published to **GitLab Pages** via `.gitlab-ci.yml`. Pushing to the
+default branch runs the `check` job, then the `pages` job builds and publishes
+— the live URL is shown under **Settings → Pages** in the GitLab project. The
+hash router (`#/city/:slug`) needs no server-side rewrite rules for deep
+links.
+
 ## Editing the data (no coding required)
 
 The three files in `data/` are the source of truth. Content editors work in a
