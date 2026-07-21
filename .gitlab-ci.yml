@@ -4,7 +4,6 @@ stages:
 
 .setup: &setup
   image: node:20
-  tags: [default] # match the runner's tag
   cache:
     key:
       files:
