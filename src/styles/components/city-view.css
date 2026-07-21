@@ -1,0 +1,149 @@
+/* City / project detail: a responsive card grid on the dark canvas. */
+
+.city-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+
+.card__title {
+  font-size: var(--font-size-lg);
+  margin: 0 0 var(--space-3);
+}
+
+.card__lead {
+  color: var(--color-text);
+  font-size: var(--font-size-lg);
+  line-height: var(--line-body);
+}
+
+/* The header spans the full width and leads the page. */
+.city-header {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--space-5);
+  align-items: center;
+  justify-content: space-between;
+  border-left: 4px solid var(--marker-color);
+}
+
+.city-header__title {
+  font-size: var(--font-size-xl);
+  line-height: var(--line-tight);
+  margin: var(--space-2) 0;
+}
+
+.city-header__place {
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.city-header__silhouette {
+  flex: 0 0 auto;
+  width: 220px;
+  height: 220px;
+}
+
+.target-badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--marker-color);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.facts {
+  margin: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.facts__row {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.facts__row dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.facts__row dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.score {
+  font-size: var(--font-size-xl);
+  color: var(--marker-color, var(--color-accent));
+}
+
+.facts__hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.peer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.peer {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  text-decoration: none;
+  color: var(--color-text);
+}
+
+.peer:hover {
+  border-color: var(--color-accent);
+}
+
+.peer__city {
+  font-weight: 600;
+}
+
+.peer__country,
+.peer__rel {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.skeleton--silhouette {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-md);
+}
+
+@media (max-width: 720px) {
+  .city-grid,
+  .peer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .city-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

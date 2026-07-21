@@ -1,0 +1,6 @@
+node_modules
+dist
+public/geo
+package-lock.json
+CLAUDE.MD
+Prompt_1.md

@@ -1,0 +1,15 @@
+/* City boundary silhouette. */
+
+.city-silhouette {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.city-silhouette__shape {
+  fill: var(--marker-color, var(--color-accent));
+  fill-opacity: 0.28;
+  stroke: var(--marker-color, var(--color-accent));
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}

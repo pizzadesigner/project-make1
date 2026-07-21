@@ -1,0 +1,48 @@
+/* Time-series line chart. */
+
+.line-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.line-chart__grid {
+  stroke: var(--color-border);
+  stroke-width: 0.5;
+}
+
+.line-chart__line {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.line-chart__dot {
+  fill: var(--color-accent);
+  stroke: var(--color-canvas);
+  stroke-width: 2;
+}
+
+.line-chart__x-label,
+.line-chart__y-label,
+.line-chart__unit {
+  fill: var(--color-text-muted);
+  font-size: 12px;
+  font-family: var(--font-sans);
+}
+
+.line-chart__x-label {
+  text-anchor: middle;
+}
+
+.line-chart__y-label {
+  text-anchor: end;
+}
+
+.line-chart__unit {
+  text-anchor: start;
+  fill: var(--color-text);
+}

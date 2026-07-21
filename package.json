@@ -1,0 +1,50 @@
+{
+  "name": "sdg11-best-practice-dashboard",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Interactive dashboard evaluating SDG 11 best-practice projects across European cities.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "data:dump": "node scripts/dump-data.mjs",
+    "test:e2e": "playwright test",
+    "lint:js": "eslint .",
+    "lint:css": "stylelint \"src/**/*.css\"",
+    "format:check": "prettier --check .",
+    "format": "prettier --write .",
+    "check": "npm run lint:js && npm run lint:css && npm run format:check && npm run test:run",
+    "geo:build": "node scripts/geo-build.mjs",
+    "cities:build": "node scripts/cities-build.mjs",
+    "prepare": "simple-git-hooks"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npm run check"
+  },
+  "dependencies": {
+    "d3": "^7.9.0",
+    "topojson-client": "^3.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.49.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "globals": "^15.14.0",
+    "jsdom": "^25.0.1",
+    "mapshaper": "^0.7.44",
+    "prettier": "^3.4.2",
+    "simple-git-hooks": "^2.11.1",
+    "stylelint": "^16.12.0",
+    "stylelint-config-standard": "^36.0.1",
+    "vite": "^6.0.5",
+    "vitest": "^2.1.8",
+    "world-atlas": "^2.0.2"
+  }
+}

@@ -1,0 +1,73 @@
+/* Europe map: dark canvas, muted country context, bright focusable markers. */
+
+.europe-map {
+  position: relative;
+  width: 100%;
+}
+
+.europe-map__svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  touch-action: none; /* let d3.zoom own the gesture */
+}
+
+.europe-map__country {
+  fill: var(--color-country-fill);
+  stroke: none;
+}
+
+.europe-map__borders {
+  fill: none;
+  stroke: var(--color-country-outline);
+  stroke-width: 0.6;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke; /* hairline stays thin through zoom */
+  pointer-events: none;
+}
+
+.europe-map__reset {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+}
+
+.marker {
+  cursor: pointer;
+  color: var(--marker-color);
+}
+
+.marker__pin {
+  fill: var(--marker-color);
+  stroke: var(--color-marker-ring);
+  stroke-width: 2;
+  transition: r var(--motion-fast) var(--ease-standard);
+}
+
+.marker:hover .marker__pin,
+.marker:focus-visible .marker__pin {
+  r: 9;
+}
+
+.marker:focus-visible {
+  outline: none;
+}
+
+.marker:focus-visible .marker__pin {
+  stroke: var(--color-focus);
+  stroke-width: 3;
+}
+
+.marker.is-dimmed {
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marker__pin {
+    transition: none;
+  }
+}
