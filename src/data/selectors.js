@@ -42,3 +42,16 @@ export function peersForProject(peers, projectId) {
 export function widgetMetricsForProject() {
   return { dataQuality: null, transparency: null, inequality: null };
 }
+
+/**
+ * TODO(data): the Inequality widget's district-level green-space breakdown.
+ * No per-district data exists in the dataset at all — always returns null, so
+ * the district-bar section never renders (it's additionally gated behind
+ * widgetMetricsForProject().inequality being non-null, which it also never
+ * is). See docs/DATA_TODO.md. Shape once real data lands:
+ * `{ names: string[], greenSpaceHectares: number[] }`.
+ * @returns {null}
+ */
+export function districtsForProject() {
+  return null;
+}

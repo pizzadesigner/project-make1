@@ -1,0 +1,96 @@
+/* Initiative card(s) for the focused city — opposite side of the map from the
+ * DQ/Transparency/Inequality widget stack. */
+
+.initiative-cards {
+  /* top clears the "Reset view" button, which also anchors top-right. */
+  position: absolute;
+  right: 16px;
+  top: 56px;
+  width: 280px;
+  max-height: calc(60vh - 72px);
+  overflow-y: auto;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.initiative-card {
+  background: var(--color-surface-glass);
+  border: 1px solid var(--color-border-glass);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  backdrop-filter: blur(var(--blur-glass));
+}
+
+.initiative-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.initiative-card__name {
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.initiative-card__status {
+  font-size: 0.5rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.initiative-card__status--planned {
+  background: var(--color-border-glass);
+  color: var(--color-text-faint);
+}
+
+.initiative-card__status--ongoing {
+  background: rgba(47, 122, 58, 0.15);
+  color: var(--color-success);
+}
+
+.initiative-card__status--completed {
+  background: var(--color-border-glass);
+  color: var(--color-text-muted);
+}
+
+.initiative-card__sdg {
+  font-size: 0.5625rem;
+  color: var(--color-text-faint);
+  margin-bottom: var(--space-2);
+}
+
+.initiative-card__row {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.initiative-card__field-label {
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: var(--color-text-faint);
+  min-width: 2.25rem;
+  text-transform: uppercase;
+}
+
+.initiative-card__field-label--impact {
+  color: var(--color-success);
+}
+
+.initiative-card__field-value {
+  font-size: 0.5625rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+.initiative-card__source {
+  margin-top: var(--space-2);
+  font-size: 0.5rem;
+  color: var(--color-accent);
+}

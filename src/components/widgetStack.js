@@ -4,9 +4,11 @@
 // "parallax stack" from the Ripples template). Hidden entirely when no city is
 // focused.
 //
-// render(container, { project, activeCriterion, metrics, onSelectCriterion })
+// render(container, { project, activeCriterion, metrics, districts, onSelectCriterion })
 // and the component never reads the store — data comes down, the clicked
-// criterion goes up via onSelectCriterion('dq'|'tr'|'ineq').
+// criterion goes up via onSelectCriterion('dq'|'tr'|'ineq'). `districts` is
+// only ever non-null once real district data exists (see districtsForProject
+// in selectors.js) — until then the Inequality widget never shows the bars.
 
 import { t } from '../lib/i18n.js';
 
@@ -95,7 +97,11 @@ export function render(container, props) {
     const layout = widgetLayout(next.activeCriterion);
     applyWidget(dq, layout.dq, dataQualityContent(next.metrics));
     applyWidget(tr, layout.tr, transparencyContent(next.metrics));
-    applyWidget(ineq, layout.ineq, inequalityContent(next.metrics));
+    applyWidget(
+      ineq,
+      layout.ineq,
+      inequalityContent(next.metrics, next.activeCriterion === 'ineq' ? next.districts : null),
+    );
   }
 
   update(props);
@@ -176,7 +182,7 @@ function transparencyContent(metrics) {
   );
 }
 
-function inequalityContent(metrics) {
+function inequalityContent(metrics, districts) {
   const value = metrics.inequality;
   if (value == null) {
     return widgetHeader(t('criteria.inequality'), null) + noData();
@@ -186,6 +192,47 @@ function inequalityContent(metrics) {
     `<div class="widget__value-row">
       <span class="widget__value">${value.toFixed(2)}</span>
       <span class="widget__value-unit">${t('widget.gini')}</span>
-    </div>`
+    </div>` +
+    districtBarsSection(districts)
   );
+}
+
+/** Ripples' expandable district green-space breakdown — inert until real
+ * district data exists (districts is always null, see districtsForProject). */
+function districtBarsSection(districts) {
+  if (!districts) return '';
+  const values = districts.greenSpaceHectares;
+  const max = Math.max(...values, 1);
+  const rows = districts.names
+    .map((name, i) => {
+      const value = values[i];
+      const pct = ((value ?? 0) / max) * 100;
+      return `
+        <div class="district-bar">
+          <span class="district-bar__name">${escapeHtml(name)}</span>
+          <div class="district-bar__track">
+            <div class="district-bar__fill district-bar__fill--${districtBarLevel(value)}" style="width: ${pct}%"></div>
+          </div>
+          <span class="district-bar__value">${value != null ? value.toFixed(1) : t('value.missing')}</span>
+        </div>`;
+    })
+    .join('');
+  return `
+    <div class="widget__districts">
+      <div class="widget__districts-label">${t('widget.districts')}</div>
+      ${rows}
+    </div>`;
+}
+
+function districtBarLevel(value) {
+  if (value == null) return 'low';
+  if (value >= 10) return 'high';
+  if (value >= 6) return 'mid';
+  return 'low';
+}
+
+function escapeHtml(value) {
+  const div = document.createElement('div');
+  div.textContent = value;
+  return div.innerHTML;
 }

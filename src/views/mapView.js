@@ -4,9 +4,10 @@
 
 import { t } from '../lib/i18n.js';
 import { SDG11_TARGET_CODES, SDG11_TARGETS } from '../lib/sdg11.js';
-import { widgetMetricsForProject } from '../data/selectors.js';
+import { widgetMetricsForProject, districtsForProject } from '../data/selectors.js';
 import * as europeMap from '../components/europeMap.js';
 import * as widgetStack from '../components/widgetStack.js';
+import * as initiativeCards from '../components/initiativeCards.js';
 
 const CRITERIA = ['dq', 'tr', 'ineq'];
 
@@ -19,6 +20,7 @@ export function render(container, props) {
   const refs = buildShell(container);
   let mapHandle = null;
   let widgetsHandle = null;
+  let initiativesHandle = null;
   let filterButtons = null;
   let criteriaButtons = null;
   let focusedCity = null;
@@ -57,10 +59,13 @@ export function render(container, props) {
       project: focusedProject,
       activeCriterion: next.activeCriterion,
       metrics: widgetMetricsForProject(focusedProject),
+      districts: districtsForProject(focusedProject),
     };
+    const initiativesProps = { project: focusedProject, activeCriterion: next.activeCriterion };
     if (mapHandle) {
       mapHandle.update({ filterTarget: next.filterTarget, focusedCity: next.focusedCity });
       widgetsHandle.update(widgetsProps);
+      initiativesHandle.update(initiativesProps);
       return;
     }
     refs.stage.replaceChildren();
@@ -76,6 +81,7 @@ export function render(container, props) {
       ...widgetsProps,
       onSelectCriterion: (criterion) => props.setActiveCriterion(criterion),
     });
+    initiativesHandle = initiativeCards.render(refs.stage, initiativesProps);
   }
 
   function teardownMap() {
@@ -84,6 +90,8 @@ export function render(container, props) {
     mapHandle = null;
     widgetsHandle.destroy();
     widgetsHandle = null;
+    initiativesHandle.destroy();
+    initiativesHandle = null;
   }
 
   update(props);
