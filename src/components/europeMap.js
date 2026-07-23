@@ -1,9 +1,13 @@
 // The Europe map. Draws muted country context, thin borders, and one focusable
 // marker per project. Countries are context; the markers are the content.
+// Clicking a marker zooms in place — dims every country but the marker's own,
+// recedes the other markers, and shows a small floating header. There is no
+// navigation away from the map; the only way out is the reset button or
+// Escape (see mapView.js).
 //
-// render(container, { projects, geo, filterTarget, locale, onSelect }) and the
-// component never reads the store — data comes down, selection goes up via
-// onSelect(citySlug).
+// render(container, { projects, geo, filterTarget, focusedCity, locale, onSelect })
+// and the component never reads the store — data comes down, selection goes up
+// via onSelect(citySlug | null).
 
 import { select, geoPath, zoom, zoomIdentity } from 'd3';
 import { feature, mesh } from 'topojson-client';
@@ -15,6 +19,7 @@ import { renderTooltip } from './tooltip.js';
 const MARKER_ARROWS = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 8;
+const FOCUS_ZOOM = 5;
 
 export function render(container, props) {
   const size = measure(container);
@@ -36,11 +41,24 @@ export function render(container, props) {
   const zoomBehavior = setupZoom(dom, size, markers);
   bindKeyboard(dom.markers, markers);
   applyFilter(markers, props.filterTarget);
-  dom.reset.addEventListener('click', () => resetView(dom.svg, zoomBehavior));
+  dom.reset.addEventListener('click', () => props.onSelect(null));
+
+  let focusedCity = null;
 
   return {
     update(next) {
       applyFilter(markers, next.filterTarget);
+      if (next.focusedCity !== focusedCity) {
+        focusedCity = next.focusedCity ?? null;
+        const focused = markers.find((m) => m.project.citySlug === focusedCity)?.project ?? null;
+        applyCountryFocus(dom, focused);
+        applyMarkerFocus(markers, focusedCity);
+        applyFocusHeader(dom, focused);
+        const transform = focused
+          ? focusTransform(size, ...projection([focused.lon, focused.lat]), FOCUS_ZOOM)
+          : zoomIdentity;
+        animateZoom(dom.svg, zoomBehavior, transform);
+      }
     },
     destroy() {
       tooltip.destroy();
@@ -83,6 +101,11 @@ function buildDom(container, size) {
   reset.textContent = t('map.resetView');
   root.append(reset);
 
+  const focusHeader = document.createElement('div');
+  focusHeader.className = 'europe-map__focus';
+  focusHeader.hidden = true;
+  root.append(focusHeader);
+
   container.append(root);
   return {
     root,
@@ -92,6 +115,7 @@ function buildDom(container, size) {
     borders,
     markers: markers.node(),
     reset,
+    focusHeader,
   };
 }
 
@@ -188,11 +212,51 @@ function setupZoom(dom, size, markers) {
   return behavior;
 }
 
-function resetView(svg, behavior) {
+/** Zoom transform that centres (x, y) in the viewport at the given scale. */
+function focusTransform(size, x, y, scale) {
+  return zoomIdentity
+    .translate(size.width / 2, size.height / 2)
+    .scale(scale)
+    .translate(-x, -y);
+}
+
+function animateZoom(svg, behavior, transform) {
   const duration = motionMs('--motion-slow');
   const selection = select(svg);
   const target = duration > 0 ? selection.transition().duration(duration) : selection;
-  target.call(behavior.transform, zoomIdentity);
+  target.call(behavior.transform, transform);
+}
+
+/** Dim every country but the focused project's own; no-op when nothing is focused. */
+function applyCountryFocus(dom, focused) {
+  const home = focused?.country ?? null;
+  dom.countries
+    .selectAll('path')
+    .classed('is-focus-home', (d) => home != null && d.properties.name === home)
+    .classed('is-focus-dim', (d) => home != null && d.properties.name !== home);
+}
+
+/** Recede every marker but the focused one; no-op when nothing is focused. */
+function applyMarkerFocus(markers, focusedCity) {
+  for (const marker of markers) {
+    const isFocused = focusedCity != null && marker.project.citySlug === focusedCity;
+    const isOther = focusedCity != null && !isFocused;
+    marker.node.classList.toggle('is-focused', isFocused);
+    marker.node.classList.toggle('is-other', isOther);
+  }
+}
+
+function applyFocusHeader(dom, focused) {
+  if (!focused) {
+    dom.focusHeader.hidden = true;
+    dom.focusHeader.replaceChildren();
+    return;
+  }
+  dom.focusHeader.hidden = false;
+  dom.focusHeader.innerHTML = `
+    <span class="europe-map__focus-name">${escapeHtml(focused.cityDisplay)}</span>
+    <span class="europe-map__focus-country">${escapeHtml(focused.country)}</span>
+  `;
 }
 
 function applyFilter(markers, filterTarget) {

@@ -15,8 +15,15 @@ export function render(container, props) {
   const refs = buildShell(container);
   let mapHandle = null;
   let filterButtons = null;
+  let focusedCity = null;
+
+  function handleKeydown(event) {
+    if (event.key === 'Escape' && focusedCity) props.setFocusedCity(null);
+  }
+  document.addEventListener('keydown', handleKeydown);
 
   function update(next) {
+    focusedCity = next.focusedCity ?? null;
     if (next.status === 'error') {
       teardownMap();
       return showState(refs.stage, 'state--error', t('state.error'));
@@ -37,7 +44,7 @@ export function render(container, props) {
 
   function mountOrUpdateMap(next) {
     if (mapHandle) {
-      mapHandle.update({ filterTarget: next.filterTarget });
+      mapHandle.update({ filterTarget: next.filterTarget, focusedCity: next.focusedCity });
       return;
     }
     refs.stage.replaceChildren();
@@ -45,8 +52,9 @@ export function render(container, props) {
       projects: next.projects,
       geo: next.geo,
       filterTarget: next.filterTarget,
+      focusedCity: next.focusedCity,
       locale: next.locale,
-      onSelect: (slug) => props.navigate(`/city/${slug}`),
+      onSelect: (slug) => props.setFocusedCity(slug),
     });
   }
 
@@ -61,6 +69,7 @@ export function render(container, props) {
   return {
     update,
     destroy() {
+      document.removeEventListener('keydown', handleKeydown);
       teardownMap();
       refs.root.remove();
     },

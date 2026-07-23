@@ -18,6 +18,39 @@
 .europe-map__country {
   fill: var(--color-country-fill);
   stroke: none;
+  transition:
+    fill var(--motion-slow) var(--ease-standard),
+    opacity var(--motion-slow) var(--ease-standard);
+}
+
+.europe-map__country.is-focus-home {
+  fill: var(--color-surface-raised);
+}
+
+.europe-map__country.is-focus-dim {
+  opacity: 0.15;
+}
+
+.europe-map__focus {
+  position: absolute;
+  top: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  text-align: center;
+  pointer-events: none;
+}
+
+.europe-map__focus-name {
+  display: block;
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+
+.europe-map__focus-country {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
 }
 
 .europe-map__borders {
@@ -93,6 +126,19 @@
 .marker.is-dimmed {
   opacity: 0.22;
   pointer-events: none;
+}
+
+.marker.is-focused .marker__pin {
+  r: 9;
+}
+
+.marker.is-other {
+  opacity: 0.45;
+}
+
+.marker.is-other .marker__ripple {
+  animation: none;
+  opacity: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

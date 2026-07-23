@@ -11,6 +11,7 @@
  * @property {import('./data/types.js').PeerCity[]} peers
  * @property {object|null} geo  Committed Europe TopoJSON, or null until loaded.
  * @property {string|null} filterTarget  Active SDG 11 target filter, or null.
+ * @property {string|null} focusedCity   citySlug zoomed into on the map, or null.
  * @property {'en'|'de'} locale
  * @property {Error|null} error
  */
@@ -24,6 +25,7 @@ const state = {
   peers: [],
   geo: null,
   filterTarget: null,
+  focusedCity: null,
   locale: 'en',
   error: null,
 };

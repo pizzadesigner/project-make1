@@ -29,8 +29,12 @@ function setFilterTarget(target) {
   setState({ filterTarget: target });
 }
 
+function setFocusedCity(citySlug) {
+  setState({ focusedCity: citySlug });
+}
+
 function viewProps(state) {
-  return { ...state, navigate, setFilterTarget };
+  return { ...state, navigate, setFilterTarget, setFocusedCity };
 }
 
 function render(state) {
