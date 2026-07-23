@@ -47,6 +47,12 @@ function setSelectedYear(year) {
   setState({ selectedYear: year });
 }
 
+function toggleLocale() {
+  const next = getState().locale === 'en' ? 'de' : 'en';
+  setLocale(next);
+  setState({ locale: next });
+}
+
 function viewProps(state) {
   return {
     ...state,
@@ -55,6 +61,7 @@ function viewProps(state) {
     setFocusedCity,
     setActiveCriterion,
     setSelectedYear,
+    toggleLocale,
   };
 }
 
@@ -62,14 +69,16 @@ function render(state) {
   const view = views[state.route.name] ?? views.notFound;
   const name = state.route.name in views ? state.route.name : 'notFound';
 
-  if (mounted && mounted.name === name) {
+  // Views bake t()-translated strings into HTML once at mount, so a locale
+  // change needs a full remount — update() alone would leave stale text.
+  if (mounted && mounted.name === name && mounted.locale === state.locale) {
     mounted.handle.update(viewProps(state));
     return;
   }
 
   if (mounted) mounted.handle.destroy();
   root.replaceChildren();
-  mounted = { name, handle: view.render(root, viewProps(state)) };
+  mounted = { name, locale: state.locale, handle: view.render(root, viewProps(state)) };
 }
 
 async function loadData() {

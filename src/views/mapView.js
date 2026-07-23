@@ -17,7 +17,7 @@ const CRITERIA = ['dq', 'tr', 'ineq'];
  * @returns {{ update(props: object): void, destroy(): void }}
  */
 export function render(container, props) {
-  const refs = buildShell(container);
+  const refs = buildShell(container, props);
   let mapHandle = null;
   let widgetsHandle = null;
   let initiativesHandle = null;
@@ -114,12 +114,15 @@ export function render(container, props) {
   };
 }
 
-function buildShell(container) {
+function buildShell(container, props) {
   const root = document.createElement('section');
   root.className = 'view view--map';
   root.innerHTML = `
     <header class="view__header">
-      <h1 class="view__title">${t('map.heading')}</h1>
+      <div class="view__header-row">
+        <h1 class="view__title">${t('map.heading')}</h1>
+        <button type="button" class="button view__lang-toggle" data-lang-toggle>${props.locale === 'en' ? 'DE' : 'EN'}</button>
+      </div>
       <p class="view__tagline">${t('app.tagline')}</p>
       <nav class="view__nav">
         <a class="button" href="#/list">${t('nav.list')}</a>
@@ -135,6 +138,7 @@ function buildShell(container) {
     <div class="map-stage" data-stage></div>
   `;
   container.append(root);
+  root.querySelector('[data-lang-toggle]').addEventListener('click', props.toggleLocale);
   return {
     root,
     stage: root.querySelector('[data-stage]'),

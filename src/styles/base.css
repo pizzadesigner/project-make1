@@ -78,6 +78,17 @@ a:hover {
   margin: 0 0 var(--space-2);
 }
 
+.view__header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.view__lang-toggle {
+  flex-shrink: 0;
+}
+
 .view__tagline {
   color: var(--color-text-muted);
   max-width: 48ch;
