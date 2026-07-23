@@ -4,7 +4,7 @@
 
 import { t } from '../lib/i18n.js';
 import { SDG11_TARGET_CODES, SDG11_TARGETS } from '../lib/sdg11.js';
-import { widgetMetricsForProject, districtsForProject } from '../data/selectors.js';
+import { widgetMetricsForProject, districtsForProject, availableYears } from '../data/selectors.js';
 import * as europeMap from '../components/europeMap.js';
 import * as widgetStack from '../components/widgetStack.js';
 import * as initiativeCards from '../components/initiativeCards.js';
@@ -23,6 +23,7 @@ export function render(container, props) {
   let initiativesHandle = null;
   let filterButtons = null;
   let criteriaButtons = null;
+  let yearButtons = null;
   let focusedCity = null;
 
   function handleKeydown(event) {
@@ -49,6 +50,9 @@ export function render(container, props) {
     if (!criteriaButtons)
       criteriaButtons = buildCriteriaBar(refs.criteriaBar, props.setActiveCriterion);
     syncCriteriaBar(criteriaButtons, next.activeCriterion);
+    if (!yearButtons)
+      yearButtons = buildYearBar(refs.yearBar, availableYears(next.metrics), props.setSelectedYear);
+    syncYearBar(yearButtons, next.selectedYear);
     mountOrUpdateMap(next);
     return undefined;
   }
@@ -61,7 +65,11 @@ export function render(container, props) {
       metrics: widgetMetricsForProject(focusedProject),
       districts: districtsForProject(focusedProject),
     };
-    const initiativesProps = { project: focusedProject, activeCriterion: next.activeCriterion };
+    const initiativesProps = {
+      project: focusedProject,
+      activeCriterion: next.activeCriterion,
+      selectedYear: next.selectedYear,
+    };
     if (mapHandle) {
       mapHandle.update({ filterTarget: next.filterTarget, focusedCity: next.focusedCity });
       widgetsHandle.update(widgetsProps);
@@ -123,6 +131,7 @@ function buildShell(container) {
     </details>
     <div class="filter-bar" role="group" aria-label="${t('filter.legend')}" data-filter></div>
     <div class="filter-bar" role="group" aria-label="${t('criteria.legend')}" data-criteria></div>
+    <div class="year-bar" role="group" aria-label="${t('year.legend')}" data-year></div>
     <div class="map-stage" data-stage></div>
   `;
   container.append(root);
@@ -131,6 +140,7 @@ function buildShell(container) {
     stage: root.querySelector('[data-stage]'),
     filterBar: root.querySelector('[data-filter]'),
     criteriaBar: root.querySelector('[data-criteria]'),
+    yearBar: root.querySelector('[data-year]'),
   };
 }
 
@@ -202,6 +212,26 @@ function criterionButton(label) {
 function syncCriteriaBar(buttons, activeCriterion) {
   for (const { criterion, node } of buttons) {
     node.setAttribute('aria-pressed', String(criterion === (activeCriterion ?? null)));
+  }
+}
+
+/** No slider (see PORTING_GUIDE.md) — a row of clickable years instead. */
+function buildYearBar(container, years, setSelectedYear) {
+  const buttons = years.map((year) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'year-bar__year';
+    button.textContent = String(year);
+    button.addEventListener('click', () => setSelectedYear(year));
+    container.append(button);
+    return { year, node: button };
+  });
+  return buttons;
+}
+
+function syncYearBar(buttons, selectedYear) {
+  for (const { year, node } of buttons) {
+    node.setAttribute('aria-pressed', String(year === selectedYear));
   }
 }
 

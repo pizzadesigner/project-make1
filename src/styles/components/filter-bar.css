@@ -43,3 +43,33 @@
 .filter-bar__chip--plain::before {
   content: none;
 }
+
+/* Shared timeline year picker — plain clickable numbers, no slider (see
+ * PORTING_GUIDE.md): bold/bright for the selected year, muted otherwise. */
+.year-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+}
+
+.year-bar__year {
+  background: none;
+  border: none;
+  padding: var(--space-1) 0;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-faint);
+  cursor: pointer;
+}
+
+.year-bar__year:hover {
+  color: var(--color-text-muted);
+}
+
+.year-bar__year[aria-pressed='true'] {
+  color: var(--color-text);
+  font-weight: 700;
+}

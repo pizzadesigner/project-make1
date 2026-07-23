@@ -1,17 +1,15 @@
 // Initiative card(s) for the focused city, shown only once a criterion widget
-// is active too (matches Ripples: fc && ac). Our data model is one project per
+// is active too (matches Ripples: fc && ac), and only if the shared timeline
+// year falls within the project's start/end (matches Ripples' startYear <=
+// year <= endYear; null start/end means "no constraint" — an unknown or
+// ongoing timeframe never excludes a card). Our data model is one project per
 // city, so this is always a 0-or-1-card list rather than Ripples' multi-
 // initiative array — the structure is kept list-shaped so a future city with
 // more than one tracked initiative needs no rework here.
 //
-// TODO(phase-3): Ripples also gates each card on startYear <= selectedYear <=
-// endYear, driven by the time slider. That slider doesn't exist yet, so this
-// filter is intentionally not applied — a card shows whenever its city is
-// focused and a criterion is active, regardless of year. Wire it once the
-// time slider lands.
-//
-// render(container, { project, activeCriterion }) and the component never
-// reads the store or emits anything — it's a pure display, no callbacks up.
+// render(container, { project, activeCriterion, selectedYear }) and the
+// component never reads the store or emits anything — it's a pure display,
+// no callbacks up.
 
 import { t } from '../lib/i18n.js';
 import { widgetMetricsForProject } from '../data/selectors.js';
@@ -23,7 +21,10 @@ export function render(container, props) {
   container.append(root);
 
   function update(next) {
-    const showInits = Boolean(next.project) && Boolean(next.activeCriterion);
+    const showInits =
+      Boolean(next.project) &&
+      Boolean(next.activeCriterion) &&
+      inSelectedYear(next.project, next.selectedYear);
     root.hidden = !showInits;
     root.innerHTML = showInits ? cardHtml(next.project) : '';
   }
@@ -36,6 +37,13 @@ export function render(container, props) {
       root.remove();
     },
   };
+}
+
+function inSelectedYear(project, selectedYear) {
+  if (selectedYear == null) return true;
+  const afterStart = project.startYear == null || project.startYear <= selectedYear;
+  const beforeEnd = project.endYear == null || project.endYear >= selectedYear;
+  return afterStart && beforeEnd;
 }
 
 function cardHtml(project) {

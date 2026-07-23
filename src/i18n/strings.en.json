@@ -15,6 +15,7 @@
   "criteria.dataQuality": "Data Quality",
   "criteria.transparency": "Transparency",
   "criteria.inequality": "Inequality",
+  "year.legend": "Select year",
   "widget.outOf100": "/100",
   "widget.complete": "complete",
   "widget.gini": "Gini",

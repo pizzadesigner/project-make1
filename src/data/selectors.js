@@ -32,6 +32,18 @@ export function peersForProject(peers, projectId) {
 }
 
 /**
+ * Sorted, deduplicated years for which any metric exists — the shared
+ * timeline used across all cities on the map (matches Ripples' `P.years`,
+ * without a slider — see the year-picker in mapView.js).
+ * @param {import('./types.js').Metric[]} metrics
+ * @returns {number[]}
+ */
+export function availableYears(metrics) {
+  const years = new Set(metrics.map((metric) => metric.year).filter((year) => year != null));
+  return [...years].sort((a, b) => a - b);
+}
+
+/**
  * TODO(data): takes a project because callers have one, but none of these
  * fields exist in the dataset yet (no dq, transparency or gini column
  * anywhere), so it always returns nulls — every map widget renders its "no

@@ -14,6 +14,7 @@ import { getState, setState, subscribe } from './store.js';
 import { startRouter, navigate } from './router.js';
 import { setLocale } from './lib/i18n.js';
 import { loadDataset } from './data/load.js';
+import { availableYears } from './data/selectors.js';
 import * as mapView from './views/mapView.js';
 import * as cityView from './views/cityView.js';
 import * as listView from './views/listView.js';
@@ -42,8 +43,19 @@ function setActiveCriterion(criterion) {
   setState({ activeCriterion: criterion });
 }
 
+function setSelectedYear(year) {
+  setState({ selectedYear: year });
+}
+
 function viewProps(state) {
-  return { ...state, navigate, setFilterTarget, setFocusedCity, setActiveCriterion };
+  return {
+    ...state,
+    navigate,
+    setFilterTarget,
+    setFocusedCity,
+    setActiveCriterion,
+    setSelectedYear,
+  };
 }
 
 function render(state) {
@@ -64,7 +76,15 @@ async function loadData() {
   setState({ status: 'loading' });
   try {
     const { projects, metrics, peers, geo } = await loadDataset();
-    setState({ status: 'ready', projects, metrics, peers, geo });
+    const years = availableYears(metrics);
+    setState({
+      status: 'ready',
+      projects,
+      metrics,
+      peers,
+      geo,
+      selectedYear: years[years.length - 1] ?? null,
+    });
   } catch (error) {
     // Loud in dev so bad data is impossible to miss; a graceful error state
     // in prod so the app never renders half-populated cards.

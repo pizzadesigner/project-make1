@@ -13,6 +13,8 @@
  * @property {string|null} filterTarget  Active SDG 11 target filter, or null.
  * @property {string|null} focusedCity   citySlug zoomed into on the map, or null.
  * @property {'dq'|'tr'|'ineq'|null} activeCriterion  Which map widget is expanded.
+ * @property {number|null} selectedYear  Shared timeline year (no slider — see
+ *   the year-picker in mapView.js); set once data loads, defaults to the latest.
  * @property {'en'|'de'} locale
  * @property {Error|null} error
  */
@@ -28,6 +30,7 @@ const state = {
   filterTarget: null,
   focusedCity: null,
   activeCriterion: null,
+  selectedYear: null,
   locale: 'en',
   error: null,
 };
