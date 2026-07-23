@@ -1,28 +1,10 @@
 project_id,peer_city,peer_country,peer_url,relationship
-zilina-cyklochodniky-2023,Bern,Switzerland,https://www.bern.ch/themen/verkehr/velo,Same target 11.2 – protected cycle network
-zilina-cyklochodniky-2023,Groningen,Netherlands,https://gemeente.groningen.nl/fietsen,Cycling-first city commonly cited as a model
-zilina-cyklochodniky-2023,Zlín,Czechia,https://www.zlin.eu/batuv-kanal-greenway,Neighbouring region building active-mobility routes
-bern-velo-offensive-2020,Copenhagen,Denmark,https://www.kk.dk/cykler,Reference city for cycling modal share
-bern-velo-offensive-2020,Žilina,Slovakia,https://www.zilina.sk/doprava/cyklodoprava,Same target 11.2 at smaller scale
-bern-velo-offensive-2020,Groningen,Netherlands,https://gemeente.groningen.nl/fietsen,Comparable network-density ambition
 paris-marne-la-vallee-ecoquartier-2022,Hamburg,Germany,https://www.hamburg.de/hafencity,Transit-oriented eco-district
 paris-marne-la-vallee-ecoquartier-2022,Vienna,Austria,https://www.aspern-seestadt.at,Large greenfield sustainable urbanization
 paris-marne-la-vallee-ecoquartier-2022,Helsinki-Espoo,Finland,https://www.espoo.fi/en/kera,Rail-linked positive-energy district
-s-hertogenbosch-waterpleinen-2021,Rotterdam,Netherlands,https://www.rotterdam.nl/waterpleinen,Originator of the water-plaza concept
-s-hertogenbosch-waterpleinen-2021,Copenhagen,Denmark,https://www.kk.dk/skybrud,Cloudburst-management masterplan
-s-hertogenbosch-waterpleinen-2021,Hamburg,Germany,https://www.hamburg.de/regeninfrastruktur,Sponge-city stormwater approach
 lisboa-corredores-verdes-2019,Vitoria-Gasteiz,Spain,https://www.vitoria-gasteiz.org/anillo-verde,Green-belt and corridor network
 lisboa-corredores-verdes-2019,Milano,Italy,https://www.comune.milano.it/verde,Urban green-corridor programme
 lisboa-corredores-verdes-2019,Ljubljana,Slovenia,https://www.ljubljana.si/en/green-ljubljana,Green public-space transformation
 helsinki-region-kera-2023,Stockholm,Sweden,https://vaxer.stockholm/royal-seaport,Circular positive-energy district
 helsinki-region-kera-2023,Zürich,Switzerland,https://www.stadt-zuerich.ch/2000-watt,Low-emission district targets
 helsinki-region-kera-2023,Paris — Marne-la-Vallée,France,https://www.epamarne-epafrance.fr/cite-descartes,Peer transit-oriented eco-district
-zlin-batuv-kanal-greenway-2021,Brno,Czechia,https://www.brno.cz/greenways,Regional greenway network
-zlin-batuv-kanal-greenway-2021,Graz,Austria,https://www.graz.at/radwege,Cross-border active-mobility corridor
-zlin-batuv-kanal-greenway-2021,Žilina,Slovakia,https://www.zilina.sk/doprava/cyklodoprava,Neighbouring city expanding cycle routes
-huelva-anillo-verde-2022,Valencia,Spain,https://www.valencia.es/anillo-verde,Green-belt and flood-buffer policy
-huelva-anillo-verde-2022,Thessaloniki,Greece,https://thessaloniki.gr/green,Coastal green-infrastructure resilience
-huelva-anillo-verde-2022,Lisboa,Portugal,https://www.lisboa.pt/cidade/ambiente/corredores-verdes,Integrated green-space planning
-venezia-residenzialita-2020,Firenze,Italy,https://www.comune.fi.it/casa,Housing policy under tourism pressure
-venezia-residenzialita-2020,Barcelona,Spain,https://www.barcelona.cat/habitatge,Short-let caps to protect residents
-venezia-residenzialita-2020,Amsterdam,Netherlands,https://www.amsterdam.nl/wonen,Public-housing retention in a tourist city

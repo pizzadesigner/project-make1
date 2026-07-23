@@ -8,7 +8,6 @@
 import { select, geoPath, zoom, zoomIdentity } from 'd3';
 import { feature, mesh } from 'topojson-client';
 import { createEuropeProjection, fitToViewport } from '../lib/projection.js';
-import { SDG11_TARGETS } from '../lib/sdg11.js';
 import { motionMs } from '../lib/a11y.js';
 import { t } from '../lib/i18n.js';
 import { renderTooltip } from './tooltip.js';
@@ -117,21 +116,25 @@ function drawMarkers(group, projects, { projection, onSelect, tooltip }) {
 }
 
 function createMarker(project, x, y) {
-  const target = SDG11_TARGETS[project.sdg11Target];
   const node = svgEl('g');
   node.setAttribute('class', 'marker');
   node.setAttribute('transform', `translate(${x}, ${y})`);
   node.setAttribute('tabindex', '0');
   node.setAttribute('role', 'button');
   node.setAttribute('aria-label', markerLabel(project));
-  node.style.setProperty('--marker-color', `var(${target.colorVar})`);
 
   const scale = svgEl('g');
   scale.setAttribute('class', 'marker__scale');
+  const ripple1 = svgEl('circle');
+  ripple1.setAttribute('class', 'marker__ripple');
+  ripple1.setAttribute('r', '7');
+  const ripple2 = svgEl('circle');
+  ripple2.setAttribute('class', 'marker__ripple marker__ripple--delay');
+  ripple2.setAttribute('r', '7');
   const pin = svgEl('circle');
   pin.setAttribute('class', 'marker__pin');
   pin.setAttribute('r', '7');
-  scale.append(pin);
+  scale.append(ripple1, ripple2, pin);
   node.append(scale);
   return { node, scale, project, x, y };
 }

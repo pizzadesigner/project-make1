@@ -33,8 +33,8 @@ console.table(
   })),
 );
 
-const zilina = projects.find((project) => project.citySlug === 'zilina');
-console.log('\nSample project (Žilina), fully coerced:\n');
-console.log(zilina);
+const sample = projects.find((project) => project.citySlug === 'lisboa');
+console.log(`\nSample project (${sample.cityDisplay}), fully coerced:\n`);
+console.log(sample);
 console.log('\nIts metric series:\n');
-console.table(metrics.filter((metric) => metric.projectId === zilina.id));
+console.table(metrics.filter((metric) => metric.projectId === sample.id));

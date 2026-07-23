@@ -1,28 +1,10 @@
 project_id,year,metric_key,metric_label,value,unit,source_url,source_label
-zilina-cyklochodniky-2023,2021,cycle_path_km,Protected cycle paths,4,km,https://www.zilina.sk/doprava/cyklodoprava,Mesto Žilina – cyklodoprava
-zilina-cyklochodniky-2023,2022,cycle_path_km,Protected cycle paths,9,km,https://www.zilina.sk/doprava/cyklodoprava,Mesto Žilina – cyklodoprava
-zilina-cyklochodniky-2023,2023,cycle_path_km,Protected cycle paths,15,km,https://www.zilina.sk/doprava/cyklodoprava,Mesto Žilina – cyklodoprava
-bern-velo-offensive-2020,2019,cycling_modal_share,Cycling modal share,11,%,https://www.bern.ch/themen/verkehr/velo,Stadt Bern – Velo
-bern-velo-offensive-2020,2021,cycling_modal_share,Cycling modal share,15,%,https://www.bern.ch/themen/verkehr/velo,Stadt Bern – Velo
-bern-velo-offensive-2020,2023,cycling_modal_share,Cycling modal share,18,%,https://www.bern.ch/themen/verkehr/velo,Stadt Bern – Velo
 paris-marne-la-vallee-ecoquartier-2022,2020,low_carbon_dwellings,Low-carbon dwellings delivered,200,dwellings,https://www.epamarne-epafrance.fr/cite-descartes,EPAMARNE – Cité Descartes
 paris-marne-la-vallee-ecoquartier-2022,2022,low_carbon_dwellings,Low-carbon dwellings delivered,650,dwellings,https://www.epamarne-epafrance.fr/cite-descartes,EPAMARNE – Cité Descartes
 paris-marne-la-vallee-ecoquartier-2022,2024,low_carbon_dwellings,Low-carbon dwellings delivered,1200,dwellings,https://www.epamarne-epafrance.fr/cite-descartes,EPAMARNE – Cité Descartes
-s-hertogenbosch-waterpleinen-2021,2019,cloudburst_storage,Cloudburst storage capacity,0,1000 m³,https://www.s-hertogenbosch.nl/klimaat/waterpleinen,Gemeente 's-Hertogenbosch
-s-hertogenbosch-waterpleinen-2021,2021,cloudburst_storage,Cloudburst storage capacity,6,1000 m³,https://www.s-hertogenbosch.nl/klimaat/waterpleinen,Gemeente 's-Hertogenbosch
-s-hertogenbosch-waterpleinen-2021,2023,cloudburst_storage,Cloudburst storage capacity,9,1000 m³,https://www.s-hertogenbosch.nl/klimaat/waterpleinen,Gemeente 's-Hertogenbosch
 lisboa-corredores-verdes-2019,2015,green_corridor_km,Green corridor length,8,km,https://www.lisboa.pt/cidade/ambiente/corredores-verdes,Câmara Municipal de Lisboa
 lisboa-corredores-verdes-2019,2019,green_corridor_km,Green corridor length,24,km,https://www.lisboa.pt/cidade/ambiente/corredores-verdes,Câmara Municipal de Lisboa
 lisboa-corredores-verdes-2019,2023,green_corridor_km,Green corridor length,41,km,https://www.lisboa.pt/cidade/ambiente/corredores-verdes,Câmara Municipal de Lisboa
 helsinki-region-kera-2023,2024,planned_homes,Homes planned (projected),300,homes,https://www.espoo.fi/en/kera,City of Espoo – Kera
 helsinki-region-kera-2023,2026,planned_homes,Homes planned (projected),1200,homes,https://www.espoo.fi/en/kera,City of Espoo – Kera
 helsinki-region-kera-2023,2030,planned_homes,Homes planned (projected),2500,homes,https://www.espoo.fi/en/kera,City of Espoo – Kera
-zlin-batuv-kanal-greenway-2021,2019,greenway_km,Greenway length,0,km,https://www.zlin.eu/batuv-kanal-greenway,Statutární město Zlín
-zlin-batuv-kanal-greenway-2021,2021,greenway_km,Greenway length,18,km,https://www.zlin.eu/batuv-kanal-greenway,Statutární město Zlín
-zlin-batuv-kanal-greenway-2021,2023,greenway_km,Greenway length,26,km,https://www.zlin.eu/batuv-kanal-greenway,Statutární město Zlín
-huelva-anillo-verde-2022,2020,protected_ha,Protected green-belt area,0,ha,https://www.huelva.es/anillo-verde,Ayuntamiento de Huelva
-huelva-anillo-verde-2022,2022,protected_ha,Protected green-belt area,120,ha,https://www.huelva.es/anillo-verde,Ayuntamiento de Huelva
-huelva-anillo-verde-2022,2024,protected_ha,Protected green-belt area,340,ha,https://www.huelva.es/anillo-verde,Ayuntamiento de Huelva
-venezia-residenzialita-2020,2020,renovated_units,Renovated public dwellings,0,dwellings,https://www.comune.venezia.it/it/residenzialita,Comune di Venezia
-venezia-residenzialita-2020,2022,renovated_units,Renovated public dwellings,210,dwellings,https://www.comune.venezia.it/it/residenzialita,Comune di Venezia
-venezia-residenzialita-2020,2024,renovated_units,Renovated public dwellings,430,dwellings,https://www.comune.venezia.it/it/residenzialita,Comune di Venezia
