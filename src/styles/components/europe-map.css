@@ -24,7 +24,7 @@
 }
 
 .europe-map__country.is-focus-home {
-  fill: var(--color-surface-raised);
+  fill: var(--color-country-fill-home);
 }
 
 .europe-map__country.is-focus-dim {
