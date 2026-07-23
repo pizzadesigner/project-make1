@@ -4,7 +4,11 @@
 
 import { t } from '../lib/i18n.js';
 import { SDG11_TARGET_CODES, SDG11_TARGETS } from '../lib/sdg11.js';
+import { widgetMetricsForProject } from '../data/selectors.js';
 import * as europeMap from '../components/europeMap.js';
+import * as widgetStack from '../components/widgetStack.js';
+
+const CRITERIA = ['dq', 'tr', 'ineq'];
 
 /**
  * @param {HTMLElement} container
@@ -14,7 +18,9 @@ import * as europeMap from '../components/europeMap.js';
 export function render(container, props) {
   const refs = buildShell(container);
   let mapHandle = null;
+  let widgetsHandle = null;
   let filterButtons = null;
+  let criteriaButtons = null;
   let focusedCity = null;
 
   function handleKeydown(event) {
@@ -38,13 +44,23 @@ export function render(container, props) {
 
     if (!filterButtons) filterButtons = buildFilterBar(refs.filterBar, next, props.setFilterTarget);
     syncFilterBar(filterButtons, next.filterTarget);
+    if (!criteriaButtons)
+      criteriaButtons = buildCriteriaBar(refs.criteriaBar, props.setActiveCriterion);
+    syncCriteriaBar(criteriaButtons, next.activeCriterion);
     mountOrUpdateMap(next);
     return undefined;
   }
 
   function mountOrUpdateMap(next) {
+    const focusedProject = next.projects.find((p) => p.citySlug === next.focusedCity) ?? null;
+    const widgetsProps = {
+      project: focusedProject,
+      activeCriterion: next.activeCriterion,
+      metrics: widgetMetricsForProject(focusedProject),
+    };
     if (mapHandle) {
       mapHandle.update({ filterTarget: next.filterTarget, focusedCity: next.focusedCity });
+      widgetsHandle.update(widgetsProps);
       return;
     }
     refs.stage.replaceChildren();
@@ -56,12 +72,18 @@ export function render(container, props) {
       locale: next.locale,
       onSelect: (slug) => props.setFocusedCity(slug),
     });
+    widgetsHandle = widgetStack.render(refs.stage, {
+      ...widgetsProps,
+      onSelectCriterion: (criterion) => props.setActiveCriterion(criterion),
+    });
   }
 
   function teardownMap() {
     if (!mapHandle) return;
     mapHandle.destroy();
     mapHandle = null;
+    widgetsHandle.destroy();
+    widgetsHandle = null;
   }
 
   update(props);
@@ -92,6 +114,7 @@ function buildShell(container) {
       <p class="panel__body">${t('sdg11.panelBody')}</p>
     </details>
     <div class="filter-bar" role="group" aria-label="${t('filter.legend')}" data-filter></div>
+    <div class="filter-bar" role="group" aria-label="${t('criteria.legend')}" data-criteria></div>
     <div class="map-stage" data-stage></div>
   `;
   container.append(root);
@@ -99,6 +122,7 @@ function buildShell(container) {
     root,
     stage: root.querySelector('[data-stage]'),
     filterBar: root.querySelector('[data-filter]'),
+    criteriaBar: root.querySelector('[data-criteria]'),
   };
 }
 
@@ -138,6 +162,38 @@ function filterButton(label, code) {
 function syncFilterBar(buttons, filterTarget) {
   for (const { target, node } of buttons) {
     node.setAttribute('aria-pressed', String(target === (filterTarget ?? null)));
+  }
+}
+
+function criterionLabel(criterion) {
+  if (criterion === 'dq') return t('criteria.dataQuality');
+  if (criterion === 'tr') return t('criteria.transparency');
+  return t('criteria.inequality');
+}
+
+function buildCriteriaBar(container, setActiveCriterion) {
+  const buttons = [{ criterion: null, node: criterionButton(t('criteria.all')) }];
+  for (const criterion of CRITERIA) {
+    buttons.push({ criterion, node: criterionButton(criterionLabel(criterion)) });
+  }
+  for (const { criterion, node } of buttons) {
+    node.addEventListener('click', () => setActiveCriterion(criterion));
+    container.append(node);
+  }
+  return buttons;
+}
+
+function criterionButton(label) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'filter-bar__chip filter-bar__chip--plain';
+  button.textContent = label;
+  return button;
+}
+
+function syncCriteriaBar(buttons, activeCriterion) {
+  for (const { criterion, node } of buttons) {
+    node.setAttribute('aria-pressed', String(criterion === (activeCriterion ?? null)));
   }
 }
 

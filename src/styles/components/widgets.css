@@ -1,0 +1,127 @@
+/* Map-overlay widgets (Data Quality, Transparency, Inequality). Ripples'
+ * "parallax stack" — clicking one expands it and recedes the other two. */
+
+.widget-stack {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.widget {
+  position: absolute;
+  background: var(--color-surface-glass);
+  border: 1px solid var(--color-border-glass);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(var(--blur-glass));
+  cursor: pointer;
+  pointer-events: auto;
+  transition:
+    top var(--motion-slow) var(--ease-glass),
+    left var(--motion-slow) var(--ease-glass),
+    width var(--motion-slow) var(--ease-glass),
+    padding var(--motion-slow) var(--ease-glass),
+    opacity var(--motion-slow) var(--ease-glass);
+}
+
+.widget:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.widget__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.widget__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-faint);
+}
+
+.widget__chip {
+  font-size: 0.625rem;
+  color: var(--color-accent);
+}
+
+.widget__value-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.widget__value {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.widget__value-unit {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-faint);
+}
+
+.widget__bar {
+  height: 3px;
+  background: var(--color-border-glass);
+  border-radius: 2px;
+  margin-top: var(--space-2);
+  overflow: hidden;
+}
+
+.widget__bar-fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 2px;
+}
+
+.widget__bar--empty {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-country-outline) 0,
+    var(--color-country-outline) 3px,
+    transparent 3px,
+    transparent 6px
+  );
+}
+
+.widget__note {
+  font-size: 0.625rem;
+  color: var(--color-text-faint);
+  margin-top: var(--space-1);
+}
+
+.widget__no-data {
+  font-size: 0.625rem;
+  color: var(--color-danger);
+  font-style: italic;
+  margin-top: var(--space-1);
+}
+
+.widget__status {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+
+.widget__status--full {
+  color: var(--color-success);
+}
+
+.widget__status--partial {
+  color: var(--color-accent);
+}
+
+.widget__status--opaque {
+  color: var(--color-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .widget {
+    transition: none;
+  }
+}

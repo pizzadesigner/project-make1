@@ -38,8 +38,12 @@ function setFocusedCity(citySlug) {
   setState({ focusedCity: citySlug });
 }
 
+function setActiveCriterion(criterion) {
+  setState({ activeCriterion: criterion });
+}
+
 function viewProps(state) {
-  return { ...state, navigate, setFilterTarget, setFocusedCity };
+  return { ...state, navigate, setFilterTarget, setFocusedCity, setActiveCriterion };
 }
 
 function render(state) {

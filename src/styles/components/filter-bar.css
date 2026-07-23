@@ -38,3 +38,8 @@
 .filter-bar__chip:hover {
   background: var(--color-surface-raised);
 }
+
+/* Criteria chips (dq/tr/ineq/all) have no per-item colour, unlike SDG targets. */
+.filter-bar__chip--plain::before {
+  content: none;
+}

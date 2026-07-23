@@ -2,6 +2,7 @@
 @import './components/europe-map.css';
 @import './components/tooltip.css';
 @import './components/filter-bar.css';
+@import './components/widgets.css';
 @import './components/city-view.css';
 @import './components/source-chip.css';
 @import './components/line-chart.css';
@@ -123,6 +124,7 @@ a:hover {
 }
 
 .map-stage {
+  position: relative;
   margin-top: var(--space-5);
   min-height: 60vh;
 }

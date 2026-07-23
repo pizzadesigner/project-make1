@@ -12,6 +12,7 @@
  * @property {object|null} geo  Committed Europe TopoJSON, or null until loaded.
  * @property {string|null} filterTarget  Active SDG 11 target filter, or null.
  * @property {string|null} focusedCity   citySlug zoomed into on the map, or null.
+ * @property {'dq'|'tr'|'ineq'|null} activeCriterion  Which map widget is expanded.
  * @property {'en'|'de'} locale
  * @property {Error|null} error
  */
@@ -26,6 +27,7 @@ const state = {
   geo: null,
   filterTarget: null,
   focusedCity: null,
+  activeCriterion: null,
   locale: 'en',
   error: null,
 };

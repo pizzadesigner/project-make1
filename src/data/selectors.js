@@ -30,3 +30,15 @@ export function metricsForProject(metrics, projectId) {
 export function peersForProject(peers, projectId) {
   return peers.filter((peer) => peer.projectId === projectId);
 }
+
+/**
+ * TODO(data): takes a project because callers have one, but none of these
+ * fields exist in the dataset yet (no dq, transparency or gini column
+ * anywhere), so it always returns nulls — every map widget renders its "no
+ * data" state. See docs/DATA_TODO.md. This is the one seam to wire up once
+ * real fields land; nothing else should need to change.
+ * @returns {{ dataQuality: number|null, transparency: 'full'|'partial'|'opaque'|null, inequality: number|null }}
+ */
+export function widgetMetricsForProject() {
+  return { dataQuality: null, transparency: null, inequality: null };
+}
