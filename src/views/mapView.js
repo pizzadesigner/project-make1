@@ -33,6 +33,7 @@ export function render(container, props) {
 
   function update(next) {
     focusedCity = next.focusedCity ?? null;
+    refs.tagline.hidden = Boolean(focusedCity);
     if (next.status === 'error') {
       teardownMap();
       return showState(refs.stage, 'state--error', t('state.error'));
@@ -141,6 +142,7 @@ function buildShell(container, props) {
   root.querySelector('[data-lang-toggle]').addEventListener('click', props.toggleLocale);
   return {
     root,
+    tagline: root.querySelector('.view__tagline'),
     stage: root.querySelector('[data-stage]'),
     filterBar: root.querySelector('[data-filter]'),
     criteriaBar: root.querySelector('[data-criteria]'),
