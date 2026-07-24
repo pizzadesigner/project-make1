@@ -1,0 +1,60 @@
+/* Map legend (actual/target/above/below/missing swatches). Ported from
+ * template_Ripples.html lines 193-215 — always visible, unlike the tagline,
+ * matching the source markup which has no zoom-state conditional around it. */
+
+.legend {
+  position: absolute;
+  bottom: var(--space-4);
+  left: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.5625rem;
+  color: var(--color-text-faint);
+  z-index: 10;
+}
+
+.legend__item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.legend__swatch {
+  display: inline-block;
+  width: 10px;
+  height: 5px;
+  border-radius: 1px;
+}
+
+.legend__swatch--actual {
+  background: var(--color-country-fill);
+}
+
+.legend__swatch--target {
+  width: 10px;
+  height: 0;
+  border-top: 1.5px dashed var(--color-text-muted);
+}
+
+.legend__swatch--above {
+  background: var(--color-success);
+}
+
+.legend__swatch--below {
+  background: var(--color-danger);
+}
+
+.legend__swatch--missing {
+  width: 12px;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-country-outline) 0,
+    var(--color-country-outline) 3px,
+    transparent 3px,
+    transparent 6px
+  );
+}

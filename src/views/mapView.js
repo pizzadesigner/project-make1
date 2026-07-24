@@ -24,6 +24,7 @@ export function render(container, props) {
   let filterButtons = null;
   let criteriaButtons = null;
   let yearButtons = null;
+  let legendNode = null;
   let focusedCity = null;
 
   function handleKeydown(event) {
@@ -91,6 +92,8 @@ export function render(container, props) {
       onSelectCriterion: (criterion) => props.setActiveCriterion(criterion),
     });
     initiativesHandle = initiativeCards.render(refs.stage, initiativesProps);
+    legendNode = buildLegend();
+    refs.stage.append(legendNode);
   }
 
   function teardownMap() {
@@ -101,6 +104,7 @@ export function render(container, props) {
     widgetsHandle = null;
     initiativesHandle.destroy();
     initiativesHandle = null;
+    legendNode = null;
   }
 
   update(props);
@@ -148,6 +152,32 @@ function buildShell(container, props) {
     criteriaBar: root.querySelector('[data-criteria]'),
     yearBar: root.querySelector('[data-year]'),
   };
+}
+
+/** Ripples' actual/target/above/below/missing swatch legend — always
+ * visible, not gated on focus (unlike the tagline; see legend.css). */
+function buildLegend() {
+  const legend = document.createElement('ul');
+  legend.className = 'legend';
+  legend.setAttribute('aria-label', t('legend.ariaLabel'));
+  const items = [
+    ['actual', t('legend.actual')],
+    ['target', t('legend.target')],
+    ['above', t('legend.aboveTarget')],
+    ['below', t('legend.belowTarget')],
+    ['missing', t('legend.missing')],
+  ];
+  for (const [modifier, label] of items) {
+    const item = document.createElement('li');
+    item.className = 'legend__item';
+    const swatch = document.createElement('span');
+    swatch.className = `legend__swatch legend__swatch--${modifier}`;
+    const text = document.createElement('span');
+    text.textContent = label;
+    item.append(swatch, text);
+    legend.append(item);
+  }
+  return legend;
 }
 
 function presentTargets(projects) {
