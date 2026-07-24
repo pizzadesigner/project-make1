@@ -62,10 +62,24 @@
   pointer-events: none;
 }
 
-.europe-map__reset {
+/* Ripples-style compact pill, overriding the generic .button look
+ * (template_Ripples.html line 52: 11px/500, glass background, 4px radius). */
+.button.europe-map__reset {
   position: absolute;
   top: var(--space-3);
   right: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border-color: var(--color-border-glass);
+  background: var(--color-surface-glass);
+  color: var(--color-text-muted);
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+.button.europe-map__reset:hover {
+  color: var(--color-text);
+  border-color: var(--color-border);
 }
 
 .marker {
@@ -114,7 +128,7 @@
   r: 9;
 }
 
-.marker:focus-visible {
+.marker:focus {
   outline: none;
 }
 

@@ -86,8 +86,22 @@ a:hover {
   gap: var(--space-4);
 }
 
-.view__lang-toggle {
+/* Ripples-style compact pill, overriding the generic .button look
+ * (template_Ripples.html line 54: 11px/600, glass background, 4px radius). */
+.button.view__lang-toggle {
   flex-shrink: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border-color: var(--color-border-glass);
+  background: var(--color-surface-glass);
+  color: var(--color-text-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.button.view__lang-toggle:hover {
+  color: var(--color-text);
+  background: var(--color-surface-glass);
 }
 
 .view__tagline {
