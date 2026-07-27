@@ -16,20 +16,23 @@
   --color-marker: #c78a2a;
   --color-marker-ring: #0d1117;
 
-  /* Text — light on dark. --color-text-muted clears 4.5:1 on --color-canvas.
-   * --color-text-faint does not clear AA at small sizes — accepted debt,
-   * ported as-is from the Ripples design (see PORTING_GUIDE.md §7). */
+  /* Text — light on dark. Every pair below clears WCAG AA (4.5:1) on
+   * --color-canvas #0d1117 — the "comprehensibility" graphical design objective
+   * (see docs/DESIGN_RATIONALE.md). --color-text-faint was lightened from the
+   * Ripples #5a5a56 (2.7:1, failed AA) to #8a8a83 (5.45:1) while staying a clear
+   * step below --color-text-muted so the visual hierarchy is preserved. */
   --color-text: #e8e8e4;
-  --color-text-muted: #a0a098;
-  --color-text-faint: #5a5a56;
+  --color-text-muted: #a0a098; /* 7.19:1 */
+  --color-text-faint: #8a8a83; /* 5.45:1 — was #5a5a56 (2.7:1) */
   --color-text-on-accent: #06121f;
 
-  /* Accent + feedback. --color-danger and --color-success are also accepted
-   * contrast debt at small text sizes — see PORTING_GUIDE.md §7. */
+  /* Accent + feedback. --color-danger / --color-success are lightened from the
+   * Ripples hues so they clear AA (4.5:1) as text on the canvas, not just as
+   * graphical fills — see docs/DESIGN_RATIONALE.md (comprehensibility). */
   --color-accent: #c78a2a;
   --color-accent-hover: #e0a040;
-  --color-danger: #b23a3a;
-  --color-success: #2f7a3a;
+  --color-danger: #e06a63; /* 5.78:1 — was #b23a3a (3.2:1) */
+  --color-success: #4caf57; /* 6.83:1 — was #2f7a3a (3.6:1) */
   --color-focus: #e0a040;
 
   /* Glass widget surface (Ripples-style overlay cards). */

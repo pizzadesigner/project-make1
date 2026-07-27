@@ -1,13 +1,16 @@
 # SDG 11 Best-Practice Dashboard
 
-An interactive dashboard that evaluates SDG 11 projects across nine European
-cities and surfaces best-practice projects local governments can adopt. Two
-screens: a Europe map (start) and a city/project detail view. Its value is
-**traceable numbers** — every figure links to its source.
+An interactive dashboard that evaluates SDG 11 best-practice projects across four
+European PIONEER cities — **Cologne, Paris, Lisbon, Helsinki** — and surfaces the
+ones local governments can adopt. The primary screen is a Europe map with
+in-place, layered zoom; a city/project detail view still serves cold deep links.
+Its value is **traceable numbers** — every figure links to its source.
 
-> **Data status:** the CSVs currently hold _placeholder-but-realistic_ data for
-> all nine cities so the pipeline works end to end. Replace the figures and
-> sources with researched values before treating any number as authoritative.
+> **Data status:** the CSVs currently hold a mix of researched and
+> _placeholder-but-realistic_ data for the four cities so the pipeline works end
+> to end (Cologne is still a structural placeholder — see
+> [`docs/DATA_TODO.md`](docs/DATA_TODO.md)). Replace the figures and sources with
+> researched values before treating any number as authoritative.
 
 ## Quick start
 
@@ -68,6 +71,14 @@ Vanilla JS (ES modules) + Vite + d3 v7. No framework, no state library. See
 `CLAUDE.md` for the full layout and conventions. In short: `store.js` holds
 state, `router.js` maps the hash to a route, `main.js` wires them to views, and
 components expose `render(container, props) -> { update, destroy }`.
+
+## Design objectives
+
+The interface is built and reviewed against five graphical design objectives —
+**comprehensibility** (WCAG-AA contrast, low cognitive load), **neutrality**,
+**credibility** (sources on every number), **engagement/curiosity**, and
+**cohesion**. The rationale, the code map, and a pre-merge checklist are in
+[`docs/DESIGN_RATIONALE.md`](docs/DESIGN_RATIONALE.md).
 
 ## Transferability
 
