@@ -27,6 +27,10 @@ const DETAIL_ZOOM = 8; // L2: diving into the city's own map
 // the fraction of that free area the silhouette fills.
 const WIDGET_STRIP = 340;
 const CITY_FILL = 0.75;
+// Above this scale, the country/border geometry is swapped for a flat backdrop
+// (see buildDom) — well above FOCUS_ZOOM/DETAIL_ZOOM (regional zoom for cities
+// without a silhouette), well below a real city fit (40x-120x+).
+const DEEP_ZOOM_THRESHOLD = 15;
 
 export function render(container, props) {
   const size = measure(container);
@@ -120,6 +124,18 @@ export function render(container, props) {
         animateZoom(dom.svg, zoomBehavior, cityFitTransform(size, cityFit.get(slug)));
       }
     },
+    // Draw (or clear, when passed null) the focused city's own highlight shape.
+    // Cities without outline geometry simply show no highlight — the country is
+    // never substituted in (see applyCountryFocus).
+    setCityHighlight(outline) {
+      const layer = select(dom.cityHighlight);
+      layer.selectAll('*').remove();
+      if (!outline) return;
+      layer
+        .append('path')
+        .attr('class', 'europe-map__city-highlight-shape')
+        .attr('d', path(outline));
+    },
     destroy() {
       tooltip.destroy();
       dom.root.remove();
@@ -150,9 +166,25 @@ function buildDom(container, size) {
     .attr('role', 'group')
     .attr('aria-label', t('map.heading'));
 
+  // Sits outside the zoom layer, so it is never itself put through an extreme
+  // scale transform. Stands in for the country geometry during deep zoom (see
+  // setupZoom) — a flat fill is visually identical to that geometry at deep
+  // zoom anyway, without the animated-seam artifacts of scaling many adjacent
+  // topojson paths up ~100x.
+  const backdrop = svg
+    .append('rect')
+    .attr('class', 'europe-map__backdrop')
+    .attr('width', size.width)
+    .attr('height', size.height)
+    .attr('fill', 'none');
+
   const zoomLayer = svg.append('g').attr('class', 'europe-map__zoom');
   const countries = zoomLayer.append('g').attr('class', 'europe-map__countries');
   const borders = zoomLayer.append('path').attr('class', 'europe-map__borders');
+  // The focused city's own highlight — the country never is (see
+  // applyCountryFocus) — drawn under the district hairlines so they still
+  // read as dividing lines over it.
+  const cityHighlight = zoomLayer.append('g').attr('class', 'europe-map__city-highlight');
   // District overview for a focused city — drawn inside the zoom layer so it
   // tracks pan/zoom, and below the markers so they stay the interactive layer.
   const districts = zoomLayer.append('g').attr('class', 'europe-map__districts');
@@ -168,9 +200,11 @@ function buildDom(container, size) {
     root,
     svg: svg.node(),
     zoomLayer: zoomLayer.node(),
+    backdrop,
     countries,
     borders,
     markers: markers.node(),
+    cityHighlight: cityHighlight.node(),
     districts: districts.node(),
     focusHeader,
   };
@@ -184,6 +218,20 @@ function drawGeometry(dom, countries, borders, path) {
     .attr('class', 'europe-map__country')
     .attr('d', path);
   dom.borders.attr('d', path(borders));
+}
+
+/** Swap the multi-path country/border geometry for a flat backdrop rect (and
+ * back) as the zoom crosses DEEP_ZOOM_THRESHOLD — including mid-transition, so
+ * the expensive geometry is never animated through the deep-zoom range. Plain
+ * country fill: the country is background, never highlighted (the city is —
+ * see setCityHighlight). `wasDeep` is the caller's own state, so each map
+ * instance tracks its own. */
+function setDeepZoom(dom, next, wasDeep) {
+  if (next === wasDeep) return next;
+  dom.countries.attr('display', next ? 'none' : null);
+  dom.borders.attr('display', next ? 'none' : null);
+  dom.backdrop.attr('fill', next ? 'var(--color-country-fill)' : 'none');
+  return next;
 }
 
 function drawMarkers(group, projects, { projection, onSelect, tooltip }) {
@@ -260,6 +308,7 @@ function defaultZoomFilter(event) {
 }
 
 function setupZoom(dom, size, markers) {
+  let isDeepZoom = false;
   const behavior = zoom()
     .scaleExtent([MIN_ZOOM, MAX_ZOOM])
     .translateExtent([
@@ -270,6 +319,9 @@ function setupZoom(dom, size, markers) {
       dom.zoomLayer.setAttribute('transform', event.transform.toString());
       const inverse = 1 / event.transform.k;
       for (const marker of markers) marker.scale.setAttribute('transform', `scale(${inverse})`);
+      // Fires continuously through the animated transition too (not just at
+      // rest), so the swap happens before the deep-zoom range is reached.
+      isDeepZoom = setDeepZoom(dom, event.transform.k >= DEEP_ZOOM_THRESHOLD, isDeepZoom);
     });
   select(dom.svg).call(behavior);
   return behavior;
@@ -310,14 +362,15 @@ function animateZoom(svg, behavior, transform) {
   target.call(behavior.transform, transform);
 }
 
-/** Dim every country but the focused project's own; no-op when nothing is focused. */
+/** Dim every country but the focused project's own, which stays at its plain
+ * fill — the country itself is never highlighted, only the city (see
+ * setCityHighlight); no-op when nothing is focused. */
 function applyCountryFocus(dom, focused) {
   const home = focused?.country ?? null;
   // Natural Earth's name lives in `name`; some exports use `NAME`.
   const countryName = (d) => d.properties.name ?? d.properties.NAME ?? null;
   dom.countries
     .selectAll('path')
-    .classed('is-focus-home', (d) => home != null && countryName(d) === home)
     .classed('is-focus-dim', (d) => home != null && countryName(d) !== home);
 }
 

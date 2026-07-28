@@ -23,10 +23,6 @@
     opacity var(--motion-slow) var(--ease-standard);
 }
 
-.europe-map__country.is-focus-home {
-  fill: var(--color-country-fill-home);
-}
-
 .europe-map__country.is-focus-dim {
   opacity: 0.15;
 }
@@ -62,8 +58,21 @@
   pointer-events: none;
 }
 
+/* The focused city itself is the thing that's highlighted — never its country
+ * (see applyCountryFocus). A solid gray a clear step lighter than the country
+ * makes it read as a distinct shape; the district hairlines are lighter still,
+ * so they stay legible over it. The edge reuses the accent colour that
+ * markers/focus/the "View project" pill use, tying it to the selection. */
+.europe-map__city-highlight-shape {
+  fill: var(--color-city-highlight);
+  stroke: var(--color-accent);
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
 /* Focused city's district overview (L1): light hairline outlines drawn over the
- * country fill, never interactive so the markers stay the only target. */
+ * highlight, never interactive so the markers stay the only target. */
 .europe-map__district {
   fill: none;
   stroke: var(--color-text-muted);

@@ -11,7 +11,7 @@
 
   /* Map geometry. */
   --color-country-fill: #2a2d32;
-  --color-country-fill-home: #3a3d42;
+  --color-city-highlight: #6e6f75; /* focused city's own fill — a clear step lighter than the country, which is never highlighted */
   --color-country-outline: #3a3d42;
   --color-marker: #c78a2a;
   --color-marker-ring: #0d1117;

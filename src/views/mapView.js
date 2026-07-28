@@ -61,13 +61,19 @@ export function render(container, props) {
     // not re-run the fit and fight a manual zoom.
     if (slug === layersSlug) return;
     layersSlug = slug;
-    if (!slug) return mapHandle.setDistricts(null, null);
+    if (!slug) {
+      mapHandle.setDistricts(null, null);
+      mapHandle.setCityHighlight(null);
+      return undefined;
+    }
     const token = ++layersToken;
     loadLayer(slug, districtsCache, loadCityDistricts, token, (data) =>
       mapHandle.setDistricts(slug, data),
     );
+    loadLayer(slug, outlineCache, loadCityOutline, token, (data) =>
+      mapHandle.setCityHighlight(data),
+    );
     // Loaded and cached now; not drawn on the map yet.
-    loadLayer(slug, outlineCache, loadCityOutline, token, () => {});
     loadLayer(slug, infrastructureCache, loadCityInfrastructure, token, () => {});
     return undefined;
   }

@@ -55,14 +55,54 @@ export function loadCitySilhouette(citySlug) {
 // others. Every loader resolves to null when the city has no such file, letting
 // callers simply skip that layer.
 
+const ringArea = (ring) => {
+  let sum = 0;
+  for (let i = 0, n = ring.length; i < n; i += 1) {
+    const [x1, y1] = ring[i];
+    const [x2, y2] = ring[(i + 1) % n];
+    sum += x1 * y2 - x2 * y1;
+  }
+  return sum / 2;
+};
+
+// d3-geo winds polygons opposite to the GeoJSON (RFC 7946) spec — it expects
+// exterior rings clockwise, holes counterclockwise. A file that follows the
+// spec (as hand-exported outlines usually do) renders inverted: d3 fills the
+// whole globe minus the shape. Reorient each ring to d3's convention; already
+// d3-wound rings are left as-is, so this is safe to run on any GeoJSON.
+const rewindRings = (rings) =>
+  rings.map((ring, i) => {
+    const isClockwise = ringArea(ring) < 0;
+    const wantClockwise = i === 0; // exterior clockwise, holes the other way
+    return isClockwise === wantClockwise ? ring : [...ring].reverse();
+  });
+
+function rewind(geometry) {
+  if (!geometry) return geometry;
+  switch (geometry.type) {
+    case 'Polygon':
+      return { ...geometry, coordinates: rewindRings(geometry.coordinates) };
+    case 'MultiPolygon':
+      return { ...geometry, coordinates: geometry.coordinates.map(rewindRings) };
+    case 'GeometryCollection':
+      return { ...geometry, geometries: geometry.geometries.map(rewind) };
+    case 'Feature':
+      return { ...geometry, geometry: rewind(geometry.geometry) };
+    case 'FeatureCollection':
+      return { ...geometry, features: geometry.features.map(rewind) };
+    default:
+      return geometry;
+  }
+}
+
 /**
- * Fetch a city's outer boundary polygon (GeoJSON).
+ * Fetch a city's outer boundary polygon (GeoJSON), reoriented to d3's winding.
  * @param {string} citySlug
  * @returns {Promise<object | null>}
  */
 export function loadCityOutline(citySlug) {
   const entry = CITY_GEO[citySlug];
-  return entry?.outline ? json(geoUrl(entry.outline)) : Promise.resolve(null);
+  return entry?.outline ? json(geoUrl(entry.outline)).then(rewind) : Promise.resolve(null);
 }
 
 /**
