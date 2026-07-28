@@ -10,9 +10,10 @@
 
 import { t } from '../lib/i18n.js';
 import { SDG11_TARGET_CODES, SDG11_TARGETS } from '../lib/sdg11.js';
-import { availableYears, metricsForProject } from '../data/selectors.js';
+import { availableYears, metricsForProject, widgetMetricsForProject } from '../data/selectors.js';
 import * as europeMap from '../components/europeMap.js';
 import * as cityDetail from '../components/cityDetail.js';
+import * as widgetStack from '../components/widgetStack.js';
 
 /**
  * @param {HTMLElement} container
@@ -23,15 +24,20 @@ export function render(container, props) {
   const refs = buildShell(container, props);
   let mapHandle = null;
   let detailHandle = null;
+  let widgetHandle = null;
   let filterButtons = null;
   let yearButtons = null;
   let legendNode = null;
   let focusedCity = null;
   let detailCity = null;
+  let activeCriterion = null;
 
+  // Escape steps back one layer at a time: L2 detail → expanded widget →
+  // focused city → overview.
   function handleKeydown(event) {
     if (event.key !== 'Escape') return;
     if (detailCity) props.closeProjectDetail();
+    else if (activeCriterion) props.setActiveCriterion(null);
     else if (focusedCity) props.setFocusedCity(null);
   }
   document.addEventListener('keydown', handleKeydown);
@@ -39,6 +45,7 @@ export function render(container, props) {
   function update(next) {
     focusedCity = next.focusedCity ?? null;
     detailCity = next.detailCity ?? null;
+    activeCriterion = next.activeCriterion ?? null;
     refs.tagline.hidden = Boolean(focusedCity);
     if (next.status === 'error') {
       teardownMap();
@@ -71,6 +78,13 @@ export function render(container, props) {
       metrics: focusedProject ? metricsForProject(next.metrics, focusedProject.id) : [],
       locale: next.locale,
     };
+    // Exploration widgets belong to L1 only — hide them once the L2 overlay opens.
+    const widgetProps = {
+      project: detailOpen ? null : focusedProject,
+      activeCriterion: next.activeCriterion,
+      metrics: widgetMetricsForProject(focusedProject),
+      onSelectCriterion: props.setActiveCriterion,
+    };
 
     if (!mapHandle) {
       refs.stage.replaceChildren();
@@ -84,6 +98,7 @@ export function render(container, props) {
         onSelect: (slug) => props.setFocusedCity(slug),
       });
       refs.pill = buildViewProjectPill(refs.stage);
+      widgetHandle = widgetStack.render(refs.stage, widgetProps);
       detailHandle = cityDetail.render(refs.stage, {
         ...detailProps,
         onClose: props.closeProjectDetail,
@@ -97,6 +112,7 @@ export function render(container, props) {
       focusedCity: next.focusedCity,
       detailCity: next.detailCity,
     });
+    widgetHandle.update(widgetProps);
     detailHandle.update(detailProps);
     syncViewProjectPill(refs.pill, focusedProject, detailOpen, props.openProjectDetail);
   }
@@ -105,6 +121,8 @@ export function render(container, props) {
     if (!mapHandle) return;
     mapHandle.destroy();
     mapHandle = null;
+    widgetHandle.destroy();
+    widgetHandle = null;
     detailHandle.destroy();
     detailHandle = null;
     legendNode = null;

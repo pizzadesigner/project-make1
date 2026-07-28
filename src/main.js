@@ -36,9 +36,14 @@ function setFilterTarget(target) {
 }
 
 function setFocusedCity(citySlug) {
-  // Leaving/zooming a city also closes any open project detail (L2) — you can't
-  // be inside a city's detail while no city is focused.
-  setState({ focusedCity: citySlug, detailCity: citySlug ? getState().detailCity : null });
+  // Leaving/zooming a city also closes any open project detail (L2) and
+  // collapses any expanded Exploration widget — none of those states outlive
+  // the focused city they belong to.
+  setState({
+    focusedCity: citySlug,
+    detailCity: citySlug ? getState().detailCity : null,
+    activeCriterion: citySlug ? getState().activeCriterion : null,
+  });
 }
 
 /** Open the in-place project detail (L2) for the focused city. */

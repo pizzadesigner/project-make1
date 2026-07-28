@@ -23,30 +23,28 @@ needs real, sourced research before it's authoritative:
   (normally ids are never renamed — an exception because this one was never
   real to begin with).
 
-## Map widgets (Data Quality, Transparency, Inequality) — no backing fields at all
+## Exploration widgets (Problem Fit, Impact, Adoption Requirements) — no backing content yet
 
-`src/data/selectors.js#widgetMetricsForProject` always returns
-`{ dataQuality: null, transparency: null, inequality: null }` — every widget on
-the zoomed map renders its "no data" state for all 4 cities right now. This was
-a deliberate choice (pure placeholder shells, not a derived/heuristic value) so
-nothing gets shown that isn't a real, sourced figure. To wire real data:
+The three Exploration-layer widgets shown around a focused city were re-concepted
+from the old Data Quality / Transparency / Inequality set (Phase 1). They now
+render **intentional placeholder shells** — a label, a "Placeholder" chip and a
+dashed stub — because none of their headline content is researched yet.
+`src/data/selectors.js#widgetMetricsForProject` returns
+`{ problemFit: null, impact: null, adoption: null }`; the nulls keep any
+fabricated figure from rendering (Neutrality/Honesty — see `DESIGN_RATIONALE.md`).
 
-- **Data Quality (`dataQuality`, 0–100):** needs a genuine completeness/quality
-  score per project — not the same thing as `transferability_score` (that
-  measures ease-of-adoption, not data completeness). No column exists yet.
-- **Transparency (`transparency`, `'full'|'partial'|'opaque'`):** needs a
-  real status per project. Could eventually be derived from how complete the
-  sourcing is (`sourceUrl`/`sourceLabel`/`sourceAccessed` all present vs.
-  partially/not present) rather than added as a brand-new column — but that
-  derivation was explicitly deferred, not implemented, per the human's choice
-  of "pure placeholder shells" over "derive from real fields."
-- **Inequality (`inequality`, Gini coefficient):** needs a real per-city Gini
-  or equivalent figure. No proxy exists in the current schema — this one has
-  no realistic derivation from existing fields, a new sourced field is the
-  only path.
-- District-level green-space bars (the Inequality widget's expandable detail)
-  are Phase 5 in `PORTING_GUIDE.md` — not built at all yet, separate from the
-  three top-level widget values above.
+To wire real content (Phase 2), decide per city what each widget's headline
+figure is and where it is sourced:
+
+- **Problem Fit:** the researched indicator(s) establishing that the project
+  addresses a real local need (e.g. population density → pressure on space). No
+  committed field maps to this yet.
+- **Impact:** the single most important outcome figure (e.g. green-space GA %,
+  CO₂ avoided). Each figure needs its own `source_url`.
+- **Adoption Requirements:** what another city needs to replicate it. The closest
+  existing field is `transferability_score`, but confirm it fits before reusing.
+- District-level green-space bars (the Analysis-layer / Phase 5 drill-in detail)
+  are not built yet — separate from the three top-level widget headlines above.
 
 ## `data/cities.csv` — researched indicators, provenance to confirm
 

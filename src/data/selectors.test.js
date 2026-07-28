@@ -3,6 +3,7 @@ import {
   cityIndicatorsForCity,
   cityIndicatorValue,
   populationDensityForCity,
+  widgetMetricsForProject,
 } from './selectors.js';
 
 // Real Cologne figures (population / area = 2539, matching the research table)
@@ -38,5 +39,17 @@ describe('populationDensityForCity', () => {
 
   it('returns null when a required input is missing', () => {
     expect(populationDensityForCity(indicators, 'lisboa')).toBeNull();
+  });
+});
+
+describe('widgetMetricsForProject', () => {
+  it('exposes the three Exploration widgets, all null until content is researched', () => {
+    // Placeholder shells (see docs/DATA_TODO.md) — the keys are the contract the
+    // widget stack relies on; the nulls keep any fabricated figure from rendering.
+    expect(widgetMetricsForProject()).toEqual({
+      problemFit: null,
+      impact: null,
+      adoption: null,
+    });
   });
 });

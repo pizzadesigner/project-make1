@@ -44,15 +44,16 @@ export function availableYears(metrics) {
 }
 
 /**
- * TODO(data): takes a project because callers have one, but none of these
- * fields exist in the dataset yet (no dq, transparency or gini column
- * anywhere), so it always returns nulls — every map widget renders its "no
- * data" state. See docs/DATA_TODO.md. This is the one seam to wire up once
- * real fields land; nothing else should need to change.
- * @returns {{ dataQuality: number|null, transparency: 'full'|'partial'|'opaque'|null, inequality: number|null }}
+ * Headline figure for each of the three Exploration widgets (Problem Fit /
+ * Impact / Adoption Requirements). TODO(data): the per-widget content is not
+ * researched yet, so every field is null and each widget renders an intentional
+ * placeholder shell rather than a fabricated number (Neutrality/Honesty — see
+ * docs/DESIGN_RATIONALE.md, docs/DATA_TODO.md). This is the one seam to wire up
+ * once real, sourced content lands (Phase 2); nothing else should need to change.
+ * @returns {{ problemFit: number|null, impact: number|null, adoption: number|null }}
  */
 export function widgetMetricsForProject() {
-  return { dataQuality: null, transparency: null, inequality: null };
+  return { problemFit: null, impact: null, adoption: null };
 }
 
 /**
@@ -99,12 +100,10 @@ export function populationDensityForCity(cityIndicators, citySlug) {
 }
 
 /**
- * TODO(data): the Inequality widget's district-level green-space breakdown.
- * No per-district data exists in the dataset at all — always returns null, so
- * the district-bar section never renders (it's additionally gated behind
- * widgetMetricsForProject().inequality being non-null, which it also never
- * is). See docs/DATA_TODO.md. Shape once real data lands:
- * `{ names: string[], greenSpaceHectares: number[] }`.
+ * TODO(data): district-level green-space breakdown, kept for the Analysis-layer
+ * drill-in (Phase 3/5). No per-district data exists in the dataset yet, so it
+ * always returns null and no district bars render. See docs/DATA_TODO.md. Shape
+ * once real data lands: `{ names: string[], greenSpaceHectares: number[] }`.
  * @returns {null}
  */
 export function districtsForProject() {

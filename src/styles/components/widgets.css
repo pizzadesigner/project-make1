@@ -1,5 +1,6 @@
-/* Map-overlay widgets (Data Quality, Transparency, Inequality). Ripples'
- * "parallax stack" — clicking one expands it and recedes the other two. */
+/* Exploration-layer widgets (Problem Fit, Impact, Adoption Requirements).
+ * Ripples' "parallax stack" — clicking one expands it and recedes the other
+ * two. Shown around the map while a city is focused (L1). */
 
 .widget-stack {
   position: absolute;
