@@ -79,6 +79,26 @@ export function render(container, props) {
       props.onSelect(null);
       animateZoom(dom.svg, zoomBehavior, zoomIdentity);
     },
+    // Draw (or clear, when passed null) the focused city's district overview.
+    // Geometry is projected with the map's own projection so it lands over the
+    // real city and scales with the zoom.
+    setDistricts(data) {
+      const layer = select(dom.districts);
+      layer.selectAll('*').remove();
+      if (!data) return;
+      if (data.outline) {
+        layer
+          .append('path')
+          .attr('class', 'europe-map__city-outline')
+          .attr('d', path(data.outline));
+      }
+      layer
+        .selectAll('.europe-map__district')
+        .data(data.districts.features)
+        .join('path')
+        .attr('class', 'europe-map__district')
+        .attr('d', path);
+    },
     destroy() {
       tooltip.destroy();
       dom.root.remove();
@@ -112,6 +132,9 @@ function buildDom(container, size) {
   const zoomLayer = svg.append('g').attr('class', 'europe-map__zoom');
   const countries = zoomLayer.append('g').attr('class', 'europe-map__countries');
   const borders = zoomLayer.append('path').attr('class', 'europe-map__borders');
+  // District overview for a focused city — drawn inside the zoom layer so it
+  // tracks pan/zoom, and below the markers so they stay the interactive layer.
+  const districts = zoomLayer.append('g').attr('class', 'europe-map__districts');
   const markers = zoomLayer.append('g').attr('class', 'europe-map__markers');
 
   const focusHeader = document.createElement('div');
@@ -127,6 +150,7 @@ function buildDom(container, size) {
     countries,
     borders,
     markers: markers.node(),
+    districts: districts.node(),
     focusHeader,
   };
 }

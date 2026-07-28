@@ -62,6 +62,28 @@
   pointer-events: none;
 }
 
+/* Focused city's district overview (L1): context, not content — a faint fill
+ * for the city and hairline district edges, kept "a bit less highlighted" and
+ * never interactive so the markers stay the only target. */
+.europe-map__city-outline {
+  fill: var(--color-country-fill-home);
+  stroke: var(--color-country-outline);
+  stroke-width: 0.8;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.europe-map__district {
+  fill: none;
+  stroke: var(--color-country-outline);
+  stroke-width: 0.6;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 .marker {
   cursor: pointer;
   color: var(--color-marker);

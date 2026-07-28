@@ -10,6 +10,7 @@
 
 import { t } from '../lib/i18n.js';
 import { metricsForProject, widgetMetricsForProject } from '../data/selectors.js';
+import { loadCityDistricts } from '../data/load.js';
 import * as europeMap from '../components/europeMap.js';
 import * as cityDetail from '../components/cityDetail.js';
 import * as widgetStack from '../components/widgetStack.js';
@@ -28,6 +29,27 @@ export function render(container, props) {
   let focusedCity = null;
   let detailCity = null;
   let activeCriterion = null;
+  // L1 district overview, lazy-loaded per city and cached; a stale-load token
+  // guards against a slow fetch resolving after the user has moved on.
+  const districtsCache = new Map();
+  let districtsToken = 0;
+
+  function syncDistricts(citySlug) {
+    if (!mapHandle) return;
+    if (!citySlug) return mapHandle.setDistricts(null);
+    if (districtsCache.has(citySlug)) return mapHandle.setDistricts(districtsCache.get(citySlug));
+    const token = ++districtsToken;
+    loadCityDistricts(citySlug)
+      .then((data) => {
+        districtsCache.set(citySlug, data);
+        if (token === districtsToken && mapHandle) mapHandle.setDistricts(data);
+      })
+      .catch(() => {
+        // No overview beats a broken layer if the file is missing or invalid.
+        if (token === districtsToken && mapHandle) mapHandle.setDistricts(null);
+      });
+    return undefined;
+  }
 
   // One step back through the zoom chain: L2 detail → expanded widget →
   // focused city → overview. Shared by the Back control and the Escape key so
@@ -111,6 +133,7 @@ export function render(container, props) {
       focusedCity: next.focusedCity,
       detailCity: next.detailCity,
     });
+    syncDistricts(next.focusedCity);
     widgetHandle.update(widgetProps);
     detailHandle.update(detailProps);
     syncViewProjectPill(refs.pill, focusedProject, detailOpen, props.openProjectDetail);
