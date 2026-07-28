@@ -24,8 +24,12 @@ const DETAIL_ZOOM = 8; // L2: diving into the city's own map
 
 export function render(container, props) {
   const size = measure(container);
-  const countries = feature(props.geo, props.geo.objects.countries);
-  const borders = mesh(props.geo, props.geo.objects.countries, (a, b) => a !== b);
+  // The committed TopoJSON has a single object; take it by value rather than a
+  // fixed key so a re-simplified or hand-edited file (which may name the layer
+  // differently) still loads.
+  const topology = Object.values(props.geo.objects)[0];
+  const countries = feature(props.geo, topology);
+  const borders = mesh(props.geo, topology, (a, b) => a !== b);
   const projection = fitToViewport(createEuropeProjection(), countries, size.width, size.height);
   const path = geoPath(projection);
 
@@ -41,7 +45,6 @@ export function render(container, props) {
 
   const zoomBehavior = setupZoom(dom, size, markers);
   bindKeyboard(dom.markers, markers);
-  dom.reset.addEventListener('click', () => props.onSelect(null));
 
   let focusedCity = null;
   let detailCity = null;
@@ -68,6 +71,13 @@ export function render(container, props) {
           )
         : zoomIdentity;
       animateZoom(dom.svg, zoomBehavior, transform);
+    },
+    // Return to the default overview: snap the d3.zoom transform back to
+    // identity (so a manual pan/zoom is undone even with no city focused) and
+    // clear any selection.
+    resetView() {
+      props.onSelect(null);
+      animateZoom(dom.svg, zoomBehavior, zoomIdentity);
     },
     destroy() {
       tooltip.destroy();
@@ -104,12 +114,6 @@ function buildDom(container, size) {
   const borders = zoomLayer.append('path').attr('class', 'europe-map__borders');
   const markers = zoomLayer.append('g').attr('class', 'europe-map__markers');
 
-  const reset = document.createElement('button');
-  reset.type = 'button';
-  reset.className = 'europe-map__reset button';
-  reset.textContent = t('map.resetView');
-  root.append(reset);
-
   const focusHeader = document.createElement('div');
   focusHeader.className = 'europe-map__focus';
   focusHeader.hidden = true;
@@ -123,7 +127,6 @@ function buildDom(container, size) {
     countries,
     borders,
     markers: markers.node(),
-    reset,
     focusHeader,
   };
 }
@@ -239,10 +242,12 @@ function animateZoom(svg, behavior, transform) {
 /** Dim every country but the focused project's own; no-op when nothing is focused. */
 function applyCountryFocus(dom, focused) {
   const home = focused?.country ?? null;
+  // Natural Earth's name lives in `name`; some exports use `NAME`.
+  const countryName = (d) => d.properties.name ?? d.properties.NAME ?? null;
   dom.countries
     .selectAll('path')
-    .classed('is-focus-home', (d) => home != null && d.properties.name === home)
-    .classed('is-focus-dim', (d) => home != null && d.properties.name !== home);
+    .classed('is-focus-home', (d) => home != null && countryName(d) === home)
+    .classed('is-focus-dim', (d) => home != null && countryName(d) !== home);
 }
 
 /** Recede every marker but the focused one; no-op when nothing is focused. */

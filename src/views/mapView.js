@@ -43,13 +43,19 @@ export function render(container, props) {
   }
   document.addEventListener('keydown', handleKeydown);
   refs.back.addEventListener('click', stepBack);
+  // Reset lives here (top-right) but the actual zoom reset belongs to the map.
+  refs.reset.addEventListener('click', () => mapHandle?.resetView());
 
   function update(next) {
     focusedCity = next.focusedCity ?? null;
     detailCity = next.detailCity ?? null;
     activeCriterion = next.activeCriterion ?? null;
-    // The Back control only has somewhere to go once a city is focused.
-    refs.back.hidden = !(focusedCity || detailCity || activeCriterion);
+    // Overview (L0) shows only Reset; Back, the language toggle and the legend
+    // appear once a city is focused (L1) and stay through the detail layer (L2).
+    const atOverview = !(focusedCity || detailCity || activeCriterion);
+    refs.back.hidden = atOverview;
+    refs.langToggle.hidden = atOverview;
+    if (legendNode) legendNode.hidden = atOverview;
     if (next.status === 'error') {
       teardownMap();
       return showState(refs.stage, 'state--error', t('state.error'));
@@ -97,6 +103,7 @@ export function render(container, props) {
       widgetHandle = widgetStack.render(refs.stage, widgetProps);
       detailHandle = cityDetail.render(refs.stage, detailProps);
       legendNode = buildLegend();
+      legendNode.hidden = !next.focusedCity;
       refs.stage.append(legendNode);
     }
 
@@ -136,15 +143,18 @@ export function render(container, props) {
 function buildShell(container, props) {
   const root = document.createElement('section');
   root.className = 'view view--map';
-  // L0 is deliberately just the map and its markers. The controls cluster in
-  // the one corner that stays clear at every layer — the widgets sit top-left,
-  // the map's reset top-right, the legend bottom-left — and sits above the L2
-  // overlay so Back stays reachable there.
+  // Controls sit in the corners the map layers leave free: Back top-left above
+  // the widget stack, Reset + language top-right, legend bottom-left. Only Reset
+  // shows at the overview (L0); the rest appear once a city is focused. Both
+  // clusters sit above the L2 overlay so they stay reachable there.
   root.innerHTML = `
     <div class="map-stage" data-stage></div>
-    <div class="map-controls">
+    <div class="map-controls map-controls--top-left">
       <button type="button" class="map-float button" data-back hidden>← ${t('detail.back')}</button>
-      <button type="button" class="map-float button" data-lang-toggle>${props.locale === 'en' ? 'DE' : 'EN'}</button>
+    </div>
+    <div class="map-controls map-controls--top-right">
+      <button type="button" class="map-float button" data-reset>${t('map.resetView')}</button>
+      <button type="button" class="map-float button" data-lang-toggle hidden>${props.locale === 'en' ? 'DE' : 'EN'}</button>
     </div>
   `;
   container.append(root);
@@ -153,6 +163,8 @@ function buildShell(container, props) {
     root,
     stage: root.querySelector('[data-stage]'),
     back: root.querySelector('[data-back]'),
+    reset: root.querySelector('[data-reset]'),
+    langToggle: root.querySelector('[data-lang-toggle]'),
     pill: null,
   };
 }

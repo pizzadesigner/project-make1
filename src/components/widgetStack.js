@@ -16,46 +16,42 @@ import { t } from '../lib/i18n.js';
 /** The three widgets, in stacked order. */
 const WIDGETS = ['problemFit', 'impact', 'adoption'];
 
-const BASE_LAYOUT = {
-  problemFit: {
-    top: '16px',
-    left: '16px',
-    width: '220px',
-    padding: '14px 16px',
-    opacity: '1',
-    z: '10',
-  },
-  impact: {
-    top: '146px',
-    left: '16px',
-    width: '220px',
-    padding: '14px 16px',
-    opacity: '1',
-    z: '10',
-  },
-  adoption: {
-    top: '256px',
-    left: '16px',
-    width: '220px',
-    padding: '14px 16px',
-    opacity: '1',
-    z: '10',
-  },
-};
+// The three widgets stack down the top-left column. STACK_TOP clears the Back
+// control pinned to that corner; STACK_STEP is the even rhythm between them.
+const STACK_TOP = 72;
+const STACK_LEFT = 16;
+const STACK_STEP = 128;
+const WIDGET_WIDTH = '248px';
+const WIDGET_PADDING = '16px 18px';
 
-/** Ripples' parallax stack: the active widget grows and rises; the rest recede. */
+const BASE_LAYOUT = Object.fromEntries(
+  WIDGETS.map((key, i) => [
+    key,
+    {
+      top: `${STACK_TOP + i * STACK_STEP}px`,
+      left: `${STACK_LEFT}px`,
+      width: WIDGET_WIDTH,
+      padding: WIDGET_PADDING,
+      opacity: '1',
+      z: '10',
+    },
+  ]),
+);
+
+/** Ripples' parallax stack: the active widget grows and rises; the rest recede.
+ * Everything stays below STACK_TOP so the Back control is never covered. */
 function widgetLayout(activeCriterion) {
   const layout = Object.fromEntries(WIDGETS.map((key) => [key, { ...BASE_LAYOUT[key] }]));
   if (!activeCriterion) return layout;
 
-  Object.assign(layout[activeCriterion], { top: '16px', width: '280px', z: '15' });
+  Object.assign(layout[activeCriterion], { top: `${STACK_TOP}px`, width: '300px', z: '15' });
   const receded = WIDGETS.filter((key) => key !== activeCriterion);
   receded.forEach((key, i) => {
     Object.assign(layout[key], {
-      top: `${12 + i * 8}px`,
-      left: `${24 + i * 6}px`,
-      width: '180px',
-      padding: '8px 12px',
+      top: `${STACK_TOP + 8 + i * 8}px`,
+      left: `${STACK_LEFT + 8 + i * 6}px`,
+      width: '200px',
+      padding: '10px 14px',
       opacity: i === 0 ? '0.3' : '0.2',
     });
   });

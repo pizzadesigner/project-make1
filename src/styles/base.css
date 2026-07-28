@@ -92,18 +92,24 @@ a:hover {
   margin: 0 0 var(--space-2);
 }
 
-/* The Back + language controls cluster in the bottom-right corner — the only
- * zone free of the widgets (top-left), the map reset (top-right), the focus
- * header (top-centre) and the legend (bottom-left). z-index clears the L2
- * detail overlay (z-index 20) so Back stays reachable there too. */
+/* Corner control clusters over the fullscreen map. Back sits top-left above the
+ * widget stack; Reset + language sit top-right. z-index clears the L2 detail
+ * overlay (z-index 20) so both stay reachable there. */
 .map-controls {
   position: absolute;
-  right: var(--space-4);
-  bottom: var(--space-4);
+  top: var(--space-4);
   z-index: 30;
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+
+.map-controls--top-left {
+  left: var(--space-4);
+}
+
+.map-controls--top-right {
+  right: var(--space-4);
 }
 
 /* Glass pill, matching the map's reset control (template_Ripples.html line 54). */

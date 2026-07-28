@@ -38,15 +38,15 @@
 }
 
 .widget__label {
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--color-text-faint);
+  color: var(--color-text-muted);
 }
 
 .widget__chip {
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   color: var(--color-accent);
 }
 
@@ -68,7 +68,7 @@
 }
 
 .widget__bar {
-  height: 3px;
+  height: 6px;
   background: var(--color-border-glass);
   border-radius: 2px;
   margin-top: var(--space-2);
@@ -92,9 +92,9 @@
 }
 
 .widget__note {
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   color: var(--color-text-faint);
-  margin-top: var(--space-1);
+  margin-top: var(--space-2);
 }
 
 .widget__no-data {
