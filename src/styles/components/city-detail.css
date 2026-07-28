@@ -75,10 +75,6 @@
   gap: var(--space-4);
 }
 
-.city-detail__back {
-  align-self: flex-start;
-}
-
 .city-detail__title {
   font-size: var(--font-size-xl);
   line-height: var(--line-tight);

@@ -8,6 +8,9 @@ dist
 .DS_Store
 playwright-report
 test-results
+HANDOFF.md
+PROJECT_STATE.md
+prompt_2.md
 
 #TemplateDashboard
 template_Ripples.html

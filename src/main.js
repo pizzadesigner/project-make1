@@ -14,7 +14,6 @@ import { getState, setState, subscribe } from './store.js';
 import { startRouter, navigate } from './router.js';
 import { setLocale } from './lib/i18n.js';
 import { loadDataset } from './data/load.js';
-import { availableYears } from './data/selectors.js';
 import * as mapView from './views/mapView.js';
 import * as cityView from './views/cityView.js';
 import * as listView from './views/listView.js';
@@ -30,10 +29,6 @@ const views = {
 const root = document.querySelector('#app');
 
 let mounted = null; // { name, handle }
-
-function setFilterTarget(target) {
-  setState({ filterTarget: target });
-}
 
 function setFocusedCity(citySlug) {
   // Leaving/zooming a city also closes any open project detail (L2) and
@@ -60,10 +55,6 @@ function setActiveCriterion(criterion) {
   setState({ activeCriterion: criterion });
 }
 
-function setSelectedYear(year) {
-  setState({ selectedYear: year });
-}
-
 function toggleLocale() {
   const next = getState().locale === 'en' ? 'de' : 'en';
   setLocale(next);
@@ -74,12 +65,10 @@ function viewProps(state) {
   return {
     ...state,
     navigate,
-    setFilterTarget,
     setFocusedCity,
     openProjectDetail,
     closeProjectDetail,
     setActiveCriterion,
-    setSelectedYear,
     toggleLocale,
   };
 }
@@ -104,7 +93,6 @@ async function loadData() {
   setState({ status: 'loading' });
   try {
     const { projects, metrics, peers, cityIndicators, geo } = await loadDataset();
-    const years = availableYears(metrics);
     setState({
       status: 'ready',
       projects,
@@ -112,7 +100,6 @@ async function loadData() {
       peers,
       cityIndicators,
       geo,
-      selectedYear: years[years.length - 1] ?? null,
     });
   } catch (error) {
     // Loud in dev so bad data is impossible to miss; a graceful error state

@@ -1,12 +1,12 @@
 // The deepest zoom level (L2, "Analysis"): the focused city's own silhouette
 // map plus its real, sourced data — city context indicators, project facts and
 // the metric trend — revealed in place over the zoomed map. No URL change: this
-// is reached by clicking "View project" on a focused city and closed via the
-// Back button or Escape (see mapView.js). Provenance and rendering are not
-// duplicated — it reuses citySilhouette, sourceChip and lineChart.
+// is reached by clicking "View project" on a focused city and closed with the
+// page-level Back control or Escape (both in mapView.js). Provenance and
+// rendering are not duplicated — it reuses citySilhouette, sourceChip and lineChart.
 //
-// render(container, { project, detailOpen, cityIndicators, metrics, locale, onClose })
-// Data comes down; the only intent up is onClose().
+// render(container, { project, detailOpen, cityIndicators, metrics, locale })
+// Data comes down; this overlay emits no events of its own.
 
 import { t } from '../lib/i18n.js';
 import { formatCurrency, formatYear, formatNumber } from '../lib/format.js';
@@ -26,14 +26,12 @@ export function render(container, props) {
   const children = [];
   let renderedSlug = null;
   let silhouetteToken = 0;
-  let current = props;
 
   function clearChildren() {
     for (const child of children.splice(0)) child.destroy();
   }
 
   function update(next) {
-    current = next;
     const open = Boolean(next.project) && Boolean(next.detailOpen);
     if (!open) {
       if (renderedSlug !== null) {
@@ -55,14 +53,6 @@ export function render(container, props) {
   function build(state) {
     const { project } = state;
     const panel = elWithClass('div', 'city-detail__panel');
-
-    const back = document.createElement('button');
-    back.type = 'button';
-    back.className = 'city-detail__back button';
-    back.textContent = `← ${t('detail.back')}`;
-    back.addEventListener('click', () => current.onClose());
-    panel.append(back);
-
     panel.append(header(project), body(project, state, children));
     root.append(panel);
     lazyLoadSilhouette(panel, project, ++silhouetteToken);

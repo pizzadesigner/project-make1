@@ -5,7 +5,7 @@
 // navigation away from the map; the only way out is the reset button or
 // Escape (see mapView.js).
 //
-// render(container, { projects, geo, filterTarget, focusedCity, locale, onSelect })
+// render(container, { projects, geo, focusedCity, detailCity, locale, onSelect })
 // and the component never reads the store — data comes down, selection goes up
 // via onSelect(citySlug | null).
 
@@ -41,7 +41,6 @@ export function render(container, props) {
 
   const zoomBehavior = setupZoom(dom, size, markers);
   bindKeyboard(dom.markers, markers);
-  applyFilter(markers, props.filterTarget);
   dom.reset.addEventListener('click', () => props.onSelect(null));
 
   let focusedCity = null;
@@ -49,7 +48,6 @@ export function render(container, props) {
 
   return {
     update(next) {
-      applyFilter(markers, next.filterTarget);
       const nextFocused = next.focusedCity ?? null;
       const nextDetail = next.detailCity ?? null;
       if (nextFocused === focusedCity && nextDetail === detailCity) return;
@@ -268,15 +266,6 @@ function applyFocusHeader(dom, focused) {
     <span class="europe-map__focus-name">${escapeHtml(focused.cityDisplay)}</span>
     <span class="europe-map__focus-country">${escapeHtml(focused.country)}</span>
   `;
-}
-
-function applyFilter(markers, filterTarget) {
-  for (const marker of markers) {
-    const matched = !filterTarget || marker.project.sdg11Target === filterTarget;
-    marker.node.classList.toggle('is-dimmed', !matched);
-    marker.node.setAttribute('tabindex', matched ? '0' : '-1');
-    marker.node.setAttribute('aria-hidden', matched ? 'false' : 'true');
-  }
 }
 
 function markerLabel(project) {

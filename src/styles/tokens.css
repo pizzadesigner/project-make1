@@ -85,7 +85,6 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
   /* Layout. */
-  --panel-width: 22rem;
   --content-max: 72rem;
 }
 

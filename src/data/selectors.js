@@ -32,18 +32,6 @@ export function peersForProject(peers, projectId) {
 }
 
 /**
- * Sorted, deduplicated years for which any metric exists — the shared
- * timeline used across all cities on the map (matches Ripples' `P.years`,
- * without a slider — see the year-picker in mapView.js).
- * @param {import('./types.js').Metric[]} metrics
- * @returns {number[]}
- */
-export function availableYears(metrics) {
-  const years = new Set(metrics.map((metric) => metric.year).filter((year) => year != null));
-  return [...years].sort((a, b) => a - b);
-}
-
-/**
  * Headline figure for each of the three Exploration widgets (Problem Fit /
  * Impact / Adoption Requirements). TODO(data): the per-widget content is not
  * researched yet, so every field is null and each widget renders an intentional

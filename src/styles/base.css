@@ -1,9 +1,7 @@
 /* Component sheets first (@import must precede other rules). */
 @import './components/europe-map.css';
 @import './components/tooltip.css';
-@import './components/filter-bar.css';
 @import './components/widgets.css';
-@import './components/initiative-cards.css';
 @import './components/city-view.css';
 @import './components/source-chip.css';
 @import './components/line-chart.css';
@@ -68,10 +66,24 @@ a:hover {
   top: var(--space-2);
 }
 
+/* Cold-link document views (city / list / not-found) keep a readable centred
+ * column. The map view overrides this to fill the viewport (see .view--map). */
 .view {
   max-width: var(--content-max);
   margin-inline: auto;
   padding: var(--space-6) var(--space-5);
+}
+
+/* L0/L1/L2 all live in the map view — it fills the whole viewport, with the
+ * floating controls and the map stage positioned against it. */
+.view--map {
+  max-width: none;
+  margin-inline: 0;
+  padding: 0;
+  position: relative;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 .view__title {
@@ -80,16 +92,13 @@ a:hover {
   margin: 0 0 var(--space-2);
 }
 
-.view__header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--space-4);
-}
-
-/* Ripples-style compact pill, overriding the generic .button look
- * (template_Ripples.html line 54: 11px/600, glass background, 4px radius). */
-.button.view__lang-toggle {
+/* Floating glass controls (language toggle, Back) overlaying the fullscreen
+ * map — compact 11px/600 pills (template_Ripples.html line 54), pinned to the
+ * top corners above every map layer. */
+.map-float {
+  position: absolute;
+  top: var(--space-4);
+  z-index: 20;
   flex-shrink: 0;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
@@ -100,14 +109,17 @@ a:hover {
   font-weight: 600;
 }
 
-.button.view__lang-toggle:hover {
+.map-float:hover {
   color: var(--color-text);
   background: var(--color-surface-glass);
 }
 
-.view__tagline {
-  color: var(--color-text-muted);
-  max-width: 48ch;
+.map-float--back {
+  left: var(--space-4);
+}
+
+.map-float--lang {
+  right: var(--space-4);
 }
 
 .view__nav {
@@ -132,29 +144,9 @@ a:hover {
   color: var(--color-text);
 }
 
-.panel {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-4) var(--space-5);
-  max-width: var(--panel-width);
-}
-
-.panel__summary {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.panel__body {
-  color: var(--color-text-muted);
-  margin-bottom: 0;
-}
-
 .map-stage {
-  position: relative;
-  margin-top: var(--space-5);
-  min-height: 60vh;
+  position: absolute;
+  inset: 0;
 }
 
 /* Loading, error and empty states share this surface so no view ever paints a
@@ -255,9 +247,5 @@ a:hover {
 @media (max-width: 720px) {
   .view {
     padding: var(--space-5) var(--space-4);
-  }
-
-  .panel {
-    max-width: none;
   }
 }

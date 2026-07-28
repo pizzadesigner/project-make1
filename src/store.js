@@ -11,15 +11,12 @@
  * @property {import('./data/types.js').PeerCity[]} peers
  * @property {import('./data/types.js').CityIndicator[]} cityIndicators  City-level researched context, keyed by citySlug.
  * @property {object|null} geo  Committed Europe TopoJSON, or null until loaded.
- * @property {string|null} filterTarget  Active SDG 11 target filter, or null.
  * @property {string|null} focusedCity   citySlug zoomed into on the map (L1), or null.
  * @property {string|null} detailCity    citySlug whose in-place project detail is open (L2 —
  *   the deeper zoom); always equals focusedCity when set. Kept in the store, not the URL:
  *   the zoom levels are a single-page interaction, so #/city/:slug is reserved for cold links.
  * @property {'problemFit'|'impact'|'adoption'|null} activeCriterion  Which
  *   Exploration widget (Problem Fit / Impact / Adoption Requirements) is expanded.
- * @property {number|null} selectedYear  Shared timeline year (no slider — see
- *   the year-picker in mapView.js); set once data loads, defaults to the latest.
  * @property {'en'|'de'} locale
  * @property {Error|null} error
  */
@@ -33,11 +30,9 @@ const state = {
   peers: [],
   cityIndicators: [],
   geo: null,
-  filterTarget: null,
   focusedCity: null,
   detailCity: null,
   activeCriterion: null,
-  selectedYear: null,
   locale: 'en',
   error: null,
 };
