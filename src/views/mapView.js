@@ -10,7 +10,7 @@
 
 import { t } from '../lib/i18n.js';
 import { metricsForProject, widgetMetricsForProject } from '../data/selectors.js';
-import { loadCityDistricts } from '../data/load.js';
+import { loadCityOutline, loadCityDistricts, loadCityInfrastructure } from '../data/load.js';
 import * as europeMap from '../components/europeMap.js';
 import * as cityDetail from '../components/cityDetail.js';
 import * as widgetStack from '../components/widgetStack.js';
@@ -29,25 +29,46 @@ export function render(container, props) {
   let focusedCity = null;
   let detailCity = null;
   let activeCriterion = null;
-  // L1 district overview, lazy-loaded per city and cached; a stale-load token
-  // guards against a slow fetch resolving after the user has moved on.
+  // Each focused city has three independent geometry layers. They load in
+  // parallel — a slow or missing one never holds up the others — and each is
+  // cached per city. A shared token drops a fetch that resolves after the user
+  // has moved on. Only districts is drawn for now; outline and infrastructure
+  // are warmed in cache, ready to render later.
+  const outlineCache = new Map();
   const districtsCache = new Map();
-  let districtsToken = 0;
+  const infrastructureCache = new Map();
+  let layersToken = 0;
+  let layersSlug;
 
-  function syncDistricts(citySlug) {
-    if (!mapHandle) return;
-    if (!citySlug) return mapHandle.setDistricts(null);
-    if (districtsCache.has(citySlug)) return mapHandle.setDistricts(districtsCache.get(citySlug));
-    const token = ++districtsToken;
-    loadCityDistricts(citySlug)
+  function loadLayer(slug, cache, loader, token, draw) {
+    if (cache.has(slug)) return draw(cache.get(slug));
+    loader(slug)
       .then((data) => {
-        districtsCache.set(citySlug, data);
-        if (token === districtsToken && mapHandle) mapHandle.setDistricts(data);
+        cache.set(slug, data);
+        if (token === layersToken && mapHandle) draw(data);
       })
       .catch(() => {
-        // No overview beats a broken layer if the file is missing or invalid.
-        if (token === districtsToken && mapHandle) mapHandle.setDistricts(null);
+        // A missing or invalid file drops just its own layer, not the others.
+        if (token === layersToken && mapHandle) draw(null);
       });
+    return undefined;
+  }
+
+  function syncCityLayers(citySlug) {
+    if (!mapHandle) return;
+    const slug = citySlug ?? null;
+    // React only to an actual city change; repeat updates (e.g. opening L2) must
+    // not re-run the fit and fight a manual zoom.
+    if (slug === layersSlug) return;
+    layersSlug = slug;
+    if (!slug) return mapHandle.setDistricts(null, null);
+    const token = ++layersToken;
+    loadLayer(slug, districtsCache, loadCityDistricts, token, (data) =>
+      mapHandle.setDistricts(slug, data),
+    );
+    // Loaded and cached now; not drawn on the map yet.
+    loadLayer(slug, outlineCache, loadCityOutline, token, () => {});
+    loadLayer(slug, infrastructureCache, loadCityInfrastructure, token, () => {});
     return undefined;
   }
 
@@ -133,7 +154,7 @@ export function render(container, props) {
       focusedCity: next.focusedCity,
       detailCity: next.detailCity,
     });
-    syncDistricts(next.focusedCity);
+    syncCityLayers(next.focusedCity);
     widgetHandle.update(widgetProps);
     detailHandle.update(detailProps);
     syncViewProjectPill(refs.pill, focusedProject, detailOpen, props.openProjectDetail);

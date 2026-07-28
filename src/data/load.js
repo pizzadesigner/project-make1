@@ -21,6 +21,7 @@ const CITY_GEO = {
   koeln: {
     outline: 'geo/cities/cities_cologne.geo.json',
     districts: 'geo/districts/districts_cologne.json',
+    infrastructure: 'geo/infrastructure/infrastructure_cologne.geo.json',
   },
 };
 
@@ -50,20 +51,38 @@ export function loadCitySilhouette(citySlug) {
   return json(`${import.meta.env.BASE_URL}geo/cities/${citySlug}.geo.json`);
 }
 
+// Each city layer loads on its own so a slow or missing one never blocks the
+// others. Every loader resolves to null when the city has no such file, letting
+// callers simply skip that layer.
+
 /**
- * Fetch a focused city's outline + district geometry for the L1 overview.
- * Resolves to null for cities without committed district data, so callers can
- * simply skip the layer.
+ * Fetch a city's outer boundary polygon (GeoJSON).
  * @param {string} citySlug
- * @returns {Promise<{ outline: object, districts: import('geojson').FeatureCollection } | null>}
+ * @returns {Promise<object | null>}
+ */
+export function loadCityOutline(citySlug) {
+  const entry = CITY_GEO[citySlug];
+  return entry?.outline ? json(geoUrl(entry.outline)) : Promise.resolve(null);
+}
+
+/**
+ * Fetch a city's districts (TopoJSON) as a GeoJSON FeatureCollection.
+ * @param {string} citySlug
+ * @returns {Promise<import('geojson').FeatureCollection | null>}
  */
 export async function loadCityDistricts(citySlug) {
   const entry = CITY_GEO[citySlug];
-  if (!entry) return null;
-  const [outline, districtsTopo] = await Promise.all([
-    json(geoUrl(entry.outline)),
-    json(geoUrl(entry.districts)),
-  ]);
-  const districtsObject = Object.values(districtsTopo.objects)[0];
-  return { outline, districts: feature(districtsTopo, districtsObject) };
+  if (!entry?.districts) return null;
+  const topo = await json(geoUrl(entry.districts));
+  return feature(topo, Object.values(topo.objects)[0]);
+}
+
+/**
+ * Fetch a city's infrastructure layer — cycle routes, green space (GeoJSON).
+ * @param {string} citySlug
+ * @returns {Promise<import('geojson').FeatureCollection | null>}
+ */
+export function loadCityInfrastructure(citySlug) {
+  const entry = CITY_GEO[citySlug];
+  return entry?.infrastructure ? json(geoUrl(entry.infrastructure)) : Promise.resolve(null);
 }

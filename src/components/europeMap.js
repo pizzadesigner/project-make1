@@ -18,9 +18,15 @@ import { renderTooltip } from './tooltip.js';
 
 const MARKER_ARROWS = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
 const MIN_ZOOM = 1;
-const MAX_ZOOM = 8;
-const FOCUS_ZOOM = 5; // L1: city focused
+// A city is a speck on a continent map, so fitting its silhouette needs a very
+// deep zoom (~120x for Cologne); the ceiling leaves headroom above that.
+const MAX_ZOOM = 200;
+const FOCUS_ZOOM = 5; // L1 fallback for cities without a silhouette to fit
 const DETAIL_ZOOM = 8; // L2: diving into the city's own map
+// Left area kept clear so the focused city fits beside the widget stack, and
+// the fraction of that free area the silhouette fills.
+const WIDGET_STRIP = 340;
+const CITY_FILL = 0.75;
 
 export function render(container, props) {
   const size = measure(container);
@@ -48,6 +54,20 @@ export function render(container, props) {
 
   let focusedCity = null;
   let detailCity = null;
+  // Manual zoom/pan is for the overview only. Once a city is focused (L1/L2) the
+  // view is static — Esc, Back or Reset are the only ways out. Programmatic
+  // transforms (focus, reset) bypass this filter.
+  zoomBehavior.filter((event) => !focusedCity && defaultZoomFilter(event));
+  // Fit info per city with a loaded silhouette, so L1 (and a return from L2)
+  // can frame the city in one step once its geometry is known.
+  const cityFit = new Map();
+
+  function l1Transform(focused) {
+    // Frame the silhouette beside the widgets once it is loaded; otherwise a
+    // moderate regional zoom (cities without a silhouette stay here).
+    if (cityFit.has(focused.citySlug)) return cityFitTransform(size, cityFit.get(focused.citySlug));
+    return focusTransform(size, ...projection([focused.lon, focused.lat]), FOCUS_ZOOM);
+  }
 
   return {
     update(next) {
@@ -61,15 +81,14 @@ export function render(container, props) {
       applyMarkerFocus(markers, focusedCity);
       applyFocusHeader(dom, focused);
       dom.root.classList.toggle('is-detail', Boolean(detailCity));
-      // L2 zooms deeper into the same city than L1 — the "dive in" that reveals
-      // the city's own map in the detail overlay.
-      const transform = focused
-        ? focusTransform(
-            size,
-            ...projection([focused.lon, focused.lat]),
-            detailCity ? DETAIL_ZOOM : FOCUS_ZOOM,
-          )
-        : zoomIdentity;
+      // L0 resets to the overview; L2 dives deeper into the same city (covered
+      // by the detail overlay); L1 frames the city itself.
+      let transform = zoomIdentity;
+      if (focused && detailCity) {
+        transform = focusTransform(size, ...projection([focused.lon, focused.lat]), DETAIL_ZOOM);
+      } else if (focused) {
+        transform = l1Transform(focused);
+      }
       animateZoom(dom.svg, zoomBehavior, transform);
     },
     // Return to the default overview: snap the d3.zoom transform back to
@@ -79,25 +98,27 @@ export function render(container, props) {
       props.onSelect(null);
       animateZoom(dom.svg, zoomBehavior, zoomIdentity);
     },
-    // Draw (or clear, when passed null) the focused city's district overview.
-    // Geometry is projected with the map's own projection so it lands over the
-    // real city and scales with the zoom.
-    setDistricts(data) {
+    // Draw (or clear, when passed null) a city's district overview. Geometry is
+    // projected with the map's own projection so it lands over the real city and
+    // scales with the zoom. Recording the fit here also lets a still-focused
+    // city snap to frame once its geometry finishes loading.
+    setDistricts(slug, districts) {
       const layer = select(dom.districts);
       layer.selectAll('*').remove();
-      if (!data) return;
-      if (data.outline) {
-        layer
-          .append('path')
-          .attr('class', 'europe-map__city-outline')
-          .attr('d', path(data.outline));
+      if (!districts) {
+        cityFit.delete(slug);
+        return;
       }
       layer
         .selectAll('.europe-map__district')
-        .data(data.districts.features)
+        .data(districts.features)
         .join('path')
         .attr('class', 'europe-map__district')
         .attr('d', path);
+      cityFit.set(slug, cityFitInfo(path, size, districts));
+      if (slug === focusedCity && !detailCity) {
+        animateZoom(dom.svg, zoomBehavior, cityFitTransform(size, cityFit.get(slug)));
+      }
     },
     destroy() {
       tooltip.destroy();
@@ -232,6 +253,12 @@ function focusNeighbour(markers, current, step) {
   next.node.focus();
 }
 
+/** d3.zoom's default gesture filter: allow wheel/drag unless a modifier or a
+ * secondary mouse button is involved. Reused so focus-gating keeps that base. */
+function defaultZoomFilter(event) {
+  return (!event.ctrlKey || event.type === 'wheel') && !event.button;
+}
+
 function setupZoom(dom, size, markers) {
   const behavior = zoom()
     .scaleExtent([MIN_ZOOM, MAX_ZOOM])
@@ -254,6 +281,26 @@ function focusTransform(size, x, y, scale) {
     .translate(size.width / 2, size.height / 2)
     .scale(scale)
     .translate(-x, -y);
+}
+
+/** Fit info (centroid + scale) to frame a city's districts in the free area to
+ * the right of the widget stack. */
+function cityFitInfo(path, size, districts) {
+  const [[x0, y0], [x1, y1]] = path.bounds(districts);
+  const width = x1 - x0;
+  const height = y1 - y0;
+  const usableWidth = size.width - WIDGET_STRIP;
+  const scale = Math.min(usableWidth / width, size.height / height) * CITY_FILL;
+  return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, scale: Math.min(scale, MAX_ZOOM) };
+}
+
+/** Transform centring the fitted city in the area beside the widget stack. */
+function cityFitTransform(size, info) {
+  const anchorX = WIDGET_STRIP + (size.width - WIDGET_STRIP) / 2;
+  return zoomIdentity
+    .translate(anchorX, size.height / 2)
+    .scale(info.scale)
+    .translate(-info.cx, -info.cy);
 }
 
 function animateZoom(svg, behavior, transform) {
