@@ -45,11 +45,11 @@ links.
 
 ## Editing the data (no coding required)
 
-The three files in `data/` are the source of truth. Content editors work in a
+The four files in `data/` are the source of truth. Content editors work in a
 spreadsheet:
 
-1. Open `data/projects.csv` (or `metrics.csv` / `peer_cities.csv`) in Excel or
-   LibreOffice.
+1. Open `data/projects.csv` (or `metrics.csv` / `peer_cities.csv` /
+   `cities.csv`) in Excel or LibreOffice.
 2. Edit rows. Keep the header row unchanged.
 3. **Save as CSV UTF-8** (Excel: _File → Save As → CSV UTF-8_). This preserves
    diacritics like `Žilina`, `Zlín`, `'s-Hertogenbosch`.
@@ -58,7 +58,9 @@ spreadsheet:
 Rules the data must follow:
 
 - `id` is a stable slug used in URLs — never rename or regenerate it.
-- `metrics.csv` is **long format**: one row per observation. Never widen it.
+- `metrics.csv` and `cities.csv` are **long format**: one row per observation.
+  Never widen them. `cities.csv` is keyed by `city_slug` (matching a project's
+  `city`); density is **derived** (`population / area`), never stored as a row.
 - Every numeric claim carries its own `source_url`. **A row with no source does
   not render.**
 - An empty cell means "unknown" and renders as `—`, never `0`.

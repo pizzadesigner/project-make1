@@ -113,3 +113,57 @@ describe('validateDataset — a metric without a source does not render', () => 
     expect(metrics).toHaveLength(0);
   });
 });
+
+// A minimal valid city-indicator row; its city_slug matches projectRow().city.
+function cityRow(overrides = {}) {
+  return {
+    city_slug: 'zilina',
+    indicator_key: 'population',
+    indicator_label: 'Population (city proper)',
+    value: '85000',
+    unit: 'people',
+    year: '2024',
+    source_url: 'https://example.org',
+    source_label: 'Source',
+    source_accessed: '2026-05-14',
+    ...overrides,
+  };
+}
+
+describe('validateDataset — city indicators', () => {
+  it('coerces a city indicator and joins it on citySlug', () => {
+    const { cityIndicators } = validateDataset({
+      projectRows: [projectRow()],
+      cityRows: [cityRow()],
+    });
+    expect(cityIndicators).toHaveLength(1);
+    expect(cityIndicators[0].citySlug).toBe('zilina');
+    expect(cityIndicators[0].value).toBe(85000);
+    expect(cityIndicators[0].year).toBe(2024);
+  });
+
+  it('turns an empty value cell into null, not 0', () => {
+    const { cityIndicators } = validateDataset({
+      projectRows: [projectRow()],
+      cityRows: [cityRow({ value: '' })],
+    });
+    expect(cityIndicators[0].value).toBeNull();
+  });
+
+  it('drops a sourceless indicator instead of throwing', () => {
+    const { cityIndicators } = validateDataset({
+      projectRows: [projectRow()],
+      cityRows: [cityRow({ source_url: '' })],
+    });
+    expect(cityIndicators).toHaveLength(0);
+  });
+
+  it('throws on an indicator referencing an unknown city_slug', () => {
+    expect(() =>
+      validateDataset({
+        projectRows: [projectRow()],
+        cityRows: [cityRow({ city_slug: 'nowhere' })],
+      }),
+    ).toThrow(/unknown city_slug/);
+  });
+});

@@ -8,6 +8,7 @@
 @import './components/source-chip.css';
 @import './components/line-chart.css';
 @import './components/city-silhouette.css';
+@import './components/city-detail.css';
 @import './components/legend.css';
 
 /* Global base layer: resets, page chrome, and the shared building blocks

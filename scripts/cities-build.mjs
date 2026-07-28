@@ -1,72 +1,87 @@
-// Fetch each city's real administrative boundary from OpenStreetMap (Nominatim,
-// ODbL) once at build time, simplify it, and commit the result to
-// public/geo/cities/. Never fetched at runtime. Nominatim asks for <=1 req/s and
-// a real User-Agent, so we throttle and identify ourselves.
+// Build each city's precise district boundaries from the original,
+// high-precision GeoJSON the team maintains in geoJSONFiles/ (WGS84 admin
+// boundaries), simplify them once at build time, and commit the result to
+// public/geo/cities/. These local files are the source of truth — more precise
+// than a generic OSM silhouette — and are never fetched at runtime.
+//
+// Each source file names its districts and stores area differently, so we
+// normalise every feature to a uniform { name, area_km2 } before simplifying.
 //
 // Run with `npm run cities:build`.
 
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import mapshaper from 'mapshaper';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const srcDir = resolve(root, 'geoJSONFiles');
 const outDir = resolve(root, 'public/geo/cities');
 const tmpDir = resolve(root, '.cache-cities');
 
-// slug -> Nominatim query. Regions use their representative core municipality.
-const CITY_QUERIES = [
-  { slug: 'zilina', q: 'Žilina', country: 'Slovakia' },
-  { slug: 'bern', q: 'Bern', country: 'Switzerland' },
-  { slug: 'paris-marne-la-vallee', q: 'Marne-la-Vallée', country: 'France' },
-  { slug: 's-hertogenbosch', q: "'s-Hertogenbosch", country: 'Netherlands' },
-  { slug: 'lisboa', q: 'Lisboa', country: 'Portugal' },
-  { slug: 'helsinki-region', q: 'Helsinki', country: 'Finland' },
-  { slug: 'zlin', q: 'Zlín', country: 'Czechia' },
-  { slug: 'huelva', q: 'Huelva', country: 'Spain' },
-  { slug: 'venezia', q: 'Venezia', country: 'Italy' },
+const round2 = (value) => (Number.isFinite(value) ? Math.round(value * 100) / 100 : null);
+
+// slug -> where each source file keeps a district's name and area (in km²).
+const CITY_SOURCES = [
+  {
+    slug: 'koeln',
+    file: 'koeln_stadtbezirke_50m_exakt.geojson',
+    name: (p) => p.name,
+    areaKm2: (p) => round2(p.flaeche / 1e6), // flaeche is in m²
+  },
+  {
+    slug: 'lisboa',
+    file: 'lisbon_freguesias.geojson',
+    name: (p) => p.freguesia,
+    areaKm2: (p) => round2(p.area_ha / 100), // hectares -> km²
+  },
+  {
+    slug: 'helsinki-region',
+    file: 'helsinki_districts.geojson',
+    name: (p) => p.district_fi,
+    areaKm2: (p) => round2(p.area_km2),
+  },
+  {
+    slug: 'paris-marne-la-vallee',
+    file: 'paris.txt', // GeoJSON despite the extension
+    name: (p) => p.nom,
+    areaKm2: () => null, // not in the source — left unknown, never fabricated
+  },
 ];
 
-const USER_AGENT = 'sdg11-best-practice-dashboard/0.1 (build-time boundary fetch)';
-const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
-
-async function fetchBoundary({ q, country }) {
-  const url = new URL('https://nominatim.openstreetmap.org/search');
-  url.search = new URLSearchParams({
-    q: `${q}, ${country}`,
-    polygon_geojson: '1',
-    format: 'json',
-    limit: '1',
-  }).toString();
-  const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
-  if (!response.ok) throw new Error(`Nominatim ${response.status} for ${q}`);
-  const [hit] = await response.json();
-  if (!hit?.geojson) throw new Error(`No polygon returned for ${q}`);
-  return {
+/** Reduce a source FeatureCollection to districts with a uniform shape. */
+function normalize(source) {
+  const raw = JSON.parse(readFileSync(resolve(srcDir, source.file), 'utf8'));
+  const features = raw.features.map((feature) => ({
     type: 'Feature',
-    properties: { name: hit.display_name.split(',')[0] },
-    geometry: hit.geojson,
-  };
+    properties: {
+      name: source.name(feature.properties) ?? '',
+      area_km2: source.areaKm2(feature.properties),
+    },
+    geometry: feature.geometry,
+  }));
+  return { type: 'FeatureCollection', features };
 }
 
-async function simplify(slug, feature) {
+async function simplify(slug, collection) {
   const rawPath = resolve(tmpDir, `${slug}.raw.geojson`);
   const outPath = resolve(outDir, `${slug}.geo.json`);
-  writeFileSync(rawPath, JSON.stringify(feature));
+  writeFileSync(rawPath, JSON.stringify(collection));
+  // keep-shapes so no small district is dropped; topology (default) keeps the
+  // shared borders between districts coincident after simplification.
   await mapshaper.runCommands(
-    `-i "${rawPath}" -simplify 12% keep-shapes -o "${outPath}" format=geojson precision=0.00001`,
+    `-i "${rawPath}" -simplify 15% keep-shapes -o "${outPath}" format=geojson precision=0.00001`,
   );
 }
 
 mkdirSync(outDir, { recursive: true });
 mkdirSync(tmpDir, { recursive: true });
 
-for (const city of CITY_QUERIES) {
-  const feature = await fetchBoundary(city);
-  await simplify(city.slug, feature);
-  console.log(`✓ ${city.slug} (${feature.geometry.type})`);
-  await sleep(1200); // stay within Nominatim's rate limit
+for (const source of CITY_SOURCES) {
+  const collection = normalize(source);
+  await simplify(source.slug, collection);
+  console.log(`✓ ${source.slug} — ${collection.features.length} districts`);
 }
 
 rmSync(tmpDir, { recursive: true, force: true });
-console.log(`\nWrote ${CITY_QUERIES.length} silhouettes to public/geo/cities/`);
+console.log(`\nWrote ${CITY_SOURCES.length} district maps to public/geo/cities/`);

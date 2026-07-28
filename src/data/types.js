@@ -49,4 +49,21 @@
  * @property {string} relationship
  */
 
+/**
+ * A researched, city-level indicator (population, area, green-space share, …),
+ * keyed by the same citySlug as Project so a focused city can look up its own
+ * context. One row per observation, long format like Metric — never widened.
+ * Density is not stored here: it is derived (population / area) in selectors.js.
+ * @typedef {Object} CityIndicator
+ * @property {string} citySlug          Joins to Project.citySlug.
+ * @property {string} indicatorKey      Stable key, e.g. 'population', 'area_km2'.
+ * @property {string} indicatorLabel    Human label for the indicator.
+ * @property {number|null} value        Empty cell -> null, renders as em dash.
+ * @property {string|null} unit
+ * @property {number|null} year         The observation year, or null if undated.
+ * @property {string} sourceUrl         A row without a source does not render.
+ * @property {string} sourceLabel
+ * @property {string|null} sourceAccessed  ISO date the source was checked.
+ */
+
 export {};

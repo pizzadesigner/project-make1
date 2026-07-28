@@ -78,10 +78,15 @@ function hasValidCoords(project) {
 }
 
 /**
- * @param {{ projectRows?: object[], metricRows?: object[], peerRows?: object[] }} raw
- * @returns {{ projects: import('./types.js').Project[], metrics: import('./types.js').Metric[], peers: import('./types.js').PeerCity[] }}
+ * @param {{ projectRows?: object[], metricRows?: object[], peerRows?: object[], cityRows?: object[] }} raw
+ * @returns {{ projects: import('./types.js').Project[], metrics: import('./types.js').Metric[], peers: import('./types.js').PeerCity[], cityIndicators: import('./types.js').CityIndicator[] }}
  */
-export function validateDataset({ projectRows = [], metricRows = [], peerRows = [] }) {
+export function validateDataset({
+  projectRows = [],
+  metricRows = [],
+  peerRows = [],
+  cityRows = [],
+}) {
   const issues = [];
   const projects = projectRows.map(coerceProject);
 
@@ -135,6 +140,33 @@ export function validateDataset({ projectRows = [], metricRows = [], peerRows = 
     });
   }
 
+  // City-level indicators join on citySlug (not project id) — the figures are
+  // about the city itself, so they stay valid even where the project row is a
+  // placeholder (e.g. Cologne). Same rules as metrics: an unknown city is a
+  // thrown issue; a row with no source simply does not render.
+  const citySlugs = new Set(projects.map((project) => project.citySlug));
+  const cityIndicators = [];
+  for (const row of cityRows) {
+    const citySlug = toText(row.city_slug);
+    if (!citySlugs.has(citySlug)) {
+      issues.push(`City indicator references unknown city_slug: "${citySlug}"`);
+      continue;
+    }
+    const sourceUrl = toText(row.source_url);
+    if (!sourceUrl) continue; // no source -> does not render
+    cityIndicators.push({
+      citySlug,
+      indicatorKey: toText(row.indicator_key),
+      indicatorLabel: toText(row.indicator_label),
+      value: toNumberOrNull(row.value),
+      unit: toTextOrNull(row.unit),
+      year: toNumberOrNull(row.year),
+      sourceUrl,
+      sourceLabel: toText(row.source_label),
+      sourceAccessed: toTextOrNull(row.source_accessed),
+    });
+  }
+
   if (issues.length > 0) {
     throw new DataError(
       `Dataset failed validation (${issues.length} issue(s)):\n- ${issues.join('\n- ')}`,
@@ -142,5 +174,5 @@ export function validateDataset({ projectRows = [], metricRows = [], peerRows = 
     );
   }
 
-  return { projects, metrics, peers };
+  return { projects, metrics, peers, cityIndicators };
 }

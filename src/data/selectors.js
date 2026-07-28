@@ -56,6 +56,49 @@ export function widgetMetricsForProject() {
 }
 
 /**
+ * Every researched indicator for one city (population, area, green-space share,
+ * …), in file order. Keyed by citySlug so a focused city can pull its own
+ * context regardless of whether its project row is real or a placeholder.
+ * @param {import('./types.js').CityIndicator[]} cityIndicators
+ * @param {string} citySlug
+ * @returns {import('./types.js').CityIndicator[]}
+ */
+export function cityIndicatorsForCity(cityIndicators, citySlug) {
+  return cityIndicators.filter((indicator) => indicator.citySlug === citySlug);
+}
+
+/**
+ * The value of a single indicator for a city, or null if it is absent.
+ * @param {import('./types.js').CityIndicator[]} cityIndicators
+ * @param {string} citySlug
+ * @param {string} indicatorKey
+ * @returns {number|null}
+ */
+export function cityIndicatorValue(cityIndicators, citySlug, indicatorKey) {
+  const match = cityIndicators.find(
+    (indicator) => indicator.citySlug === citySlug && indicator.indicatorKey === indicatorKey,
+  );
+  return match ? match.value : null;
+}
+
+/**
+ * Population density (people/km²), derived from the population and area
+ * indicators. The research source computes it the same way ("Population /
+ * Area"), so it is not stored as its own sourced row — it inherits the
+ * provenance of population and area. Returns null if either input is missing or
+ * the area is zero.
+ * @param {import('./types.js').CityIndicator[]} cityIndicators
+ * @param {string} citySlug
+ * @returns {number|null}
+ */
+export function populationDensityForCity(cityIndicators, citySlug) {
+  const population = cityIndicatorValue(cityIndicators, citySlug, 'population');
+  const area = cityIndicatorValue(cityIndicators, citySlug, 'area_km2');
+  if (population === null || area === null || area === 0) return null;
+  return population / area;
+}
+
+/**
  * TODO(data): the Inequality widget's district-level green-space breakdown.
  * No per-district data exists in the dataset at all — always returns null, so
  * the district-bar section never renders (it's additionally gated behind

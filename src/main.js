@@ -36,7 +36,19 @@ function setFilterTarget(target) {
 }
 
 function setFocusedCity(citySlug) {
-  setState({ focusedCity: citySlug });
+  // Leaving/zooming a city also closes any open project detail (L2) — you can't
+  // be inside a city's detail while no city is focused.
+  setState({ focusedCity: citySlug, detailCity: citySlug ? getState().detailCity : null });
+}
+
+/** Open the in-place project detail (L2) for the focused city. */
+function openProjectDetail(citySlug) {
+  setState({ focusedCity: citySlug, detailCity: citySlug });
+}
+
+/** Close the project detail, stepping back to the focused-city level (L1). */
+function closeProjectDetail() {
+  setState({ detailCity: null });
 }
 
 function setActiveCriterion(criterion) {
@@ -59,6 +71,8 @@ function viewProps(state) {
     navigate,
     setFilterTarget,
     setFocusedCity,
+    openProjectDetail,
+    closeProjectDetail,
     setActiveCriterion,
     setSelectedYear,
     toggleLocale,
@@ -84,13 +98,14 @@ function render(state) {
 async function loadData() {
   setState({ status: 'loading' });
   try {
-    const { projects, metrics, peers, geo } = await loadDataset();
+    const { projects, metrics, peers, cityIndicators, geo } = await loadDataset();
     const years = availableYears(metrics);
     setState({
       status: 'ready',
       projects,
       metrics,
       peers,
+      cityIndicators,
       geo,
       selectedYear: years[years.length - 1] ?? null,
     });

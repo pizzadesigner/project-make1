@@ -1,15 +1,18 @@
-// Start screen. Owns the page shell (title, SDG 11 panel, target filter) and the
-// lifecycle of the europeMap component, plus the loading/error/empty states so
-// the stage never shows a half-drawn map.
+// The single page. Owns the shell (title, SDG 11 panel, target filter, year row)
+// and the europeMap lifecycle, plus the loading/error/empty states so the stage
+// never shows a half-drawn map.
+//
+// Everything happens here, in place, with no URL change:
+//   L0 overview → click a city → L1 in-place zoom + a "View project" pill
+//   → click the pill → L2 in-place project detail (cityDetail overlay).
+// Escape steps back L2 → L1 → L0. #/city/:slug and #/list stay reachable only
+// as cold/shared links; nothing here navigates to them.
 
 import { t } from '../lib/i18n.js';
 import { SDG11_TARGET_CODES, SDG11_TARGETS } from '../lib/sdg11.js';
-import { widgetMetricsForProject, districtsForProject, availableYears } from '../data/selectors.js';
+import { availableYears, metricsForProject } from '../data/selectors.js';
 import * as europeMap from '../components/europeMap.js';
-import * as widgetStack from '../components/widgetStack.js';
-import * as initiativeCards from '../components/initiativeCards.js';
-
-const CRITERIA = ['dq', 'tr', 'ineq'];
+import * as cityDetail from '../components/cityDetail.js';
 
 /**
  * @param {HTMLElement} container
@@ -19,21 +22,23 @@ const CRITERIA = ['dq', 'tr', 'ineq'];
 export function render(container, props) {
   const refs = buildShell(container, props);
   let mapHandle = null;
-  let widgetsHandle = null;
-  let initiativesHandle = null;
+  let detailHandle = null;
   let filterButtons = null;
-  let criteriaButtons = null;
   let yearButtons = null;
   let legendNode = null;
   let focusedCity = null;
+  let detailCity = null;
 
   function handleKeydown(event) {
-    if (event.key === 'Escape' && focusedCity) props.setFocusedCity(null);
+    if (event.key !== 'Escape') return;
+    if (detailCity) props.closeProjectDetail();
+    else if (focusedCity) props.setFocusedCity(null);
   }
   document.addEventListener('keydown', handleKeydown);
 
   function update(next) {
     focusedCity = next.focusedCity ?? null;
+    detailCity = next.detailCity ?? null;
     refs.tagline.hidden = Boolean(focusedCity);
     if (next.status === 'error') {
       teardownMap();
@@ -49,9 +54,6 @@ export function render(container, props) {
 
     if (!filterButtons) filterButtons = buildFilterBar(refs.filterBar, next, props.setFilterTarget);
     syncFilterBar(filterButtons, next.filterTarget);
-    if (!criteriaButtons)
-      criteriaButtons = buildCriteriaBar(refs.criteriaBar, props.setActiveCriterion);
-    syncCriteriaBar(criteriaButtons, next.activeCriterion);
     if (!yearButtons)
       yearButtons = buildYearBar(refs.yearBar, availableYears(next.metrics), props.setSelectedYear);
     syncYearBar(yearButtons, next.selectedYear);
@@ -61,50 +63,52 @@ export function render(container, props) {
 
   function mountOrUpdateMap(next) {
     const focusedProject = next.projects.find((p) => p.citySlug === next.focusedCity) ?? null;
-    const widgetsProps = {
+    const detailOpen = Boolean(next.detailCity) && next.detailCity === next.focusedCity;
+    const detailProps = {
       project: focusedProject,
-      activeCriterion: next.activeCriterion,
-      metrics: widgetMetricsForProject(focusedProject),
-      districts: districtsForProject(focusedProject),
+      detailOpen,
+      cityIndicators: next.cityIndicators,
+      metrics: focusedProject ? metricsForProject(next.metrics, focusedProject.id) : [],
+      locale: next.locale,
     };
-    const initiativesProps = {
-      project: focusedProject,
-      activeCriterion: next.activeCriterion,
-      selectedYear: next.selectedYear,
-    };
-    if (mapHandle) {
-      mapHandle.update({ filterTarget: next.filterTarget, focusedCity: next.focusedCity });
-      widgetsHandle.update(widgetsProps);
-      initiativesHandle.update(initiativesProps);
-      return;
+
+    if (!mapHandle) {
+      refs.stage.replaceChildren();
+      mapHandle = europeMap.render(refs.stage, {
+        projects: next.projects,
+        geo: next.geo,
+        filterTarget: next.filterTarget,
+        focusedCity: next.focusedCity,
+        detailCity: next.detailCity,
+        locale: next.locale,
+        onSelect: (slug) => props.setFocusedCity(slug),
+      });
+      refs.pill = buildViewProjectPill(refs.stage);
+      detailHandle = cityDetail.render(refs.stage, {
+        ...detailProps,
+        onClose: props.closeProjectDetail,
+      });
+      legendNode = buildLegend();
+      refs.stage.append(legendNode);
     }
-    refs.stage.replaceChildren();
-    mapHandle = europeMap.render(refs.stage, {
-      projects: next.projects,
-      geo: next.geo,
+
+    mapHandle.update({
       filterTarget: next.filterTarget,
       focusedCity: next.focusedCity,
-      locale: next.locale,
-      onSelect: (slug) => props.setFocusedCity(slug),
+      detailCity: next.detailCity,
     });
-    widgetsHandle = widgetStack.render(refs.stage, {
-      ...widgetsProps,
-      onSelectCriterion: (criterion) => props.setActiveCriterion(criterion),
-    });
-    initiativesHandle = initiativeCards.render(refs.stage, initiativesProps);
-    legendNode = buildLegend();
-    refs.stage.append(legendNode);
+    detailHandle.update(detailProps);
+    syncViewProjectPill(refs.pill, focusedProject, detailOpen, props.openProjectDetail);
   }
 
   function teardownMap() {
     if (!mapHandle) return;
     mapHandle.destroy();
     mapHandle = null;
-    widgetsHandle.destroy();
-    widgetsHandle = null;
-    initiativesHandle.destroy();
-    initiativesHandle = null;
+    detailHandle.destroy();
+    detailHandle = null;
     legendNode = null;
+    refs.pill = null;
   }
 
   update(props);
@@ -129,16 +133,12 @@ function buildShell(container, props) {
         <button type="button" class="button view__lang-toggle" data-lang-toggle>${props.locale === 'en' ? 'DE' : 'EN'}</button>
       </div>
       <p class="view__tagline">${t('app.tagline')}</p>
-      <nav class="view__nav">
-        <a class="button" href="#/list">${t('nav.list')}</a>
-      </nav>
     </header>
     <details class="panel" open>
       <summary class="panel__summary">${t('sdg11.panelTitle')}</summary>
       <p class="panel__body">${t('sdg11.panelBody')}</p>
     </details>
     <div class="filter-bar" role="group" aria-label="${t('filter.legend')}" data-filter></div>
-    <div class="filter-bar" role="group" aria-label="${t('criteria.legend')}" data-criteria></div>
     <div class="year-bar" role="group" aria-label="${t('year.legend')}" data-year></div>
     <div class="map-stage" data-stage></div>
   `;
@@ -149,9 +149,31 @@ function buildShell(container, props) {
     tagline: root.querySelector('.view__tagline'),
     stage: root.querySelector('[data-stage]'),
     filterBar: root.querySelector('[data-filter]'),
-    criteriaBar: root.querySelector('[data-criteria]'),
     yearBar: root.querySelector('[data-year]'),
+    pill: null,
   };
+}
+
+/** The L1 affordance: shown under a focused city, opens the L2 detail. */
+function buildViewProjectPill(stage) {
+  const pill = document.createElement('button');
+  pill.type = 'button';
+  pill.className = 'map-view-project';
+  pill.hidden = true;
+  stage.append(pill);
+  return pill;
+}
+
+function syncViewProjectPill(pill, focusedProject, detailOpen, openProjectDetail) {
+  if (!pill) return;
+  const show = Boolean(focusedProject) && !detailOpen;
+  pill.hidden = !show;
+  if (!show) {
+    pill.onclick = null;
+    return;
+  }
+  pill.textContent = `${t('map.viewProject')} →`;
+  pill.onclick = () => openProjectDetail(focusedProject.citySlug);
 }
 
 /** Ripples' actual/target/above/below/missing swatch legend — always
@@ -216,38 +238,6 @@ function filterButton(label, code) {
 function syncFilterBar(buttons, filterTarget) {
   for (const { target, node } of buttons) {
     node.setAttribute('aria-pressed', String(target === (filterTarget ?? null)));
-  }
-}
-
-function criterionLabel(criterion) {
-  if (criterion === 'dq') return t('criteria.dataQuality');
-  if (criterion === 'tr') return t('criteria.transparency');
-  return t('criteria.inequality');
-}
-
-function buildCriteriaBar(container, setActiveCriterion) {
-  const buttons = [{ criterion: null, node: criterionButton(t('criteria.all')) }];
-  for (const criterion of CRITERIA) {
-    buttons.push({ criterion, node: criterionButton(criterionLabel(criterion)) });
-  }
-  for (const { criterion, node } of buttons) {
-    node.addEventListener('click', () => setActiveCriterion(criterion));
-    container.append(node);
-  }
-  return buttons;
-}
-
-function criterionButton(label) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'filter-bar__chip filter-bar__chip--plain';
-  button.textContent = label;
-  return button;
-}
-
-function syncCriteriaBar(buttons, activeCriterion) {
-  for (const { criterion, node } of buttons) {
-    node.setAttribute('aria-pressed', String(criterion === (activeCriterion ?? null)));
   }
 }
 

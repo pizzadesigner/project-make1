@@ -19,7 +19,8 @@ import { renderTooltip } from './tooltip.js';
 const MARKER_ARROWS = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 8;
-const FOCUS_ZOOM = 5;
+const FOCUS_ZOOM = 5; // L1: city focused
+const DETAIL_ZOOM = 8; // L2: diving into the city's own map
 
 export function render(container, props) {
   const size = measure(container);
@@ -44,21 +45,31 @@ export function render(container, props) {
   dom.reset.addEventListener('click', () => props.onSelect(null));
 
   let focusedCity = null;
+  let detailCity = null;
 
   return {
     update(next) {
       applyFilter(markers, next.filterTarget);
-      if (next.focusedCity !== focusedCity) {
-        focusedCity = next.focusedCity ?? null;
-        const focused = markers.find((m) => m.project.citySlug === focusedCity)?.project ?? null;
-        applyCountryFocus(dom, focused);
-        applyMarkerFocus(markers, focusedCity);
-        applyFocusHeader(dom, focused);
-        const transform = focused
-          ? focusTransform(size, ...projection([focused.lon, focused.lat]), FOCUS_ZOOM)
-          : zoomIdentity;
-        animateZoom(dom.svg, zoomBehavior, transform);
-      }
+      const nextFocused = next.focusedCity ?? null;
+      const nextDetail = next.detailCity ?? null;
+      if (nextFocused === focusedCity && nextDetail === detailCity) return;
+      focusedCity = nextFocused;
+      detailCity = nextDetail;
+      const focused = markers.find((m) => m.project.citySlug === focusedCity)?.project ?? null;
+      applyCountryFocus(dom, focused);
+      applyMarkerFocus(markers, focusedCity);
+      applyFocusHeader(dom, focused);
+      dom.root.classList.toggle('is-detail', Boolean(detailCity));
+      // L2 zooms deeper into the same city than L1 — the "dive in" that reveals
+      // the city's own map in the detail overlay.
+      const transform = focused
+        ? focusTransform(
+            size,
+            ...projection([focused.lon, focused.lat]),
+            detailCity ? DETAIL_ZOOM : FOCUS_ZOOM,
+          )
+        : zoomIdentity;
+      animateZoom(dom.svg, zoomBehavior, transform);
     },
     destroy() {
       tooltip.destroy();
