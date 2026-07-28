@@ -136,12 +136,16 @@ export function render(container, props) {
 function buildShell(container, props) {
   const root = document.createElement('section');
   root.className = 'view view--map';
-  // L0 is deliberately just the map and its markers — the floating controls
-  // overlay it and stay usable at every zoom layer.
+  // L0 is deliberately just the map and its markers. The controls cluster in
+  // the one corner that stays clear at every layer — the widgets sit top-left,
+  // the map's reset top-right, the legend bottom-left — and sits above the L2
+  // overlay so Back stays reachable there.
   root.innerHTML = `
     <div class="map-stage" data-stage></div>
-    <button type="button" class="map-float map-float--back button" data-back hidden>← ${t('detail.back')}</button>
-    <button type="button" class="map-float map-float--lang button" data-lang-toggle>${props.locale === 'en' ? 'DE' : 'EN'}</button>
+    <div class="map-controls">
+      <button type="button" class="map-float button" data-back hidden>← ${t('detail.back')}</button>
+      <button type="button" class="map-float button" data-lang-toggle>${props.locale === 'en' ? 'DE' : 'EN'}</button>
+    </div>
   `;
   container.append(root);
   root.querySelector('[data-lang-toggle]').addEventListener('click', props.toggleLocale);

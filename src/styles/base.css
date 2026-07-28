@@ -92,34 +92,35 @@ a:hover {
   margin: 0 0 var(--space-2);
 }
 
-/* Floating glass controls (language toggle, Back) overlaying the fullscreen
- * map — compact 11px/600 pills (template_Ripples.html line 54), pinned to the
- * top corners above every map layer. */
-.map-float {
+/* The Back + language controls cluster in the bottom-right corner — the only
+ * zone free of the widgets (top-left), the map reset (top-right), the focus
+ * header (top-centre) and the legend (bottom-left). z-index clears the L2
+ * detail overlay (z-index 20) so Back stays reachable there too. */
+.map-controls {
   position: absolute;
-  top: var(--space-4);
-  z-index: 20;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Glass pill, matching the map's reset control (template_Ripples.html line 54). */
+.map-float {
   flex-shrink: 0;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-sm);
   border-color: var(--color-border-glass);
   background: var(--color-surface-glass);
-  color: var(--color-text-muted);
-  font-size: 0.6875rem;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
   font-weight: 600;
 }
 
 .map-float:hover {
   color: var(--color-text);
-  background: var(--color-surface-glass);
-}
-
-.map-float--back {
-  left: var(--space-4);
-}
-
-.map-float--lang {
-  right: var(--space-4);
+  background: var(--color-surface-raised);
 }
 
 .view__nav {

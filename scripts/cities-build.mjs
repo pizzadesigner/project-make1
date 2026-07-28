@@ -43,7 +43,7 @@ const CITY_SOURCES = [
   },
   {
     slug: 'paris-marne-la-vallee',
-    file: 'paris.txt', // GeoJSON despite the extension
+    file: 'paris.geojson', // GeoJSON despite the extension
     name: (p) => p.nom,
     areaKm2: () => null, // not in the source — left unknown, never fabricated
   },

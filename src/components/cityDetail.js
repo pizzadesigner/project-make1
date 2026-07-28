@@ -10,7 +10,6 @@
 
 import { t } from '../lib/i18n.js';
 import { formatCurrency, formatYear, formatNumber } from '../lib/format.js';
-import { SDG11_TARGETS } from '../lib/sdg11.js';
 import { cityIndicatorsForCity, populationDensityForCity } from '../data/selectors.js';
 import { loadCitySilhouette } from '../data/load.js';
 import * as sourceChip from '../components/sourceChip.js';
@@ -87,11 +86,8 @@ export function render(container, props) {
 }
 
 function header(project) {
-  const target = SDG11_TARGETS[project.sdg11Target];
   const node = elWithClass('header', 'city-detail__header');
-  node.style.setProperty('--marker-color', `var(${target.colorVar})`);
   node.innerHTML = `
-    <span class="target-badge">${target.glyph} ${escapeHtml(project.sdg11Target)} · ${escapeHtml(t(`sdg.target.${project.sdg11Target}`))}</span>
     <h2 class="city-detail__title">${escapeHtml(project.projectTitle)}</h2>
     <p class="city-detail__place">${escapeHtml(project.cityDisplay)}, ${escapeHtml(project.country)} · ${escapeHtml(t(`status.${project.status}`))}</p>
   `;
