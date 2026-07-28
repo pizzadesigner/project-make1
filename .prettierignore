@@ -1,6 +1,7 @@
 node_modules
 dist
 public/geo
+geoJSONFiles
 package-lock.json
 CLAUDE.MD
 Prompt_1.md

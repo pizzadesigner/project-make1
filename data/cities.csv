@@ -1,0 +1,13 @@
+city_slug,indicator_key,indicator_label,value,unit,year,source_url,source_label,source_accessed
+paris-marne-la-vallee,population,Population (city proper),2074370,people,2025,https://worldpopulationreview.com/cities,World Population Review,
+lisboa,population,Population (city proper),596952,people,2026,https://worldpopulationreview.com/cities,World Population Review,
+koeln,population,Population (city proper),1028273,people,2025,https://worldpopulationreview.com/cities,World Population Review,
+helsinki-region,population,Population (city proper),696374,people,2026,https://worldpopulationreview.com/cities,World Population Review,
+paris-marne-la-vallee,area_km2,Area (city proper),105,km²,,https://citypopulation.de/en/,citypopulation.de,
+lisboa,area_km2,Area (city proper),100,km²,,https://citypopulation.de/en/,citypopulation.de,
+koeln,area_km2,Area (city proper),405,km²,,https://citypopulation.de/en/,citypopulation.de,
+helsinki-region,area_km2,Area (city proper),215,km²,,https://citypopulation.de/en/,citypopulation.de,
+paris-marne-la-vallee,green_space_share,Green-space share (GA Index),14.3,%,,https://isglobalranking.org/city/paris-metropolitan-area/#green,IS Global Ranking – Green Area,
+lisboa,green_space_share,Green-space share (GA Index),35.0,%,,https://isglobalranking.org/city/lisbon-metropolitan-area/#green,IS Global Ranking – Green Area,
+koeln,green_space_share,Green-space share (GA Index),30.3,%,,https://isglobalranking.org/city/cologne-metropolitan-area/#green,IS Global Ranking – Green Area,
+helsinki-region,green_space_share,Green-space share (GA Index),41.3,%,,https://isglobalranking.org/city/helsinki-metropolitan-area/#green,IS Global Ranking – Green Area,

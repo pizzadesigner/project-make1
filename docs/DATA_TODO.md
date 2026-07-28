@@ -48,6 +48,31 @@ nothing gets shown that isn't a real, sourced figure. To wire real data:
   are Phase 5 in `PORTING_GUIDE.md` — not built at all yet, separate from the
   three top-level widget values above.
 
+## `data/cities.csv` — researched indicators, provenance to confirm
+
+New city-level indicator table (population, area, green-space share) keyed by
+`city_slug`, added for the real-data layer. The figures were **transcribed from
+the "City Research" screenshots** in `newGuidelinesPic/`, so before treating any
+number as authoritative:
+
+- **Verify the values against the underlying research spreadsheet** — they were
+  read off images (population, area in km², green-space GA %).
+- **`source_url` is the general research-source page**, not a per-city permalink
+  (`worldpopulationreview.com/cities`, `citypopulation.de/en/`). Tighten to the
+  exact per-city page where possible. Green-space uses per-city IS-Global-Ranking
+  URLs already.
+- **`source_accessed` is blank** for every row — the access date wasn't captured
+  in the research tables. Fill in the real dates (Honesty non-negotiable wants
+  them shown).
+- **Density is intentionally NOT a row** — it is derived (`population / area`) in
+  `selectors.js#populationDensityForCity`, matching how the source computes it.
+  Don't add a `density` row; add its inputs.
+- The `paris-marne-la-vallee` / `helsinki-region` rows carry **core-city**
+  figures (Paris, Helsinki), consistent with the `city_display` relabeling below
+  — not figures for the Marne-la-Vallée / Espoo suburbs the project rows describe.
+- Cologne (`koeln`) has real city indicators even though `koeln-todo-2026` is a
+  placeholder project — city data joins on `city_slug`, independent of the project.
+
 ## Paris / Helsinki — display name is narrower than the underlying project
 
 Per decision (use rows as-is, relabel only): `paris-marne-la-vallee-ecoquartier-2022`
