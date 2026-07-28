@@ -51,6 +51,8 @@ export function render(container, props) {
     projection,
     onSelect: props.onSelect,
     tooltip,
+    onHover: (project) => applyCountryHover(dom, project.country),
+    onHoverEnd: () => applyCountryHover(dom, null),
   });
 
   const zoomBehavior = setupZoom(dom, size, markers);
@@ -234,12 +236,12 @@ function setDeepZoom(dom, next, wasDeep) {
   return next;
 }
 
-function drawMarkers(group, projects, { projection, onSelect, tooltip }) {
+function drawMarkers(group, projects, { projection, onSelect, tooltip, onHover, onHoverEnd }) {
   return projects.map((project) => {
     const [x, y] = projection([project.lon, project.lat]);
     const marker = createMarker(project, x, y);
     group.append(marker.node);
-    wireMarker(marker, project, { onSelect, tooltip });
+    wireMarker(marker, project, { onSelect, tooltip, onHover, onHoverEnd });
     return marker;
   });
 }
@@ -268,14 +270,23 @@ function createMarker(project, x, y) {
   return { node, scale, project, x, y };
 }
 
-function wireMarker(marker, project, { onSelect, tooltip }) {
+function wireMarker(marker, project, { onSelect, tooltip, onHover, onHoverEnd }) {
   const select_ = () => onSelect(project.citySlug);
-  const show = () => tooltip.show(tooltipHtml(project), marker.x, marker.y);
+  // Hovering (or keyboard-focusing) a marker shows its tooltip and highlights
+  // the country the city sits in; leaving reverts both.
+  const enter = () => {
+    tooltip.show(tooltipHtml(project), marker.x, marker.y);
+    onHover(project);
+  };
+  const leave = () => {
+    tooltip.hide();
+    onHoverEnd();
+  };
   marker.node.addEventListener('click', select_);
-  marker.node.addEventListener('mouseenter', show);
-  marker.node.addEventListener('focus', show);
-  marker.node.addEventListener('mouseleave', tooltip.hide);
-  marker.node.addEventListener('blur', tooltip.hide);
+  marker.node.addEventListener('mouseenter', enter);
+  marker.node.addEventListener('focus', enter);
+  marker.node.addEventListener('mouseleave', leave);
+  marker.node.addEventListener('blur', leave);
 }
 
 function bindKeyboard(group, markers) {
@@ -367,11 +378,22 @@ function animateZoom(svg, behavior, transform) {
  * setCityHighlight); no-op when nothing is focused. */
 function applyCountryFocus(dom, focused) {
   const home = focused?.country ?? null;
-  // Natural Earth's name lives in `name`; some exports use `NAME`.
-  const countryName = (d) => d.properties.name ?? d.properties.NAME ?? null;
   dom.countries
     .selectAll('path')
     .classed('is-focus-dim', (d) => home != null && countryName(d) !== home);
+}
+
+/** Highlight the one country a hovered marker sits in (its fill lightens);
+ * pass null to clear. */
+function applyCountryHover(dom, country) {
+  dom.countries
+    .selectAll('path')
+    .classed('is-hover-home', (d) => country != null && countryName(d) === country);
+}
+
+/** Natural Earth's name lives in `name`; some exports use `NAME`. */
+function countryName(d) {
+  return d.properties.name ?? d.properties.NAME ?? null;
 }
 
 /** Recede every marker but the focused one; no-op when nothing is focused. */

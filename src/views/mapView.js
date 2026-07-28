@@ -99,11 +99,10 @@ export function render(container, props) {
     focusedCity = next.focusedCity ?? null;
     detailCity = next.detailCity ?? null;
     activeCriterion = next.activeCriterion ?? null;
-    // Overview (L0) shows only Reset; Back, the language toggle and the legend
-    // appear once a city is focused (L1) and stay through the detail layer (L2).
+    // Reset and the language toggle are always available (top-right). Back and
+    // the legend appear once a city is focused (L1) and stay through L2.
     const atOverview = !(focusedCity || detailCity || activeCriterion);
     refs.back.hidden = atOverview;
-    refs.langToggle.hidden = atOverview;
     if (legendNode) legendNode.hidden = atOverview;
     if (next.status === 'error') {
       teardownMap();
@@ -194,9 +193,10 @@ function buildShell(container, props) {
   const root = document.createElement('section');
   root.className = 'view view--map';
   // Controls sit in the corners the map layers leave free: Back top-left above
-  // the widget stack, Reset + language top-right, legend bottom-left. Only Reset
-  // shows at the overview (L0); the rest appear once a city is focused. Both
-  // clusters sit above the L2 overlay so they stay reachable there.
+  // the widget stack, Reset + language top-right, legend bottom-left. Reset and
+  // language show at every layer including the overview (L0); Back appears once
+  // a city is focused. Both clusters sit above the L2 overlay so they stay
+  // reachable there.
   root.innerHTML = `
     <div class="map-stage" data-stage></div>
     <div class="map-controls map-controls--top-left">
@@ -204,7 +204,7 @@ function buildShell(container, props) {
     </div>
     <div class="map-controls map-controls--top-right">
       <button type="button" class="map-float button" data-reset>${t('map.resetView')}</button>
-      <button type="button" class="map-float button" data-lang-toggle hidden>${props.locale === 'en' ? 'DE' : 'EN'}</button>
+      <button type="button" class="map-float button" data-lang-toggle>${props.locale === 'en' ? 'DE' : 'EN'}</button>
     </div>
   `;
   container.append(root);

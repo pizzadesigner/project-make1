@@ -19,8 +19,14 @@
   fill: var(--color-country-fill);
   stroke: none;
   transition:
-    fill var(--motion-slow) var(--ease-standard),
+    fill var(--motion-base) var(--ease-standard),
     opacity var(--motion-slow) var(--ease-standard);
+}
+
+/* Hovering (or focusing) a city marker lightens the country it sits in, using
+ * the same colour the focused city itself is highlighted with. */
+.europe-map__country.is-hover-home {
+  fill: var(--color-city-highlight);
 }
 
 .europe-map__country.is-focus-dim {

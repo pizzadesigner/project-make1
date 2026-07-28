@@ -14,14 +14,30 @@ import { validateDataset } from './validate.js';
 // CDN. Referenced by root-absolute path (Vite's rule for public assets).
 const GEO_URL = `${import.meta.env.BASE_URL}geo/europe-countries.topo.json`;
 
-// Per-city geometry for the L1 district overview, by city slug. Only cities with
-// committed files appear here; the file basenames need not match the slug (e.g.
-// koeln's files are named "cologne"). Cities absent here draw no district layer.
+// Per-city geometry for the L1 overview. The key is the project slug (from
+// projects.csv `city`), which need not match the file basenames — e.g. the
+// koeln slug's files are named "cologne". Omit a layer a city has no file for;
+// cities absent here draw nothing.
 const CITY_GEO = {
   koeln: {
-    outline: 'geo/cities/cities_cologne.geo.json',
+    outline: 'geo/cities/cities_cologne.geojson',
     districts: 'geo/districts/districts_cologne.json',
-    infrastructure: 'geo/infrastructure/infrastructure_cologne.geo.json',
+    infrastructure: 'geo/infrastructure/infrastructure_cologne.geojson',
+  },
+  'paris-marne-la-vallee': {
+    outline: 'geo/cities/paris-marne-la-vallee.geojson',
+    districts: 'geo/districts/districts_paris.json',
+    infrastructure: 'geo/infrastructure/infrastructure_paris.geojson',
+  },
+  lisboa: {
+    outline: 'geo/cities/cities_lisbon.geojson',
+    districts: 'geo/districts/districts_lisbon.json',
+    // no infrastructure file yet
+  },
+  'helsinki-region': {
+    outline: 'geo/cities/cities_helsinki.geojson',
+    districts: 'geo/districts/districts_helsinki.json',
+    // no infrastructure file yet
   },
 };
 
@@ -114,7 +130,9 @@ export async function loadCityDistricts(citySlug) {
   const entry = CITY_GEO[citySlug];
   if (!entry?.districts) return null;
   const topo = await json(geoUrl(entry.districts));
-  return feature(topo, Object.values(topo.objects)[0]);
+  // topojson-client decodes arcs but doesn't rewind, so a source wound to the
+  // GeoJSON spec still inverts in d3 — normalise like the outline (see rewind).
+  return rewind(feature(topo, Object.values(topo.objects)[0]));
 }
 
 /**
