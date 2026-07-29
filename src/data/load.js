@@ -18,7 +18,7 @@ const GEO_URL = `${import.meta.env.BASE_URL}geo/europe-countries.topo.json`;
 // projects.csv `city`), which need not match the file basenames — e.g. the
 // koeln slug's files are named "cologne". Omit a layer a city has no file for;
 // cities absent here draw nothing.
-const CITY_GEO = {
+export const CITY_GEO = {
   koeln: {
     outline: 'geo/cities/cities_cologne.geojson',
     districts: 'geo/districts/districts_cologne.json',

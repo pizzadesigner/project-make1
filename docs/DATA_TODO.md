@@ -79,3 +79,14 @@ actual project content (Cité Descartes eco-district; Kera positive-energy
 district) is about Marne-la-Vallée and Espoo, not the city centre. This is an
 accepted, intentional approximation, not a bug — noted here so it isn't
 "fixed" by accident later.
+
+**`lat`/`lon` follows the display name, not the project site** (decision
+2026-07-29). Those two rows used to carry the project's own coordinates, which
+put their marker outside the silhouette the map draws for them — Helsinki's dot
+landed just west of the city, Paris's ~380px off the viewport at L1. `lat`/`lon`
+is the **city's** coordinate, the same way Cologne and Lisbon always used it, so
+the dot sits on the city it labels. Where the project really is stays in
+`summary`, `description`, `funding_source` and `source_url` (Espoo,
+Marne-la-Vallée). `src/data/markerPlacement.test.js` holds this contract for any
+city added later. Revisit if the map ever needs to pin the true project site —
+that wants its own columns, not these.
