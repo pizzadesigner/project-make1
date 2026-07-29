@@ -57,16 +57,6 @@ export async function loadDataset() {
   return { ...validateDataset({ projectRows, metricRows, peerRows, cityRows }), geo };
 }
 
-/**
- * Fetch one city's committed boundary silhouette (GeoJSON). Loaded on demand by
- * the city view, not on boot.
- * @param {string} citySlug
- * @returns {Promise<import('geojson').Feature>}
- */
-export function loadCitySilhouette(citySlug) {
-  return json(`${import.meta.env.BASE_URL}geo/cities/${citySlug}.geo.json`);
-}
-
 // Each city layer loads on its own so a slow or missing one never blocks the
 // others. Every loader resolves to null when the city has no such file, letting
 // callers simply skip that layer.
@@ -113,6 +103,8 @@ function rewind(geometry) {
 
 /**
  * Fetch a city's outer boundary polygon (GeoJSON), reoriented to d3's winding.
+ * Also the source for the drawn silhouette (citySilhouette.js) — one loader, so
+ * a renamed file can never leave the map right and the silhouette blank again.
  * @param {string} citySlug
  * @returns {Promise<object | null>}
  */

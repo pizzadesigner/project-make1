@@ -59,5 +59,16 @@ export function render(container, props) {
 function toFeatures(geojson) {
   if (!geojson) return [];
   if (geojson.type === 'FeatureCollection') return geojson.features ?? [];
+  // mapshaper writes a bare GeometryCollection when a layer carries no
+  // per-district properties (Cologne, Lisbon, Paris; Helsinki keeps its 59
+  // named districts). fitExtent projects Features, not raw geometries — handed
+  // one of these it silently produced NaN bounds and drew "MNaN,NaN…" paths.
+  if (geojson.type === 'GeometryCollection') {
+    return (geojson.geometries ?? []).map((geometry) => ({
+      type: 'Feature',
+      properties: {},
+      geometry,
+    }));
+  }
   return [geojson];
 }

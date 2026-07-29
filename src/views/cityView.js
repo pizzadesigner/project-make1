@@ -7,7 +7,7 @@ import { t } from '../lib/i18n.js';
 import { formatCurrency, formatYear, formatNumber } from '../lib/format.js';
 import { SDG11_TARGETS } from '../lib/sdg11.js';
 import { projectByCitySlug, metricsForProject, peersForProject } from '../data/selectors.js';
-import { loadCitySilhouette } from '../data/load.js';
+import { loadCityOutline } from '../data/load.js';
 import * as sourceChip from '../components/sourceChip.js';
 import * as lineChart from '../components/lineChart.js';
 import * as citySilhouette from '../components/citySilhouette.js';
@@ -59,17 +59,24 @@ export function render(container, props) {
   function lazyLoadSilhouette(host, project, token) {
     const slot = host.querySelector('[data-silhouette]');
     if (!slot) return;
-    loadCitySilhouette(project.citySlug)
+    const unavailable = () => {
+      slot.replaceChildren();
+      slot.className = 'city-header__silhouette state';
+      slot.textContent = t('city.silhouetteUnavailable');
+    };
+    loadCityOutline(project.citySlug)
       .then((geojson) => {
         if (token !== silhouetteToken) return;
+        // A city with no committed outline resolves to null rather than throwing;
+        // say so instead of mounting an empty frame.
+        if (!geojson) return unavailable();
         slot.replaceChildren();
         children.push(citySilhouette.render(slot, { geojson, cityDisplay: project.cityDisplay }));
+        return undefined;
       })
       .catch(() => {
         if (token !== silhouetteToken) return;
-        slot.replaceChildren();
-        slot.className = 'city-header__silhouette state';
-        slot.textContent = t('city.silhouetteUnavailable');
+        unavailable();
       });
   }
 
