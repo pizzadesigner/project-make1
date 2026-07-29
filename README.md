@@ -96,15 +96,15 @@ through `t()`; numbers and currency are formatted with `Intl.NumberFormat`.
 
 ## Geodata and licences
 
-Two geodata sources, both fetched once at build time and committed simplified —
-never fetched from a CDN at runtime:
+All geodata is committed simplified and served from `public/` — never fetched
+from a CDN at runtime.
 
 - **Country outlines** (`public/geo/europe-countries.topo.json`) from
   [world-atlas](https://github.com/topojson/world-atlas) (Natural Earth 1:50m),
   **public domain**. Rebuild with `npm run geo:build`.
-- **City silhouettes** (`public/geo/cities/*.geo.json`) from
-  **OpenStreetMap** via Nominatim, licensed **ODbL**. Rebuild with
-  `npm run cities:build`.
-
-> Map data © OpenStreetMap contributors, available under the Open Database
-> License (ODbL). See <https://www.openstreetmap.org/copyright>.
+- **City boundaries** (`public/geo/cities/` and `public/geo/districts/`) are
+  simplified from the official administrative boundaries the team maintains in
+  `geoJSONFiles/`: Cologne's Stadtbezirke, Lisbon's freguesias, Paris's communes,
+  and Helsinki's kaupunginosat from the City of Helsinki
+  (Kaupunkimittauspalvelut). The paths the app reads are listed in `CITY_GEO`
+  (`src/data/cityGeo.js`).
