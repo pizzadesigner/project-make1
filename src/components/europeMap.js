@@ -46,10 +46,18 @@ export function render(container, props) {
   const dom = buildDom(container, size);
   drawGeometry(dom, countries, borders, path);
 
+  // Whether the live selection started from a visible keyboard focus. Decides
+  // whether stepping back to the overview hands the marker its focus back
+  // (see releaseMarkerFocus).
+  let keyboardSelection = false;
+
   const tooltip = renderTooltip(dom.root);
   const markers = drawMarkers(dom.markers, orderProjects(props.projects, props.locale), {
     projection,
-    onSelect: props.onSelect,
+    onSelect: (citySlug, viaKeyboard) => {
+      keyboardSelection = viaKeyboard;
+      props.onSelect(citySlug);
+    },
     tooltip,
     onHover: (project) => applyCountryHover(dom, project.country),
     onHoverEnd: () => applyCountryHover(dom, null),
@@ -96,6 +104,7 @@ export function render(container, props) {
         transform = l1Transform(focused);
       }
       animateZoom(dom.svg, zoomBehavior, transform);
+      if (!focused) releaseMarkerFocus(markers, keyboardSelection);
     },
     // Return to the default overview: snap the d3.zoom transform back to
     // identity (so a manual pan/zoom is undone even with no city focused) and
@@ -271,7 +280,9 @@ function createMarker(project, x, y) {
 }
 
 function wireMarker(marker, project, { onSelect, tooltip, onHover, onHoverEnd }) {
-  const select_ = () => onSelect(project.citySlug);
+  // Report whether the focus ring was already showing when the marker was
+  // activated: only a keyboard user should get focus handed back on the way out.
+  const select_ = () => onSelect(project.citySlug, marker.node.matches(':focus-visible'));
   // Hovering (or keyboard-focusing) a marker shows its tooltip and highlights
   // the country the city sits in; leaving reverts both.
   const enter = () => {
@@ -394,6 +405,18 @@ function applyCountryHover(dom, country) {
 /** Natural Earth's name lives in `name`; some exports use `NAME`. */
 function countryName(d) {
   return d.properties.name ?? d.properties.NAME ?? null;
+}
+
+/** Back at the overview, drop the focus a pointer-driven selection left on its
+ * marker. Escape is a keyboard interaction, so the browser starts matching
+ * :focus-visible on the still-focused marker and its pin keeps the enlarged
+ * focus size with nothing on screen to explain it — the Back control never showed
+ * this because clicking it moves focus off the marker. A keyboard-driven
+ * selection keeps focus, so arrow-key navigation resumes where it left off. */
+function releaseMarkerFocus(markers, keyboardSelection) {
+  if (keyboardSelection) return;
+  const active = document.activeElement;
+  if (markers.some((marker) => marker.node === active)) active.blur();
 }
 
 /** Recede every marker but the focused one; no-op when nothing is focused. */
