@@ -8,7 +8,7 @@
 // reachable only as cold/shared links; nothing here navigates to them.
 
 import { t } from '../lib/i18n.js';
-import { widgetMetricsForProject } from '../data/selectors.js';
+import { widgetMetricsForProject, impactSubMetrics } from '../data/selectors.js';
 import { loadCityOutline, loadCityDistricts, loadCityInfrastructure } from '../data/load.js';
 import * as europeMap from '../components/europeMap.js';
 import * as widgetStack from '../components/widgetStack.js';
@@ -140,6 +140,7 @@ export function render(container, props) {
       project: focusedProject,
       activeCriterion: next.activeCriterion,
       metrics: widgetMetricsForProject(focusedProject),
+      impactSubMetrics: impactSubMetrics(),
       onSelectCriterion: props.setActiveCriterion,
     };
 

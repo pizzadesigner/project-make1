@@ -296,6 +296,49 @@
   );
 }
 
+/* Impact's three sub-metrics (modal split, car density, cycle network) side
+   by side, replacing the single diagram slot above for this one criterion. */
+.widget-detail__submetrics {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+
+.widget-detail__submetric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+}
+
+.widget-detail__submetric-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.widget-detail__submetric-value {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Placeholder until each sub-metric is sourced — a smaller hatched slot. */
+.widget-detail__submetric-stub {
+  flex: 1;
+  min-height: 6rem;
+  border-radius: var(--radius-sm);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-border-glass) 0,
+    var(--color-border-glass) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
+
 .widget-detail__note {
   margin: 0;
   font-size: var(--font-size-sm);

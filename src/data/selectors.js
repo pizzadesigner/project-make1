@@ -97,3 +97,20 @@ export function populationDensityForCity(cityIndicators, citySlug) {
 export function districtsForProject() {
   return null;
 }
+
+// The Impact widget's L2 sub-metrics, per `designWidgets.png` (the
+// Paris/Cologne/Helsinki set — Lisbon shows a different trio, GA Index /
+// Naherholungsflächen / undecided, not modelled yet). Labels resolve via
+// `impact.<key>` in the i18n bundles.
+const IMPACT_SUB_METRIC_KEYS = ['modalSplit', 'carDensity', 'cycleNetwork'];
+
+/**
+ * TODO(data): none of the three are sourced yet (see docs/DATA_TODO.md), so
+ * every value is null and each sub-metric renders an honest placeholder slot,
+ * matching `widgetMetricsForProject`'s Neutrality/Honesty guarantee — never a
+ * fabricated number.
+ * @returns {{ key: string, value: number|null }[]}
+ */
+export function impactSubMetrics() {
+  return IMPACT_SUB_METRIC_KEYS.map((key) => ({ key, value: null }));
+}

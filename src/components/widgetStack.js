@@ -4,9 +4,10 @@
 // opens on that widget's side (the map cuts to the opposite half — see mapView
 // and europeMap), and the widgets dim in place.
 //
-// render(container, { project, activeCriterion, metrics, onSelectCriterion })
-// and the component never reads the store — data comes down, the clicked
-// widget goes up via onSelectCriterion('problemFit'|'impact'|'adoption').
+// render(container, { project, activeCriterion, metrics, impactSubMetrics,
+// onSelectCriterion }) and the component never reads the store — data comes
+// down, the clicked widget goes up via
+// onSelectCriterion('problemFit'|'impact'|'adoption').
 // TODO(data): placeholder content only — no researched figures yet, so no
 // fabricated number is shown (Neutrality/Honesty — see docs/DESIGN_RATIONALE.md).
 
@@ -93,7 +94,7 @@ export function render(container, props) {
       widget.node.style.pointerEvents = active ? 'none' : 'auto';
       widget.node.setAttribute('aria-hidden', String(Boolean(active)));
     }
-    detail.sync(active, next.metrics);
+    detail.sync(active, next.metrics, next.impactSubMetrics);
   }
 
   update(props);
@@ -137,7 +138,7 @@ function buildDetail(onSelectCriterion) {
     if (event.target.closest('.widget-detail__back')) onSelectCriterion(null);
   });
 
-  function sync(activeCriterion, metrics) {
+  function sync(activeCriterion, metrics, impactSubMetrics) {
     if (!activeCriterion) {
       node.hidden = true;
       node.replaceChildren();
@@ -146,20 +147,25 @@ function buildDetail(onSelectCriterion) {
     const wide = activeCriterion === 'impact' ? ' widget-detail--wide' : '';
     node.className = `widget-detail widget-detail--${widgetSide(activeCriterion)}${wide}`;
     node.setAttribute('aria-label', t(`criteria.${activeCriterion}`));
-    node.innerHTML = detailContent(activeCriterion, metrics);
+    node.innerHTML = detailContent(activeCriterion, metrics, impactSubMetrics);
     node.hidden = false;
   }
 
   return { node, sync };
 }
 
-/** Placeholder L2 content — a heading, an empty diagram slot and a note. No
+/** Placeholder L2 content — a heading, a body (Impact's three sub-metric
+ * slots, or a single empty diagram slot for the others) and a note. No
  * fabricated numbers until researched data lands (see widgetContent). */
-function detailContent(criterion, metrics) {
+function detailContent(criterion, metrics, impactSubMetrics) {
   const chip =
     metrics[criterion] == null
       ? `<span class="widget__chip">${t('widget.placeholder')}</span>`
       : '';
+  const body =
+    criterion === 'impact'
+      ? submetricsHtml(impactSubMetrics)
+      : `<div class="widget-detail__diagram" aria-hidden="true"></div>`;
   return `
     <header class="widget-detail__header">
       <button type="button" class="widget-detail__back" aria-label="${t('detail.back')}">
@@ -168,8 +174,34 @@ function detailContent(criterion, metrics) {
       <h2 class="widget-detail__title">${t(`criteria.${criterion}`)}</h2>
       ${chip}
     </header>
-    <div class="widget-detail__diagram" aria-hidden="true"></div>
+    ${body}
     <p class="widget-detail__note">${t('widget.placeholderNote')}</p>`;
+}
+
+/** Impact's three sub-metrics (modal split, car density, cycle network — see
+ * selectors.js#impactSubMetrics), side by side. Each is its own honest
+ * placeholder slot until its figure is sourced. */
+function submetricsHtml(impactSubMetrics) {
+  return `
+    <div class="widget-detail__submetrics">
+      ${impactSubMetrics.map(submetricHtml).join('')}
+    </div>`;
+}
+
+function submetricHtml({ key, value }) {
+  const label = t(`impact.${key}`);
+  if (value == null) {
+    return `
+      <div class="widget-detail__submetric">
+        <span class="widget-detail__submetric-label">${label}</span>
+        <div class="widget-detail__submetric-stub" aria-hidden="true"></div>
+      </div>`;
+  }
+  return `
+    <div class="widget-detail__submetric">
+      <span class="widget-detail__submetric-label">${label}</span>
+      <span class="widget-detail__submetric-value">${value}</span>
+    </div>`;
 }
 
 function applyWidget(widget, layout, contentHtml) {

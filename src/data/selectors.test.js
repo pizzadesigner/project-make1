@@ -4,6 +4,7 @@ import {
   cityIndicatorValue,
   populationDensityForCity,
   widgetMetricsForProject,
+  impactSubMetrics,
 } from './selectors.js';
 
 // Real Cologne figures (population / area = 2539, matching the research table)
@@ -51,5 +52,18 @@ describe('widgetMetricsForProject', () => {
       impact: null,
       adoption: null,
     });
+  });
+});
+
+describe('impactSubMetrics', () => {
+  it('exposes the three Impact sub-metrics, all null until content is sourced', () => {
+    // Same Neutrality/Honesty contract as widgetMetricsForProject — the keys
+    // are what widgetStack.js relies on, the nulls keep any fabricated figure
+    // from rendering (see docs/DATA_TODO.md).
+    expect(impactSubMetrics()).toEqual([
+      { key: 'modalSplit', value: null },
+      { key: 'carDensity', value: null },
+      { key: 'cycleNetwork', value: null },
+    ]);
   });
 });
