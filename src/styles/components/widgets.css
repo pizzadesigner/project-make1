@@ -219,6 +219,14 @@
   transform-origin: right center;
 }
 
+/* Impact's L2 pushes the city almost off-canvas on its side (see
+   IMPACT_L2_ZOOM in europeMap.js), so its panel can claim most of the freed
+   width for the sub-metric breakdown instead of the standard 40%. */
+.widget-detail--wide {
+  width: 65%;
+  max-width: 56rem;
+}
+
 @keyframes widget-detail-in {
   from {
     opacity: 0;

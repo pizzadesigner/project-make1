@@ -29,6 +29,11 @@ const CITY_FILL = 0.75;
 // L2 pushes the city into one half and zooms a touch deeper — a city-level
 // cutout, freeing the opposite half for the widget's data panel.
 const CITY_L2_ZOOM = 1.2;
+// Impact's L2 goes further: the city is pushed almost off-canvas on its side
+// (just a corner staying visible, ~30-40% of the viewport) so its data panel
+// can use most of the freed width for the sub-metric breakdown.
+const IMPACT_L2_ZOOM = 2.4;
+const IMPACT_ANCHOR_FRACTION = 0.14;
 // Above this scale, the country/border geometry is swapped for a flat backdrop
 // (see buildDom) — well above FOCUS_ZOOM (the regional zoom for cities without a
 // silhouette), well below a real city fit (40x-120x+).
@@ -81,6 +86,8 @@ export function render(container, props) {
   // When a widget's L2 is open, the city is cut to this side ('left' | 'right')
   // to free the opposite half for the data panel; null at L1 (centred).
   let citySide = null;
+  // Impact's L2 pushes further than the other widgets (see IMPACT_L2_ZOOM).
+  let deepZoom = false;
   // Manual zoom/pan is for the overview only. Once a city is focused (L1/L2) the
   // view is static — Esc, Back or Reset are the only ways out. Programmatic
   // transforms (focus, reset) bypass this filter.
@@ -93,7 +100,7 @@ export function render(container, props) {
   // the fit is known, otherwise the centred L1 frame (or a regional fallback).
   function cityTransform(focused) {
     const fit = cityFit.get(focused.citySlug);
-    if (fit && citySide) return cityL2Transform(size, fit, citySide);
+    if (fit && citySide) return cityL2Transform(size, fit, citySide, deepZoom);
     if (fit) return cityFitTransform(size, fit);
     return focusTransform(size, ...projection([focused.lon, focused.lat]), FOCUS_ZOOM);
   }
@@ -102,10 +109,14 @@ export function render(container, props) {
     update(next) {
       const nextFocused = next.focusedCity ?? null;
       const nextSide = next.citySide ?? null;
-      if (nextFocused === focusedCity && nextSide === citySide) return;
+      const nextDeepZoom = next.deepZoom ?? false;
+      if (nextFocused === focusedCity && nextSide === citySide && nextDeepZoom === deepZoom) {
+        return;
+      }
       const focusChanged = nextFocused !== focusedCity;
       focusedCity = nextFocused;
       citySide = nextSide;
+      deepZoom = nextDeepZoom;
       const focused = markers.find((m) => m.project.citySlug === focusedCity)?.project ?? null;
       if (focusChanged) {
         applyCountryFocus(dom, focused);
@@ -429,10 +440,14 @@ function cityFitTransform(size, info) {
 }
 
 /** L2 cutout: the city anchored into one half and zoomed a touch deeper, so the
- * opposite half is free for the widget data panel. */
-function cityL2Transform(size, info, side) {
-  const anchorX = side === 'left' ? size.width * 0.3 : size.width * 0.7;
-  const scale = Math.min(info.scale * CITY_L2_ZOOM, MAX_ZOOM);
+ * opposite half is free for the widget data panel. Impact's L2 (`deepZoom`)
+ * pushes the anchor almost to the edge and zooms further still, so only a
+ * corner of the city stays visible and its panel can take most of the width. */
+function cityL2Transform(size, info, side, deepZoom) {
+  const anchorFraction = deepZoom ? IMPACT_ANCHOR_FRACTION : 0.3;
+  const anchorX = side === 'left' ? size.width * anchorFraction : size.width * (1 - anchorFraction);
+  const zoomMultiplier = deepZoom ? IMPACT_L2_ZOOM : CITY_L2_ZOOM;
+  const scale = Math.min(info.scale * zoomMultiplier, MAX_ZOOM);
   return zoomIdentity
     .translate(anchorX, size.height / 2)
     .scale(scale)

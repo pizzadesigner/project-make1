@@ -162,6 +162,7 @@ export function render(container, props) {
     mapHandle.update({
       focusedCity: next.focusedCity,
       citySide: citySideFor(next.activeCriterion),
+      deepZoom: next.activeCriterion === 'impact',
     });
     syncCityLayers(next.focusedCity);
     widgetHandle.update(widgetProps);

@@ -135,7 +135,8 @@ function buildDetail() {
       node.replaceChildren();
       return;
     }
-    node.className = `widget-detail widget-detail--${widgetSide(activeCriterion)}`;
+    const wide = activeCriterion === 'impact' ? ' widget-detail--wide' : '';
+    node.className = `widget-detail widget-detail--${widgetSide(activeCriterion)}${wide}`;
     node.setAttribute('aria-label', t(`criteria.${activeCriterion}`));
     node.innerHTML = detailContent(activeCriterion, metrics);
     node.hidden = false;
