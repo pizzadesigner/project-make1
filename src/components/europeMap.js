@@ -22,8 +22,8 @@ const MIN_ZOOM = 1;
 // deep zoom (~120x for Cologne); the ceiling leaves headroom above that.
 const MAX_ZOOM = 200;
 const FOCUS_ZOOM = 5; // L1 fallback for cities without a silhouette to fit
-// Left area kept clear so the focused city fits beside the widget stack, and
-// the fraction of that free area the silhouette fills.
+// Width kept clear on each side for a widget column, so the focused city fits
+// between them; CITY_FILL is the fraction of that free area the silhouette fills.
 const WIDGET_STRIP = 340;
 const CITY_FILL = 0.75;
 // Above this scale, the country/border geometry is swapped for a flat backdrop
@@ -355,22 +355,22 @@ function focusTransform(size, x, y, scale) {
     .translate(-x, -y);
 }
 
-/** Fit info (centroid + scale) to frame a city's districts in the free area to
- * the right of the widget stack. */
+/** Fit info (centroid + scale) to frame a city's districts in the free area
+ * between the two widget columns. */
 function cityFitInfo(path, size, districts) {
   const [[x0, y0], [x1, y1]] = path.bounds(districts);
   const width = x1 - x0;
   const height = y1 - y0;
-  const usableWidth = size.width - WIDGET_STRIP;
+  // A widget column sits on each side, so reserve both.
+  const usableWidth = size.width - 2 * WIDGET_STRIP;
   const scale = Math.min(usableWidth / width, size.height / height) * CITY_FILL;
   return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, scale: Math.min(scale, MAX_ZOOM) };
 }
 
-/** Transform centring the fitted city in the area beside the widget stack. */
+/** Transform centring the fitted city between the two widget columns. */
 function cityFitTransform(size, info) {
-  const anchorX = WIDGET_STRIP + (size.width - WIDGET_STRIP) / 2;
   return zoomIdentity
-    .translate(anchorX, size.height / 2)
+    .translate(size.width / 2, size.height / 2)
     .scale(info.scale)
     .translate(-info.cx, -info.cy);
 }

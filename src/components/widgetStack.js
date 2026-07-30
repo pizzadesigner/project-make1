@@ -13,48 +13,54 @@
 
 import { t } from '../lib/i18n.js';
 
-/** The three widgets, in stacked order. */
 const WIDGETS = ['problemFit', 'impact', 'adoption'];
 
-// The three widgets stack down the top-left column. STACK_TOP clears the Back
-// control pinned to that corner; STACK_STEP is the even rhythm between them.
+// Problem Fit is anchored top-left; Impact + Adoption stack down the top-right.
+// STACK_TOP clears the corner controls; STACK_STEP is the rhythm between the two
+// right-hand widgets; STACK_MARGIN insets each column from its edge.
 const STACK_TOP = 72;
-const STACK_LEFT = 16;
+const STACK_MARGIN = 16;
 const STACK_STEP = 128;
 const WIDGET_WIDTH = '248px';
 const WIDGET_PADDING = '16px 18px';
 
-const BASE_LAYOUT = Object.fromEntries(
-  WIDGETS.map((key, i) => [
-    key,
-    {
-      top: `${STACK_TOP + i * STACK_STEP}px`,
-      left: `${STACK_LEFT}px`,
-      width: WIDGET_WIDTH,
-      padding: WIDGET_PADDING,
-      opacity: '1',
-      z: '10',
-    },
-  ]),
-);
+const BASE_LAYOUT = {
+  problemFit: {
+    top: `${STACK_TOP}px`,
+    left: `${STACK_MARGIN}px`,
+    width: WIDGET_WIDTH,
+    padding: WIDGET_PADDING,
+    opacity: '1',
+    z: '10',
+  },
+  impact: {
+    top: `${STACK_TOP}px`,
+    right: `${STACK_MARGIN}px`,
+    width: WIDGET_WIDTH,
+    padding: WIDGET_PADDING,
+    opacity: '1',
+    z: '10',
+  },
+  adoption: {
+    top: `${STACK_TOP + STACK_STEP}px`,
+    right: `${STACK_MARGIN}px`,
+    width: WIDGET_WIDTH,
+    padding: WIDGET_PADDING,
+    opacity: '1',
+    z: '10',
+  },
+};
 
-/** Ripples' parallax stack: the active widget grows and rises; the rest recede.
- * Everything stays below STACK_TOP so the Back control is never covered. */
+/** The active widget rises and grows a little in place; the others dim but hold
+ * their positions (Problem Fit left, Impact/Adoption right). */
 function widgetLayout(activeCriterion) {
   const layout = Object.fromEntries(WIDGETS.map((key) => [key, { ...BASE_LAYOUT[key] }]));
   if (!activeCriterion) return layout;
 
-  Object.assign(layout[activeCriterion], { top: `${STACK_TOP}px`, width: '300px', z: '15' });
-  const receded = WIDGETS.filter((key) => key !== activeCriterion);
-  receded.forEach((key, i) => {
-    Object.assign(layout[key], {
-      top: `${STACK_TOP + 8 + i * 8}px`,
-      left: `${STACK_LEFT + 8 + i * 6}px`,
-      width: '200px',
-      padding: '10px 14px',
-      opacity: i === 0 ? '0.3' : '0.2',
-    });
-  });
+  Object.assign(layout[activeCriterion], { width: '288px', z: '15' });
+  for (const key of WIDGETS) {
+    if (key !== activeCriterion) layout[key].opacity = '0.35';
+  }
   return layout;
 }
 
@@ -107,7 +113,8 @@ function buildWidget(kind, onSelectCriterion) {
 function applyWidget(widget, layout, contentHtml) {
   Object.assign(widget.node.style, {
     top: layout.top,
-    left: layout.left,
+    left: layout.left ?? 'auto',
+    right: layout.right ?? 'auto',
     width: layout.width,
     padding: layout.padding,
     opacity: layout.opacity,
