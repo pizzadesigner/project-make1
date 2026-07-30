@@ -26,6 +26,9 @@ const FOCUS_ZOOM = 5; // L1 fallback for cities without a silhouette to fit
 // between them; CITY_FILL is the fraction of that free area the silhouette fills.
 const WIDGET_STRIP = 340;
 const CITY_FILL = 0.75;
+// L2 pushes the city into one half and zooms a touch deeper — a city-level
+// cutout, freeing the opposite half for the widget's data panel.
+const CITY_L2_ZOOM = 1.2;
 // Above this scale, the country/border geometry is swapped for a flat backdrop
 // (see buildDom) — well above FOCUS_ZOOM (the regional zoom for cities without a
 // silhouette), well below a real city fit (40x-120x+).
@@ -75,7 +78,10 @@ export function render(container, props) {
   bindKeyboard(dom.markers, markers);
 
   let focusedCity = null;
-  // Manual zoom/pan is for the overview only. Once a city is focused (L1) the
+  // When a widget's L2 is open, the city is cut to this side ('left' | 'right')
+  // to free the opposite half for the data panel; null at L1 (centred).
+  let citySide = null;
+  // Manual zoom/pan is for the overview only. Once a city is focused (L1/L2) the
   // view is static — Esc, Back or Reset are the only ways out. Programmatic
   // transforms (focus, reset) bypass this filter.
   zoomBehavior.filter((event) => !focusedCity && defaultZoomFilter(event));
@@ -83,24 +89,31 @@ export function render(container, props) {
   // step once its geometry is known.
   const cityFit = new Map();
 
-  function l1Transform(focused) {
-    // Frame the silhouette beside the widgets once it is loaded; otherwise a
-    // moderate regional zoom (cities without a silhouette stay here).
-    if (cityFit.has(focused.citySlug)) return cityFitTransform(size, cityFit.get(focused.citySlug));
+  // The city transform for the current layer: L2 cutout when a side is set and
+  // the fit is known, otherwise the centred L1 frame (or a regional fallback).
+  function cityTransform(focused) {
+    const fit = cityFit.get(focused.citySlug);
+    if (fit && citySide) return cityL2Transform(size, fit, citySide);
+    if (fit) return cityFitTransform(size, fit);
     return focusTransform(size, ...projection([focused.lon, focused.lat]), FOCUS_ZOOM);
   }
 
   return {
     update(next) {
       const nextFocused = next.focusedCity ?? null;
-      if (nextFocused === focusedCity) return;
+      const nextSide = next.citySide ?? null;
+      if (nextFocused === focusedCity && nextSide === citySide) return;
+      const focusChanged = nextFocused !== focusedCity;
       focusedCity = nextFocused;
+      citySide = nextSide;
       const focused = markers.find((m) => m.project.citySlug === focusedCity)?.project ?? null;
-      applyCountryFocus(dom, focused);
-      applyMarkerFocus(markers, focusedCity);
-      applyFocusHeader(dom, focused);
-      // L0 resets to the overview; L1 frames the focused city itself.
-      const transform = focused ? l1Transform(focused) : zoomIdentity;
+      if (focusChanged) {
+        applyCountryFocus(dom, focused);
+        applyMarkerFocus(markers, focusedCity);
+        applyFocusHeader(dom, focused);
+      }
+      // L0 resets to the overview; L1 frames the city; L2 cuts it to one side.
+      const transform = focused ? cityTransform(focused) : zoomIdentity;
       animateZoom(dom.svg, zoomBehavior, transform);
       if (!focused) releaseMarkerFocus(markers, keyboardSelection);
     },
@@ -129,8 +142,9 @@ export function render(container, props) {
         .attr('class', 'europe-map__district')
         .attr('d', path);
       cityFit.set(slug, cityFitInfo(path, size, districts));
-      if (slug === focusedCity) {
-        animateZoom(dom.svg, zoomBehavior, cityFitTransform(size, cityFit.get(slug)));
+      const focused = markers.find((m) => m.project.citySlug === slug)?.project ?? null;
+      if (focused && slug === focusedCity) {
+        animateZoom(dom.svg, zoomBehavior, cityTransform(focused));
       }
     },
     // Draw (or clear, when passed null) the focused city's own highlight shape.
@@ -372,6 +386,17 @@ function cityFitTransform(size, info) {
   return zoomIdentity
     .translate(size.width / 2, size.height / 2)
     .scale(info.scale)
+    .translate(-info.cx, -info.cy);
+}
+
+/** L2 cutout: the city anchored into one half and zoomed a touch deeper, so the
+ * opposite half is free for the widget data panel. */
+function cityL2Transform(size, info, side) {
+  const anchorX = side === 'left' ? size.width * 0.3 : size.width * 0.7;
+  const scale = Math.min(info.scale * CITY_L2_ZOOM, MAX_ZOOM);
+  return zoomIdentity
+    .translate(anchorX, size.height / 2)
+    .scale(scale)
     .translate(-info.cx, -info.cy);
 }
 

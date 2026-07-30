@@ -13,6 +13,12 @@ import { loadCityOutline, loadCityDistricts, loadCityInfrastructure } from '../d
 import * as europeMap from '../components/europeMap.js';
 import * as widgetStack from '../components/widgetStack.js';
 
+/** The map cuts to the side opposite the active widget's data panel. */
+function citySideFor(activeCriterion) {
+  if (!activeCriterion) return null;
+  return widgetStack.widgetSide(activeCriterion) === 'left' ? 'right' : 'left';
+}
+
 // L0 reserves a left column for the project overview panel; the map frames
 // Europe in the space to its right. Below OVERVIEW_MIN_WIDTH a side column is
 // too cramped, so the panel is dropped and the map re-centres (inset 0).
@@ -151,7 +157,10 @@ export function render(container, props) {
       refs.stage.append(legendNode);
     }
 
-    mapHandle.update({ focusedCity: next.focusedCity });
+    mapHandle.update({
+      focusedCity: next.focusedCity,
+      citySide: citySideFor(next.activeCriterion),
+    });
     syncCityLayers(next.focusedCity);
     widgetHandle.update(widgetProps);
   }

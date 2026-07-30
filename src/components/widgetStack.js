@@ -1,14 +1,13 @@
 // The three Exploration-layer widgets (Problem Fit, Impact, Adoption
-// Requirements) shown around the map while a city is focused (L1). Each is
-// independently clickable — clicking one expands it and recedes the other two
-// (the "parallax stack" from the Ripples template). Hidden entirely when no
-// city is focused or once the L2 detail overlay is open.
+// Requirements) shown while a city is focused (L1). Problem Fit sits top-left;
+// Impact + Adoption stack top-right. Clicking one enters its L2: a data panel
+// opens on that widget's side (the map cuts to the opposite half — see mapView
+// and europeMap), and the widgets dim in place.
 //
 // render(container, { project, activeCriterion, metrics, onSelectCriterion })
 // and the component never reads the store — data comes down, the clicked
 // widget goes up via onSelectCriterion('problemFit'|'impact'|'adoption').
-// TODO(data): every widget currently renders a placeholder shell — its headline
-// figure is not researched yet (widgetMetricsForProject returns nulls), so no
+// TODO(data): placeholder content only — no researched figures yet, so no
 // fabricated number is shown (Neutrality/Honesty — see docs/DESIGN_RATIONALE.md).
 
 import { t } from '../lib/i18n.js';
@@ -51,15 +50,19 @@ const BASE_LAYOUT = {
   },
 };
 
-/** The active widget rises and grows a little in place; the others dim but hold
- * their positions (Problem Fit left, Impact/Adoption right). */
+/** Which side of the screen a widget — and its L2 data panel — sits on. */
+export function widgetSide(criterion) {
+  return 'left' in BASE_LAYOUT[criterion] ? 'left' : 'right';
+}
+
+/** At L2 the clicked widget hands off to its data panel (hidden here); the
+ * others dim in place. All positions hold. */
 function widgetLayout(activeCriterion) {
   const layout = Object.fromEntries(WIDGETS.map((key) => [key, { ...BASE_LAYOUT[key] }]));
   if (!activeCriterion) return layout;
 
-  Object.assign(layout[activeCriterion], { width: '288px', z: '15' });
   for (const key of WIDGETS) {
-    if (key !== activeCriterion) layout[key].opacity = '0.35';
+    layout[key].opacity = key === activeCriterion ? '0' : '0.35';
   }
   return layout;
 }
@@ -70,7 +73,8 @@ export function render(container, props) {
   root.hidden = true;
 
   const widgets = WIDGETS.map((key) => buildWidget(key, props.onSelectCriterion));
-  root.append(...widgets.map((w) => w.node));
+  const detail = buildDetail();
+  root.append(...widgets.map((w) => w.node), detail.node);
   container.append(root);
 
   function update(next) {
@@ -79,10 +83,17 @@ export function render(container, props) {
       return;
     }
     root.hidden = false;
-    const layout = widgetLayout(next.activeCriterion);
+    const active = next.activeCriterion ?? null;
+    const layout = widgetLayout(active);
     for (const widget of widgets) {
       applyWidget(widget, layout[widget.kind], widgetContent(widget.kind, next.metrics));
+      // With a panel open the small widgets are decorative — not click or focus
+      // targets.
+      widget.node.tabIndex = active ? -1 : 0;
+      widget.node.style.pointerEvents = active ? 'none' : 'auto';
+      widget.node.setAttribute('aria-hidden', String(Boolean(active)));
     }
+    detail.sync(active, next.metrics);
   }
 
   update(props);
@@ -108,6 +119,45 @@ function buildWidget(kind, onSelectCriterion) {
     }
   });
   return { node, kind };
+}
+
+/** The L2 data panel: one reused element, shown on the active widget's side
+ * with that dimension's (placeholder) content. */
+function buildDetail() {
+  const node = document.createElement('section');
+  node.className = 'widget-detail';
+  node.hidden = true;
+  node.setAttribute('aria-live', 'polite');
+
+  function sync(activeCriterion, metrics) {
+    if (!activeCriterion) {
+      node.hidden = true;
+      node.replaceChildren();
+      return;
+    }
+    node.className = `widget-detail widget-detail--${widgetSide(activeCriterion)}`;
+    node.setAttribute('aria-label', t(`criteria.${activeCriterion}`));
+    node.innerHTML = detailContent(activeCriterion, metrics);
+    node.hidden = false;
+  }
+
+  return { node, sync };
+}
+
+/** Placeholder L2 content — a heading, an empty diagram slot and a note. No
+ * fabricated numbers until researched data lands (see widgetContent). */
+function detailContent(criterion, metrics) {
+  const chip =
+    metrics[criterion] == null
+      ? `<span class="widget__chip">${t('widget.placeholder')}</span>`
+      : '';
+  return `
+    <header class="widget-detail__header">
+      <h2 class="widget-detail__title">${t(`criteria.${criterion}`)}</h2>
+      ${chip}
+    </header>
+    <div class="widget-detail__diagram" aria-hidden="true"></div>
+    <p class="widget-detail__note">${t('widget.placeholderNote')}</p>`;
 }
 
 function applyWidget(widget, layout, contentHtml) {

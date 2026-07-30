@@ -186,8 +186,89 @@
   text-align: right;
 }
 
+/* L2 data panel: opens on the active widget's side (left for Problem Fit, right
+ * for Impact/Adoption); the map cuts to the opposite half. Glass surface to
+ * match the widgets; scrolls if content overflows. */
+.widget-detail {
+  position: absolute;
+  top: 72px; /* aligns with the widget stack (STACK_TOP in widgetStack.js) */
+  bottom: var(--space-4);
+  width: 40%;
+  max-width: 34rem;
+  z-index: 20;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--color-surface-glass);
+  border: 1px solid var(--color-border-glass);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(var(--blur-glass));
+  overflow-y: auto;
+  animation: widget-detail-in var(--motion-base) var(--ease-standard) both;
+}
+
+.widget-detail--left {
+  left: var(--space-4);
+  transform-origin: left center;
+}
+
+.widget-detail--right {
+  right: var(--space-4);
+  transform-origin: right center;
+}
+
+@keyframes widget-detail-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.widget-detail__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.widget-detail__title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+}
+
+/* Placeholder until researched figures/diagrams exist — a hatched empty slot. */
+.widget-detail__diagram {
+  flex: 1;
+  min-height: 10rem;
+  border-radius: var(--radius-sm);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-border-glass) 0,
+    var(--color-border-glass) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
+
+.widget-detail__note {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-faint);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .widget {
     transition: none;
+  }
+
+  .widget-detail {
+    animation: none;
   }
 }
