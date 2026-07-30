@@ -78,6 +78,7 @@ export function render(container, props) {
     if (!slug) {
       mapHandle.setDistricts(null, null);
       mapHandle.setCityHighlight(null);
+      mapHandle.setInfrastructure(null);
       return undefined;
     }
     const token = ++layersToken;
@@ -87,8 +88,9 @@ export function render(container, props) {
     loadLayer(slug, outlineCache, loadCityOutline, token, (data) =>
       mapHandle.setCityHighlight(data),
     );
-    // Loaded and cached now; not drawn on the map yet.
-    loadLayer(slug, infrastructureCache, loadCityInfrastructure, token, () => {});
+    loadLayer(slug, infrastructureCache, loadCityInfrastructure, token, (data) =>
+      mapHandle.setInfrastructure(data),
+    );
     return undefined;
   }
 

@@ -12,7 +12,7 @@
 import { select, geoPath, zoom, zoomIdentity } from 'd3';
 import { feature, mesh } from 'topojson-client';
 import { createEuropeProjection, fitToViewport } from '../lib/projection.js';
-import { motionMs } from '../lib/a11y.js';
+import { motionMs, prefersReducedMotion } from '../lib/a11y.js';
 import { t } from '../lib/i18n.js';
 import { renderTooltip } from './tooltip.js';
 
@@ -159,6 +159,16 @@ export function render(container, props) {
         .attr('class', 'europe-map__city-highlight-shape')
         .attr('d', path(outline));
     },
+    // Draw (or clear, when passed null) the city's infrastructure lines (cycle
+    // routes). The whole collection renders as one path — one animated element
+    // regardless of route count — with the "flow" a CSS dash animation. Static
+    // geometry; only the dash offset moves (see the stylesheet).
+    setInfrastructure(data) {
+      const layer = select(dom.infrastructure);
+      layer.selectAll('*').remove();
+      if (!data) return;
+      layer.append('path').attr('class', 'europe-map__cycle-path').attr('d', path(data));
+    },
     destroy() {
       tooltip.destroy();
       dom.root.remove();
@@ -189,6 +199,32 @@ function buildDom(container, size) {
     .attr('role', 'group')
     .attr('aria-label', t('map.heading'));
 
+  // Gradient the cycle-route lines are stroked with (colours in the stylesheet).
+  // It repeats across the network and slowly translates by one period, so the
+  // brighter band runs through the lines — unless the user prefers reduced motion.
+  const cycleGradient = svg
+    .append('defs')
+    .append('linearGradient')
+    .attr('id', 'europe-map-cycle')
+    .attr('spreadMethod', 'repeat')
+    .attr('x1', '0')
+    .attr('y1', '0')
+    .attr('x2', '0.35')
+    .attr('y2', '0');
+  cycleGradient.append('stop').attr('offset', '0').attr('class', 'europe-map__cycle-stop--from');
+  cycleGradient.append('stop').attr('offset', '0.5').attr('class', 'europe-map__cycle-stop--to');
+  cycleGradient.append('stop').attr('offset', '1').attr('class', 'europe-map__cycle-stop--from');
+  if (!prefersReducedMotion()) {
+    cycleGradient
+      .append('animateTransform')
+      .attr('attributeName', 'gradientTransform')
+      .attr('type', 'translate')
+      .attr('from', '0 0')
+      .attr('to', '0.35 0')
+      .attr('dur', '6s')
+      .attr('repeatCount', 'indefinite');
+  }
+
   // Sits outside the zoom layer, so it is never itself put through an extreme
   // scale transform. Stands in for the country geometry during deep zoom (see
   // setupZoom) — a flat fill is visually identical to that geometry at deep
@@ -211,6 +247,8 @@ function buildDom(container, size) {
   // District overview for a focused city — drawn inside the zoom layer so it
   // tracks pan/zoom, and below the markers so they stay the interactive layer.
   const districts = zoomLayer.append('g').attr('class', 'europe-map__districts');
+  // City infrastructure (cycle routes) — over the districts, animated in CSS.
+  const infrastructure = zoomLayer.append('g').attr('class', 'europe-map__infrastructure');
   const markers = zoomLayer.append('g').attr('class', 'europe-map__markers');
 
   const focusHeader = document.createElement('div');
@@ -229,6 +267,7 @@ function buildDom(container, size) {
     markers: markers.node(),
     cityHighlight: cityHighlight.node(),
     districts: districts.node(),
+    infrastructure: infrastructure.node(),
     focusHeader,
   };
 }

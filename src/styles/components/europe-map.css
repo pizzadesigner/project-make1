@@ -88,6 +88,26 @@
   pointer-events: none;
 }
 
+/* City cycle routes: static lines stroked with a gradient (see the <defs> in
+ * buildDom). Non-scaling-stroke keeps them a consistent width at any zoom. */
+.europe-map__cycle-path {
+  fill: none;
+  stroke: url('#europe-map-cycle');
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.europe-map__cycle-stop--from {
+  stop-color: var(--color-cycle-path);
+}
+
+.europe-map__cycle-stop--to {
+  stop-color: var(--color-cycle-path-2);
+}
+
 .marker {
   cursor: pointer;
   color: var(--color-marker);
