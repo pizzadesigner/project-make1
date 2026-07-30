@@ -11,10 +11,9 @@
  * @property {import('./data/types.js').PeerCity[]} peers
  * @property {import('./data/types.js').CityIndicator[]} cityIndicators  City-level researched context, keyed by citySlug.
  * @property {object|null} geo  Committed Europe TopoJSON, or null until loaded.
- * @property {string|null} focusedCity   citySlug zoomed into on the map (L1), or null.
- * @property {string|null} detailCity    citySlug whose in-place project detail is open (L2 —
- *   the deeper zoom); always equals focusedCity when set. Kept in the store, not the URL:
- *   the zoom levels are a single-page interaction, so #/city/:slug is reserved for cold links.
+ * @property {string|null} focusedCity   citySlug zoomed into on the map (L1), or null. Kept in
+ *   the store, not the URL: the in-place zoom is a single-page interaction, so #/city/:slug is
+ *   reserved for cold links.
  * @property {'problemFit'|'impact'|'adoption'|null} activeCriterion  Which
  *   Exploration widget (Problem Fit / Impact / Adoption Requirements) is expanded.
  * @property {'en'|'de'} locale
@@ -31,7 +30,6 @@ const state = {
   cityIndicators: [],
   geo: null,
   focusedCity: null,
-  detailCity: null,
   activeCriterion: null,
   locale: 'en',
   error: null,

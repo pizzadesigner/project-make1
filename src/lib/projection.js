@@ -10,18 +10,28 @@ export function createEuropeProjection() {
 }
 
 /**
- * Fit the projection to a viewport with uniform padding.
+ * Fit the projection to a viewport with uniform padding, optionally reserving a
+ * wider strip on the left (e.g. for an overview panel), which frames the map in
+ * the remaining space to the right.
  * @param {import('d3').GeoProjection} projection
  * @param {import('geojson').GeoJSON} geojson  The full feature collection to frame.
  * @param {number} width
  * @param {number} height
  * @param {number} [padding]
+ * @param {number} [insetLeft]  Left edge of the fit box; defaults to padding.
  * @returns {import('d3').GeoProjection}
  */
-export function fitToViewport(projection, geojson, width, height, padding = 16) {
+export function fitToViewport(
+  projection,
+  geojson,
+  width,
+  height,
+  padding = 16,
+  insetLeft = padding,
+) {
   projection.fitExtent(
     [
-      [padding, padding],
+      [Math.max(padding, insetLeft), padding],
       [width - padding, height - padding],
     ],
     geojson,

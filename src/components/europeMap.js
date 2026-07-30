@@ -5,7 +5,7 @@
 // navigation away from the map; the only way out is the reset button or
 // Escape (see mapView.js).
 //
-// render(container, { projects, geo, focusedCity, detailCity, locale, onSelect })
+// render(container, { projects, geo, focusedCity, locale, leftInset, onSelect })
 // and the component never reads the store — data comes down, selection goes up
 // via onSelect(citySlug | null).
 
@@ -22,14 +22,13 @@ const MIN_ZOOM = 1;
 // deep zoom (~120x for Cologne); the ceiling leaves headroom above that.
 const MAX_ZOOM = 200;
 const FOCUS_ZOOM = 5; // L1 fallback for cities without a silhouette to fit
-const DETAIL_ZOOM = 8; // L2: diving into the city's own map
 // Left area kept clear so the focused city fits beside the widget stack, and
 // the fraction of that free area the silhouette fills.
 const WIDGET_STRIP = 340;
 const CITY_FILL = 0.75;
 // Above this scale, the country/border geometry is swapped for a flat backdrop
-// (see buildDom) — well above FOCUS_ZOOM/DETAIL_ZOOM (regional zoom for cities
-// without a silhouette), well below a real city fit (40x-120x+).
+// (see buildDom) — well above FOCUS_ZOOM (the regional zoom for cities without a
+// silhouette), well below a real city fit (40x-120x+).
 const DEEP_ZOOM_THRESHOLD = 15;
 
 export function render(container, props) {
@@ -40,7 +39,16 @@ export function render(container, props) {
   const topology = Object.values(props.geo.objects)[0];
   const countries = feature(props.geo, topology);
   const borders = mesh(props.geo, topology, (a, b) => a !== b);
-  const projection = fitToViewport(createEuropeProjection(), countries, size.width, size.height);
+  // A left inset (for the L0 overview panel) frames Europe in the space to the
+  // right; irrelevant at L1/L2, which zoom into a city regardless of framing.
+  const projection = fitToViewport(
+    createEuropeProjection(),
+    countries,
+    size.width,
+    size.height,
+    16,
+    props.leftInset ?? 0,
+  );
   const path = geoPath(projection);
 
   const dom = buildDom(container, size);
@@ -67,13 +75,12 @@ export function render(container, props) {
   bindKeyboard(dom.markers, markers);
 
   let focusedCity = null;
-  let detailCity = null;
-  // Manual zoom/pan is for the overview only. Once a city is focused (L1/L2) the
+  // Manual zoom/pan is for the overview only. Once a city is focused (L1) the
   // view is static — Esc, Back or Reset are the only ways out. Programmatic
   // transforms (focus, reset) bypass this filter.
   zoomBehavior.filter((event) => !focusedCity && defaultZoomFilter(event));
-  // Fit info per city with a loaded silhouette, so L1 (and a return from L2)
-  // can frame the city in one step once its geometry is known.
+  // Fit info per city with a loaded silhouette, so L1 can frame the city in one
+  // step once its geometry is known.
   const cityFit = new Map();
 
   function l1Transform(focused) {
@@ -86,23 +93,14 @@ export function render(container, props) {
   return {
     update(next) {
       const nextFocused = next.focusedCity ?? null;
-      const nextDetail = next.detailCity ?? null;
-      if (nextFocused === focusedCity && nextDetail === detailCity) return;
+      if (nextFocused === focusedCity) return;
       focusedCity = nextFocused;
-      detailCity = nextDetail;
       const focused = markers.find((m) => m.project.citySlug === focusedCity)?.project ?? null;
       applyCountryFocus(dom, focused);
       applyMarkerFocus(markers, focusedCity);
       applyFocusHeader(dom, focused);
-      dom.root.classList.toggle('is-detail', Boolean(detailCity));
-      // L0 resets to the overview; L2 dives deeper into the same city (covered
-      // by the detail overlay); L1 frames the city itself.
-      let transform = zoomIdentity;
-      if (focused && detailCity) {
-        transform = focusTransform(size, ...projection([focused.lon, focused.lat]), DETAIL_ZOOM);
-      } else if (focused) {
-        transform = l1Transform(focused);
-      }
+      // L0 resets to the overview; L1 frames the focused city itself.
+      const transform = focused ? l1Transform(focused) : zoomIdentity;
       animateZoom(dom.svg, zoomBehavior, transform);
       if (!focused) releaseMarkerFocus(markers, keyboardSelection);
     },
@@ -131,7 +129,7 @@ export function render(container, props) {
         .attr('class', 'europe-map__district')
         .attr('d', path);
       cityFit.set(slug, cityFitInfo(path, size, districts));
-      if (slug === focusedCity && !detailCity) {
+      if (slug === focusedCity) {
         animateZoom(dom.svg, zoomBehavior, cityFitTransform(size, cityFit.get(slug)));
       }
     },

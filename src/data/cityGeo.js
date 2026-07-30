@@ -14,22 +14,22 @@
 export const CITY_GEO = {
   koeln: {
     outline: 'geo/cities/cities_cologne.geojson',
-    districts: 'geo/districts/districts_cologne.json',
+    districts: 'geo/districts/districts_cologne.topo.json',
     infrastructure: 'geo/infrastructure/infrastructure_cologne.geojson',
   },
   'paris-marne-la-vallee': {
     outline: 'geo/cities/paris-marne-la-vallee.geojson',
-    districts: 'geo/districts/districts_paris.json',
+    districts: 'geo/districts/districts_paris.topo.json',
     infrastructure: 'geo/infrastructure/infrastructure_paris.geojson',
   },
   lisboa: {
     outline: 'geo/cities/cities_lisbon.geojson',
-    districts: 'geo/districts/districts_lisbon.json',
+    districts: 'geo/districts/districts_lisbon.topo.json',
     // no infrastructure file yet
   },
   'helsinki-region': {
     outline: 'geo/cities/cities_helsinki.geojson',
-    districts: 'geo/districts/districts_helsinki.json',
+    districts: 'geo/districts/districts_helsinki.topo.json',
     // no infrastructure file yet
   },
 };

@@ -31,24 +31,12 @@ const root = document.querySelector('#app');
 let mounted = null; // { name, handle }
 
 function setFocusedCity(citySlug) {
-  // Leaving/zooming a city also closes any open project detail (L2) and
-  // collapses any expanded Exploration widget — none of those states outlive
-  // the focused city they belong to.
+  // Leaving/zooming a city also collapses any expanded Exploration widget — it
+  // does not outlive the focused city it belongs to.
   setState({
     focusedCity: citySlug,
-    detailCity: citySlug ? getState().detailCity : null,
     activeCriterion: citySlug ? getState().activeCriterion : null,
   });
-}
-
-/** Open the in-place project detail (L2) for the focused city. */
-function openProjectDetail(citySlug) {
-  setState({ focusedCity: citySlug, detailCity: citySlug });
-}
-
-/** Close the project detail, stepping back to the focused-city level (L1). */
-function closeProjectDetail() {
-  setState({ detailCity: null });
 }
 
 function setActiveCriterion(criterion) {
@@ -66,8 +54,6 @@ function viewProps(state) {
     ...state,
     navigate,
     setFocusedCity,
-    openProjectDetail,
-    closeProjectDetail,
     setActiveCriterion,
     toggleLocale,
   };

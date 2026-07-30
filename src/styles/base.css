@@ -6,7 +6,6 @@
 @import './components/source-chip.css';
 @import './components/line-chart.css';
 @import './components/city-silhouette.css';
-@import './components/city-detail.css';
 @import './components/legend.css';
 
 /* Global base layer: resets, page chrome, and the shared building blocks
@@ -99,8 +98,8 @@ a:hover {
 }
 
 /* Corner control clusters over the fullscreen map. Back sits top-left above the
- * widget stack; Reset + language sit top-right. z-index clears the L2 detail
- * overlay (z-index 20) so both stay reachable there. */
+ * widget stack; Reset + language sit top-right. z-index sits above the overview
+ * panel and map overlays so the controls stay reachable. */
 .map-controls {
   position: absolute;
   top: var(--space-4);
@@ -116,6 +115,65 @@ a:hover {
 
 .map-controls--top-right {
   right: var(--space-4);
+}
+
+/* L0 overview panel: the left column the map is framed to make room for (see
+ * overviewInset in mapView.js). Hidden once a city is focused; dropped entirely
+ * on viewports too narrow for a side column (where the map also re-centres). */
+.map-overview {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 33%;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  overflow-y: auto;
+
+  /* Float + fade in as one block, at a gentle pace (--motion-entrance). The
+   * delay equals the map's zoom-out duration (--motion-slow), and `both` keeps
+   * it hidden until then — so the text only appears once the map has settled
+   * back to the overview. Runs each time the panel is shown (returning to L0),
+   * and collapses to instant under prefers-reduced-motion (tokens are 0ms). */
+  animation: overview-in var(--motion-entrance) var(--ease-standard) var(--motion-slow) both;
+}
+
+@keyframes overview-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.75rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.map-overview__title {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  line-height: var(--line-tight);
+}
+
+.map-overview__lead {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-muted);
+}
+
+.map-overview__hint {
+  margin: 0;
+  color: var(--color-text-faint);
+}
+
+@media (max-width: 859px) {
+  .map-overview {
+    display: none;
+  }
 }
 
 /* Glass pill, matching the map's reset control (template_Ripples.html line 54). */

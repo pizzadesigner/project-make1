@@ -1,19 +1,29 @@
 // The single page. Owns the fullscreen stage and the europeMap lifecycle, plus
 // the loading/error/empty states so the stage never shows a half-drawn map, and
-// two floating controls (language toggle + back) that overlay every layer.
+// the floating controls that overlay every layer.
 //
 // Everything happens here, in place, with no URL change:
-//   L0 overview → click a city → L1 in-place zoom + a "View project" pill
-//   → click the pill → L2 in-place project detail (cityDetail overlay).
-// Back and Escape both step back one layer via stepBack(). #/city/:slug and
-// #/list stay reachable only as cold/shared links; nothing here navigates to them.
+//   L0 overview → click a city → L1 in-place zoom with the Exploration widgets.
+// Back and Escape step back via stepBack(). #/city/:slug and #/list stay
+// reachable only as cold/shared links; nothing here navigates to them.
 
 import { t } from '../lib/i18n.js';
-import { metricsForProject, widgetMetricsForProject } from '../data/selectors.js';
+import { widgetMetricsForProject } from '../data/selectors.js';
 import { loadCityOutline, loadCityDistricts, loadCityInfrastructure } from '../data/load.js';
 import * as europeMap from '../components/europeMap.js';
-import * as cityDetail from '../components/cityDetail.js';
 import * as widgetStack from '../components/widgetStack.js';
+
+// L0 reserves a left column for the project overview panel; the map frames
+// Europe in the space to its right. Below OVERVIEW_MIN_WIDTH a side column is
+// too cramped, so the panel is dropped and the map re-centres (inset 0).
+const OVERVIEW_LEFT_FRACTION = 0.33;
+const OVERVIEW_MIN_WIDTH = 860;
+
+/** Left inset (px) to reserve for the overview panel, or 0 on narrow viewports. */
+function overviewInset(stage) {
+  const width = stage.clientWidth;
+  return width >= OVERVIEW_MIN_WIDTH ? Math.round(width * OVERVIEW_LEFT_FRACTION) : 0;
+}
 
 /**
  * @param {HTMLElement} container
@@ -23,11 +33,9 @@ import * as widgetStack from '../components/widgetStack.js';
 export function render(container, props) {
   const refs = buildShell(container, props);
   let mapHandle = null;
-  let detailHandle = null;
   let widgetHandle = null;
   let legendNode = null;
   let focusedCity = null;
-  let detailCity = null;
   let activeCriterion = null;
   // Each focused city has three independent geometry layers. They load in
   // parallel — a slow or missing one never holds up the others — and each is
@@ -78,12 +86,10 @@ export function render(container, props) {
     return undefined;
   }
 
-  // One step back through the zoom chain: L2 detail → expanded widget →
-  // focused city → overview. Shared by the Back control and the Escape key so
-  // the two can never diverge.
+  // One step back through the zoom chain: expanded widget → focused city →
+  // overview. Shared by the Back control and the Escape key so they can't diverge.
   function stepBack() {
-    if (detailCity) props.closeProjectDetail();
-    else if (activeCriterion) props.setActiveCriterion(null);
+    if (activeCriterion) props.setActiveCriterion(null);
     else if (focusedCity) props.setFocusedCity(null);
   }
 
@@ -97,12 +103,13 @@ export function render(container, props) {
 
   function update(next) {
     focusedCity = next.focusedCity ?? null;
-    detailCity = next.detailCity ?? null;
     activeCriterion = next.activeCriterion ?? null;
     // Reset and the language toggle are always available (top-right). Back and
-    // the legend appear once a city is focused (L1) and stay through L2.
-    const atOverview = !(focusedCity || detailCity || activeCriterion);
+    // the legend appear once a city is focused (L1); the overview panel shows
+    // only at L0.
+    const atOverview = !(focusedCity || activeCriterion);
     refs.back.hidden = atOverview;
+    refs.overview.hidden = !atOverview;
     if (legendNode) legendNode.hidden = atOverview;
     if (next.status === 'error') {
       teardownMap();
@@ -121,17 +128,8 @@ export function render(container, props) {
 
   function mountOrUpdateMap(next) {
     const focusedProject = next.projects.find((p) => p.citySlug === next.focusedCity) ?? null;
-    const detailOpen = Boolean(next.detailCity) && next.detailCity === next.focusedCity;
-    const detailProps = {
-      project: focusedProject,
-      detailOpen,
-      cityIndicators: next.cityIndicators,
-      metrics: focusedProject ? metricsForProject(next.metrics, focusedProject.id) : [],
-      locale: next.locale,
-    };
-    // Exploration widgets belong to L1 only — hide them once the L2 overlay opens.
     const widgetProps = {
-      project: detailOpen ? null : focusedProject,
+      project: focusedProject,
       activeCriterion: next.activeCriterion,
       metrics: widgetMetricsForProject(focusedProject),
       onSelectCriterion: props.setActiveCriterion,
@@ -143,26 +141,19 @@ export function render(container, props) {
         projects: next.projects,
         geo: next.geo,
         focusedCity: next.focusedCity,
-        detailCity: next.detailCity,
         locale: next.locale,
+        leftInset: overviewInset(refs.stage),
         onSelect: (slug) => props.setFocusedCity(slug),
       });
-      refs.pill = buildViewProjectPill(refs.stage);
       widgetHandle = widgetStack.render(refs.stage, widgetProps);
-      detailHandle = cityDetail.render(refs.stage, detailProps);
       legendNode = buildLegend();
       legendNode.hidden = !next.focusedCity;
       refs.stage.append(legendNode);
     }
 
-    mapHandle.update({
-      focusedCity: next.focusedCity,
-      detailCity: next.detailCity,
-    });
+    mapHandle.update({ focusedCity: next.focusedCity });
     syncCityLayers(next.focusedCity);
     widgetHandle.update(widgetProps);
-    detailHandle.update(detailProps);
-    syncViewProjectPill(refs.pill, focusedProject, detailOpen, props.openProjectDetail);
   }
 
   function teardownMap() {
@@ -171,10 +162,7 @@ export function render(container, props) {
     mapHandle = null;
     widgetHandle.destroy();
     widgetHandle = null;
-    detailHandle.destroy();
-    detailHandle = null;
     legendNode = null;
-    refs.pill = null;
   }
 
   update(props);
@@ -199,6 +187,11 @@ function buildShell(container, props) {
   // reachable there.
   root.innerHTML = `
     <div class="map-stage" data-stage></div>
+    <aside class="map-overview" data-overview hidden>
+      <h1 class="map-overview__title">${t('overview.title')}</h1>
+      <p class="map-overview__lead">${t('overview.lead')}</p>
+      <p class="map-overview__hint">${t('overview.hint')}</p>
+    </aside>
     <div class="map-controls map-controls--top-left">
       <button type="button" class="map-float button" data-back hidden>← ${t('detail.back')}</button>
     </div>
@@ -212,33 +205,11 @@ function buildShell(container, props) {
   return {
     root,
     stage: root.querySelector('[data-stage]'),
+    overview: root.querySelector('[data-overview]'),
     back: root.querySelector('[data-back]'),
     reset: root.querySelector('[data-reset]'),
     langToggle: root.querySelector('[data-lang-toggle]'),
-    pill: null,
   };
-}
-
-/** The L1 affordance: shown under a focused city, opens the L2 detail. */
-function buildViewProjectPill(stage) {
-  const pill = document.createElement('button');
-  pill.type = 'button';
-  pill.className = 'map-view-project';
-  pill.hidden = true;
-  stage.append(pill);
-  return pill;
-}
-
-function syncViewProjectPill(pill, focusedProject, detailOpen, openProjectDetail) {
-  if (!pill) return;
-  const show = Boolean(focusedProject) && !detailOpen;
-  pill.hidden = !show;
-  if (!show) {
-    pill.onclick = null;
-    return;
-  }
-  pill.textContent = `${t('map.viewProject')} →`;
-  pill.onclick = () => openProjectDetail(focusedProject.citySlug);
 }
 
 /** Ripples' actual/target/above/below/missing swatch legend — always
