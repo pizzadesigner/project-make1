@@ -73,7 +73,7 @@ export function render(container, props) {
   root.hidden = true;
 
   const widgets = WIDGETS.map((key) => buildWidget(key, props.onSelectCriterion));
-  const detail = buildDetail();
+  const detail = buildDetail(props.onSelectCriterion);
   root.append(...widgets.map((w) => w.node), detail.node);
   container.append(root);
 
@@ -122,12 +122,20 @@ function buildWidget(kind, onSelectCriterion) {
 }
 
 /** The L2 data panel: one reused element, shown on the active widget's side
- * with that dimension's (placeholder) content. */
-function buildDetail() {
+ * with that dimension's (placeholder) content. A back arrow in its header
+ * steps back to L1 — the same action as the screen's Back button/Escape —
+ * since once the panel is open it's what the user is actually looking at, not
+ * the far corner where the global Back control sits. Delegated on `node`
+ * (rather than attached in detailContent's markup) so the listener survives
+ * the innerHTML rewrite on every sync. */
+function buildDetail(onSelectCriterion) {
   const node = document.createElement('section');
   node.className = 'widget-detail';
   node.hidden = true;
   node.setAttribute('aria-live', 'polite');
+  node.addEventListener('click', (event) => {
+    if (event.target.closest('.widget-detail__back')) onSelectCriterion(null);
+  });
 
   function sync(activeCriterion, metrics) {
     if (!activeCriterion) {
@@ -154,6 +162,9 @@ function detailContent(criterion, metrics) {
       : '';
   return `
     <header class="widget-detail__header">
+      <button type="button" class="widget-detail__back" aria-label="${t('detail.back')}">
+        <span aria-hidden="true">←</span>
+      </button>
       <h2 class="widget-detail__title">${t(`criteria.${criterion}`)}</h2>
       ${chip}
     </header>
