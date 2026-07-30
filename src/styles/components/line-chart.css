@@ -46,3 +46,9 @@
   text-anchor: start;
   fill: var(--color-text);
 }
+
+/* Sparkline mode (see lineChart.js#compact) — the line and dots only, sized
+   to fit a narrow widget slot rather than a full card. */
+.line-chart--compact .line-chart__dot {
+  stroke-width: 1.5;
+}

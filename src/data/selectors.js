@@ -105,12 +105,46 @@ export function districtsForProject() {
 const IMPACT_SUB_METRIC_KEYS = ['modalSplit', 'carDensity', 'cycleNetwork'];
 
 /**
- * TODO(data): none of the three are sourced yet (see docs/DATA_TODO.md), so
- * every value is null and each sub-metric renders an honest placeholder slot,
- * matching `widgetMetricsForProject`'s Neutrality/Honesty guarantee — never a
- * fabricated number.
- * @returns {{ key: string, value: number|null }[]}
+ * Cologne's sourced Pkw-Dichte (car density) series, oldest year first — the
+ * only city with `car_density` rows in `cities.csv` so far (2021–2025, Stadt
+ * Köln). Empty series and null source for any city without them.
+ * @param {import('./types.js').CityIndicator[]} cityIndicators
+ * @param {string} citySlug
+ * @returns {{ series: {year: number, value: number}[], unit: string|null, source: {url: string, label: string, accessed: string|null}|null }}
  */
-export function impactSubMetrics() {
-  return IMPACT_SUB_METRIC_KEYS.map((key) => ({ key, value: null }));
+export function carDensitySeriesForCity(cityIndicators, citySlug) {
+  const rows = cityIndicatorsForCity(cityIndicators, citySlug)
+    .filter((indicator) => indicator.indicatorKey === 'car_density')
+    .sort((a, b) => (a.year ?? 0) - (b.year ?? 0));
+  const [first] = rows;
+  return {
+    series: rows.map((row) => ({ year: row.year, value: row.value })),
+    unit: first?.unit ?? null,
+    source: first
+      ? { url: first.sourceUrl, label: first.sourceLabel, accessed: first.sourceAccessed }
+      : null,
+  };
+}
+
+/**
+ * TODO(data): modal split and cycle network are not sourced yet (see
+ * docs/DATA_TODO.md), so they stay null and render an honest placeholder slot,
+ * matching `widgetMetricsForProject`'s Neutrality/Honesty guarantee — never a
+ * fabricated number. Car density is sourced for Cologne (see
+ * `carDensitySeriesForCity`) and carries its full time series so the widget can
+ * chart it, not just show a single figure.
+ * @param {import('./types.js').CityIndicator[]} [cityIndicators]
+ * @param {string|null} [citySlug]
+ * @returns {{ key: string, value: number|{year: number, value: number}[]|null, unit: string|null, source: {url: string, label: string, accessed: string|null}|null }[]}
+ */
+export function impactSubMetrics(cityIndicators = [], citySlug = null) {
+  const carDensity = citySlug
+    ? carDensitySeriesForCity(cityIndicators, citySlug)
+    : { series: [], unit: null, source: null };
+  return IMPACT_SUB_METRIC_KEYS.map((key) => {
+    if (key === 'carDensity' && carDensity.series.length > 0) {
+      return { key, value: carDensity.series, unit: carDensity.unit, source: carDensity.source };
+    }
+    return { key, value: null, unit: null, source: null };
+  });
 }

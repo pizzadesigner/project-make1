@@ -71,6 +71,27 @@ number as authoritative:
 - Cologne (`koeln`) has real city indicators even though `koeln-todo-2026` is a
   placeholder project — city data joins on `city_slug`, independent of the project.
 
+## `car_density` (Cologne) — sourced and wired, partial history only
+
+Added 5 rows for `koeln` (2021–2025, "per 1000 residents"), citing Stadt Köln's
+["Kraftfahrzeuge in Köln im Überblick"](https://www.stadt-koeln.de/artikel/73904/index.html)
+— unlike the rows above, `source_accessed` is filled in and `source_url` is the
+exact per-city page, not a generic research-source link. Feeds
+`selectors.js#carDensitySeriesForCity` → `impactSubMetrics()`'s `carDensity`
+slot, which `widgetStack.js` now renders as a real sparkline + source chip for
+Cologne (the first of the three Impact sub-metrics — modal split, car density,
+cycle network — to move past its placeholder stub; see `TRACKER_30_07.md`).
+
+- **Only 2021–2025 are sourced.** A candidate longer series (2010/2015/2020,
+  355/356/374) was proposed alongside this one but isn't backed by the cited
+  page's "last 5 years" table — dropped rather than attached to a citation that
+  doesn't actually support it. If a source for the earlier years turns up,
+  those years can be added the same way.
+- **Paris, Lisbon, Helsinki have no `car_density` rows yet** — this is Cologne
+  only, same partial-coverage pattern as the infrastructure (cycle-route) layer.
+- `impactSubMetrics()`'s other two keys (`modalSplit`, `cycleNetwork`) are
+  still `null` for every city and still render the hatched placeholder stub.
+
 ## Paris / Helsinki — display name is narrower than the underlying project
 
 Per decision (use rows as-is, relabel only): `paris-marne-la-vallee-ecoquartier-2022`

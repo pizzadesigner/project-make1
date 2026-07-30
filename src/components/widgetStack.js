@@ -8,10 +8,15 @@
 // onSelectCriterion }) and the component never reads the store — data comes
 // down, the clicked widget goes up via
 // onSelectCriterion('problemFit'|'impact'|'adoption').
-// TODO(data): placeholder content only — no researched figures yet, so no
-// fabricated number is shown (Neutrality/Honesty — see docs/DESIGN_RATIONALE.md).
+// TODO(data): mostly placeholder content still — no fabricated number is shown
+// for anything unsourced (Neutrality/Honesty — see docs/DESIGN_RATIONALE.md).
+// Cologne's Impact → car density is the first sourced exception (see
+// selectors.js#impactSubMetrics) and renders a real chart, not a stub.
 
-import { t } from '../lib/i18n.js';
+import { t, getLocale } from '../lib/i18n.js';
+import { formatNumber } from '../lib/format.js';
+import * as lineChart from './lineChart.js';
+import * as sourceChip from './sourceChip.js';
 
 const WIDGETS = ['problemFit', 'impact', 'adoption'];
 
@@ -138,7 +143,17 @@ function buildDetail(onSelectCriterion) {
     if (event.target.closest('.widget-detail__back')) onSelectCriterion(null);
   });
 
+  // Sub-metrics with real (sourced) data mount their own components — a chart,
+  // a source chip — into slots left by detailContent's innerHTML. Track them so
+  // they're torn down before the next sync rewrites that innerHTML, rather than
+  // left as orphaned DOM/listeners.
+  const children = [];
+  function clearChildren() {
+    for (const child of children.splice(0)) child.destroy();
+  }
+
   function sync(activeCriterion, metrics, impactSubMetrics) {
+    clearChildren();
     if (!activeCriterion) {
       node.hidden = true;
       node.replaceChildren();
@@ -149,9 +164,35 @@ function buildDetail(onSelectCriterion) {
     node.setAttribute('aria-label', t(`criteria.${activeCriterion}`));
     node.innerHTML = detailContent(activeCriterion, metrics, impactSubMetrics);
     node.hidden = false;
+    if (activeCriterion === 'impact') mountSubmetricExtras(node, impactSubMetrics, children);
   }
 
   return { node, sync };
+}
+
+/** Mounts a chart + source chip for each Impact sub-metric that carries a real
+ * (array-valued, sourced) series — currently just Cologne's car density. Modal
+ * split / cycle network stay honest placeholder stubs until they're sourced too. */
+function mountSubmetricExtras(node, impactSubMetrics, children) {
+  const locale = getLocale();
+  for (const submetric of impactSubMetrics) {
+    if (!Array.isArray(submetric.value)) continue;
+    const chartSlot = node.querySelector(`[data-chart="${submetric.key}"]`);
+    if (chartSlot) {
+      children.push(
+        lineChart.render(chartSlot, {
+          series: submetric.value,
+          unit: submetric.unit,
+          locale,
+          compact: true,
+        }),
+      );
+    }
+    const chipSlot = node.querySelector(`[data-chip="${submetric.key}"]`);
+    if (chipSlot && submetric.source) {
+      children.push(sourceChip.render(chipSlot, { ...submetric.source, locale }));
+    }
+  }
 }
 
 /** Placeholder L2 content — a heading, a body (Impact's three sub-metric
@@ -179,8 +220,10 @@ function detailContent(criterion, metrics, impactSubMetrics) {
 }
 
 /** Impact's three sub-metrics (modal split, car density, cycle network — see
- * selectors.js#impactSubMetrics), side by side. Each is its own honest
- * placeholder slot until its figure is sourced. */
+ * selectors.js#impactSubMetrics), side by side. Each is an honest placeholder
+ * slot until its figure is sourced — except car density for Cologne, which
+ * renders its real chart (mounted by mountSubmetricExtras once this markup is
+ * in the DOM). */
 function submetricsHtml(impactSubMetrics) {
   return `
     <div class="widget-detail__submetrics">
@@ -188,8 +231,18 @@ function submetricsHtml(impactSubMetrics) {
     </div>`;
 }
 
-function submetricHtml({ key, value }) {
+function submetricHtml({ key, value, unit }) {
   const label = t(`impact.${key}`);
+  if (Array.isArray(value)) {
+    const latest = value[value.length - 1];
+    return `
+      <div class="widget-detail__submetric">
+        <span class="widget-detail__submetric-label">${label}</span>
+        <span class="widget-detail__submetric-value">${formatNumber(latest.value, getLocale(), unit)}</span>
+        <div class="widget-detail__submetric-chart" data-chart="${key}"></div>
+        <span class="widget-detail__submetric-chip" data-chip="${key}"></span>
+      </div>`;
+  }
   if (value == null) {
     return `
       <div class="widget-detail__submetric">

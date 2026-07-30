@@ -4,6 +4,7 @@ import {
   cityIndicatorValue,
   populationDensityForCity,
   widgetMetricsForProject,
+  carDensitySeriesForCity,
   impactSubMetrics,
 } from './selectors.js';
 
@@ -13,6 +14,36 @@ const indicators = [
   { citySlug: 'koeln', indicatorKey: 'population', value: 1028273 },
   { citySlug: 'koeln', indicatorKey: 'area_km2', value: 405 },
   { citySlug: 'lisboa', indicatorKey: 'population', value: 596952 },
+];
+
+// Real Cologne Pkw-Dichte figures (Stadt Köln, "Kraftfahrzeuge in Köln im
+// Überblick"), listed out of year order to exercise the sort.
+const CAR_DENSITY_SOURCE = {
+  url: 'https://www.stadt-koeln.de/artikel/73904/index.html',
+  label: 'Stadt Köln – Kraftfahrzeuge in Köln im Überblick',
+  accessed: '2026-07-30',
+};
+const carDensityIndicators = [
+  {
+    citySlug: 'koeln',
+    indicatorKey: 'car_density',
+    value: 373,
+    unit: 'per 1000 residents',
+    year: 2025,
+    sourceUrl: CAR_DENSITY_SOURCE.url,
+    sourceLabel: CAR_DENSITY_SOURCE.label,
+    sourceAccessed: CAR_DENSITY_SOURCE.accessed,
+  },
+  {
+    citySlug: 'koeln',
+    indicatorKey: 'car_density',
+    value: 378,
+    unit: 'per 1000 residents',
+    year: 2021,
+    sourceUrl: CAR_DENSITY_SOURCE.url,
+    sourceLabel: CAR_DENSITY_SOURCE.label,
+    sourceAccessed: CAR_DENSITY_SOURCE.accessed,
+  },
 ];
 
 describe('cityIndicatorsForCity', () => {
@@ -55,15 +86,60 @@ describe('widgetMetricsForProject', () => {
   });
 });
 
+describe('carDensitySeriesForCity', () => {
+  it('returns the series oldest-year-first, with unit and source', () => {
+    expect(carDensitySeriesForCity(carDensityIndicators, 'koeln')).toEqual({
+      series: [
+        { year: 2021, value: 378 },
+        { year: 2025, value: 373 },
+      ],
+      unit: 'per 1000 residents',
+      source: CAR_DENSITY_SOURCE,
+    });
+  });
+
+  it('returns an empty series and null source for a city with no car_density rows', () => {
+    expect(carDensitySeriesForCity(carDensityIndicators, 'lisboa')).toEqual({
+      series: [],
+      unit: null,
+      source: null,
+    });
+  });
+});
+
 describe('impactSubMetrics', () => {
-  it('exposes the three Impact sub-metrics, all null until content is sourced', () => {
+  it('exposes modal split and cycle network as null until content is sourced', () => {
     // Same Neutrality/Honesty contract as widgetMetricsForProject — the keys
     // are what widgetStack.js relies on, the nulls keep any fabricated figure
     // from rendering (see docs/DATA_TODO.md).
+    expect(impactSubMetrics(carDensityIndicators, 'lisboa')).toEqual([
+      { key: 'modalSplit', value: null, unit: null, source: null },
+      { key: 'carDensity', value: null, unit: null, source: null },
+      { key: 'cycleNetwork', value: null, unit: null, source: null },
+    ]);
+  });
+
+  it('defaults to all null when called with no city (e.g. no focused project)', () => {
     expect(impactSubMetrics()).toEqual([
-      { key: 'modalSplit', value: null },
-      { key: 'carDensity', value: null },
-      { key: 'cycleNetwork', value: null },
+      { key: 'modalSplit', value: null, unit: null, source: null },
+      { key: 'carDensity', value: null, unit: null, source: null },
+      { key: 'cycleNetwork', value: null, unit: null, source: null },
+    ]);
+  });
+
+  it("exposes Cologne's car density as its sourced series, unit and source", () => {
+    expect(impactSubMetrics(carDensityIndicators, 'koeln')).toEqual([
+      { key: 'modalSplit', value: null, unit: null, source: null },
+      {
+        key: 'carDensity',
+        value: [
+          { year: 2021, value: 378 },
+          { year: 2025, value: 373 },
+        ],
+        unit: 'per 1000 residents',
+        source: CAR_DENSITY_SOURCE,
+      },
+      { key: 'cycleNetwork', value: null, unit: null, source: null },
     ]);
   });
 });

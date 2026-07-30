@@ -3,36 +3,47 @@
 // values, so no cross-city normalisation is implied. Data down as
 // { series, unit, locale }; the component owns only its SVG.
 
-import { scaleLinear, line, max, extent } from 'd3';
+import { scaleLinear, line, min, max, extent } from 'd3';
 import { formatNumber, formatYear } from '../lib/format.js';
 import { motionMs, prefersReducedMotion } from '../lib/a11y.js';
 
 const W = 640;
 const H = 260;
 const MARGIN = { top: 16, right: 16, bottom: 32, left: 52 };
+// Compact mode drops the axes/gridlines/unit label entirely (there's no room
+// for legible 12px-in-a-640-viewBox text once this scales down into a narrow
+// widget slot) and reclaims that space for the line itself — a sparkline, not
+// a smaller version of the full chart.
+const COMPACT_MARGIN = { top: 6, right: 6, bottom: 6, left: 6 };
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 /**
  * @param {HTMLElement} container
- * @param {{ series: {year: number, value: number}[], unit: string|null, locale: 'en'|'de' }} props
+ * @param {{ series: {year: number, value: number}[], unit: string|null, locale: 'en'|'de', compact?: boolean }} props
  * @returns {{ update(): void, destroy(): void }}
  */
 export function render(container, props) {
-  const svg = el('svg', { class: 'line-chart', viewBox: `0 0 ${W} ${H}`, role: 'img' });
+  const compact = Boolean(props.compact);
+  const margin = compact ? COMPACT_MARGIN : MARGIN;
+  const svg = el('svg', {
+    class: compact ? 'line-chart line-chart--compact' : 'line-chart',
+    viewBox: `0 0 ${W} ${H}`,
+    role: 'img',
+  });
   svg.setAttribute('aria-label', describe(props));
   container.append(svg);
 
   const x = scaleLinear()
     .domain(extent(props.series, (d) => d.year))
-    .range([MARGIN.left, W - MARGIN.right]);
+    .range([margin.left, W - margin.right]);
   const y = scaleLinear()
-    .domain([0, max(props.series, (d) => d.value) || 1])
+    .domain(yDomain(props.series, compact))
     .nice()
-    .range([H - MARGIN.bottom, MARGIN.top]);
+    .range([H - margin.bottom, margin.top]);
 
-  drawAxes(svg, x, y, props);
+  if (!compact) drawAxes(svg, x, y, props);
   drawLine(svg, x, y, props.series);
-  drawDots(svg, x, y, props.series);
+  drawDots(svg, x, y, props.series, compact);
 
   return {
     update() {},
@@ -40,6 +51,20 @@ export function render(container, props) {
       svg.remove();
     },
   };
+}
+
+// The full chart starts at 0 — never exaggerate a trend by cropping the axis
+// (Neutrality). A compact sparkline has no axis to mislead with, and its whole
+// point is the shape of local variation, which a real quantity like car
+// density (370-378) would lose entirely against a 0 baseline; it zooms to the
+// data's own range instead, like the reference chart this pattern came from.
+function yDomain(series, compact) {
+  const lo = min(series, (d) => d.value);
+  const hi = max(series, (d) => d.value);
+  if (!compact) return [0, hi || 1];
+  const span = hi - lo;
+  const pad = span > 0 ? span * 0.15 : Math.max(hi * 0.05, 1);
+  return [lo - pad, hi + pad];
 }
 
 function drawAxes(svg, x, y, props) {
@@ -80,10 +105,11 @@ function drawLine(svg, x, y, series) {
   animateDraw(path);
 }
 
-function drawDots(svg, x, y, series) {
+function drawDots(svg, x, y, series, compact = false) {
+  const r = compact ? 3 : 4;
   for (const point of series) {
     svg.append(
-      el('circle', { class: 'line-chart__dot', cx: x(point.year), cy: y(point.value), r: 4 }),
+      el('circle', { class: 'line-chart__dot', cx: x(point.year), cy: y(point.value), r }),
     );
   }
 }

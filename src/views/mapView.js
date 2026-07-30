@@ -140,7 +140,7 @@ export function render(container, props) {
       project: focusedProject,
       activeCriterion: next.activeCriterion,
       metrics: widgetMetricsForProject(focusedProject),
-      impactSubMetrics: impactSubMetrics(),
+      impactSubMetrics: impactSubMetrics(next.cityIndicators, focusedProject?.citySlug ?? null),
       onSelectCriterion: props.setActiveCriterion,
     };
 

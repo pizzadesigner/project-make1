@@ -325,6 +325,17 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* A sourced sub-metric's sparkline (see lineChart.js#compact) and its source
+   chip, replacing the stub below once a figure lands. */
+.widget-detail__submetric-chart {
+  flex: 1;
+  min-height: 4.5rem;
+}
+
+.widget-detail__submetric-chip {
+  align-self: flex-start;
+}
+
 /* Placeholder until each sub-metric is sourced — a smaller hatched slot. */
 .widget-detail__submetric-stub {
   flex: 1;
