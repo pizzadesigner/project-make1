@@ -5,6 +5,7 @@
 // static (no tweens), so nothing to reduce under prefers-reduced-motion.
 
 import { arc } from 'd3';
+import { renderTooltip } from './tooltip.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const SIZE = 220;
@@ -12,12 +13,12 @@ const HOLE = 26; // inner hole radius
 const RING_GAP = 2; // gap between rings and between segments
 
 /**
- * @param {HTMLElement} container
- * @param {{ modes: string[], rings: {year: number, values: number[]}[], ariaLabel: string }} props
+ * @param {HTMLElement} container  A positioned element (see .widget-detail__donut).
+ * @param {{ modes: string[], labels: string[], rings: {year: number, values: number[]}[], ariaLabel: string }} props
  * @returns {{ update(): void, destroy(): void }}
  */
 export function render(container, props) {
-  const { modes, rings, ariaLabel } = props;
+  const { modes, labels, rings, ariaLabel } = props;
 
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('class', 'modal-split');
@@ -28,6 +29,9 @@ export function render(container, props) {
   const group = document.createElementNS(SVG_NS, 'g');
   group.setAttribute('transform', `translate(${SIZE / 2} ${SIZE / 2})`);
   svg.append(group);
+
+  // A shared tooltip; each segment shows its mode / year / share on hover.
+  const tooltip = renderTooltip(container);
 
   const ringWidth = (SIZE / 2 - HOLE - RING_GAP) / Math.max(rings.length, 1);
   const build = arc().padAngle(0.008);
@@ -42,6 +46,7 @@ export function render(container, props) {
       const path = document.createElementNS(SVG_NS, 'path');
       path.setAttribute('d', build({ innerRadius, outerRadius, startAngle, endAngle }));
       path.setAttribute('class', `modal-split__seg modal-split__seg--${modes[mi]}`);
+      wireSegment(path, container, tooltip, `${labels[mi]}`, ring.year, value);
       group.append(path);
       startAngle = endAngle;
     });
@@ -55,9 +60,23 @@ export function render(container, props) {
   return {
     update() {},
     destroy() {
+      tooltip.destroy();
       svg.remove();
     },
   };
+}
+
+/** Show the segment's mode / year / share in the shared tooltip, tracking the
+ * cursor within the (positioned) container. */
+function wireSegment(path, container, tooltip, label, year, value) {
+  const html = `<strong>${label}</strong><span>${year}: ${value}%</span>`;
+  const move = (event) => {
+    const rect = container.getBoundingClientRect();
+    tooltip.show(html, event.clientX - rect.left, event.clientY - rect.top);
+  };
+  path.addEventListener('mouseenter', move);
+  path.addEventListener('mousemove', move);
+  path.addEventListener('mouseleave', tooltip.hide);
 }
 
 /** A pill-backed year label centred at the top of a ring (radius `midRadius`). */

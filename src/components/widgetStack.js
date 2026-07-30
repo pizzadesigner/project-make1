@@ -183,6 +183,7 @@ function mountSubmetricExtras(node, impactSubMetrics, children) {
         children.push(
           modalSplitChart.render(donutSlot, {
             modes: submetric.value.modes,
+            labels: submetric.value.modes.map((mode) => t(`impact.mode.${mode}`)),
             rings: submetric.value.rings,
             ariaLabel: modalSplitAriaLabel(submetric.value),
           }),

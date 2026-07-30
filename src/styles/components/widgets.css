@@ -319,8 +319,10 @@
   align-items: center;
 }
 
-/* The donut itself (see modalSplitChart.js) and its per-mode legend. */
+/* The donut itself (see modalSplitChart.js) and its per-mode legend. The slot is
+   positioned so the hover tooltip can anchor within it. */
 .widget-detail__donut {
+  position: relative;
   width: 100%;
   max-width: 12rem;
 }
@@ -336,7 +338,8 @@
   stroke-width: 1;
 }
 
-/* Year label pill sitting on the top of each ring. */
+/* Year label pill sitting on the top of each ring — non-interactive so it never
+   blocks a segment's hover. */
 .modal-split__year-bg {
   fill: var(--color-canvas);
   opacity: 0.8;
@@ -347,6 +350,11 @@
   font-size: 11px;
   font-weight: 700;
   text-anchor: middle;
+}
+
+.modal-split__year-bg,
+.modal-split__year {
+  pointer-events: none;
 }
 
 .modal-split__seg--transit,
