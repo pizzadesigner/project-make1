@@ -26,6 +26,17 @@
   stroke-width: 2;
 }
 
+/* Enlarged while its point is hovered (see lineChart.js#wirePoint). */
+.line-chart__dot.is-active {
+  r: 6;
+}
+
+/* Transparent, larger-than-the-dot hover target. */
+.line-chart__hit {
+  fill: transparent;
+  cursor: pointer;
+}
+
 .line-chart__x-label,
 .line-chart__y-label,
 .line-chart__unit {

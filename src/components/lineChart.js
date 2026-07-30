@@ -6,6 +6,7 @@
 import { scaleLinear, line, min, max, extent } from 'd3';
 import { formatNumber, formatYear } from '../lib/format.js';
 import { motionMs, prefersReducedMotion } from '../lib/a11y.js';
+import { renderTooltip } from './tooltip.js';
 
 const W = 640;
 const H = 260;
@@ -33,6 +34,10 @@ export function render(container, props) {
   svg.setAttribute('aria-label', describe(props));
   container.append(svg);
 
+  // The tooltip anchors within the container, so it must be a positioned box.
+  if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
+  const tooltip = renderTooltip(container);
+
   const x = scaleLinear()
     .domain(extent(props.series, (d) => d.year))
     .range([margin.left, W - margin.right]);
@@ -43,11 +48,12 @@ export function render(container, props) {
 
   if (!compact) drawAxes(svg, x, y, props);
   drawLine(svg, x, y, props.series);
-  drawDots(svg, x, y, props.series, compact);
+  drawDots(svg, x, y, props.series, compact, { container, tooltip, props });
 
   return {
     update() {},
     destroy() {
+      tooltip.destroy();
       svg.remove();
     },
   };
@@ -105,13 +111,34 @@ function drawLine(svg, x, y, series) {
   animateDraw(path);
 }
 
-function drawDots(svg, x, y, series, compact = false) {
+function drawDots(svg, x, y, series, compact, hover) {
   const r = compact ? 3 : 4;
   for (const point of series) {
-    svg.append(
-      el('circle', { class: 'line-chart__dot', cx: x(point.year), cy: y(point.value), r }),
-    );
+    const cx = x(point.year);
+    const cy = y(point.value);
+    const dot = el('circle', { class: 'line-chart__dot', cx, cy, r });
+    svg.append(dot);
+    // A larger transparent hit target so the small dot is comfortable to hover;
+    // it enlarges the dot and shows the value tooltip.
+    const hit = el('circle', { class: 'line-chart__hit', cx, cy, r: 14 });
+    wirePoint(hit, dot, point, hover);
+    svg.append(hit);
   }
+}
+
+function wirePoint(hit, dot, point, { container, tooltip, props }) {
+  const html = `<strong>${formatNumber(point.value, props.locale, props.unit)}</strong><span>${formatYear(point.year)}</span>`;
+  const move = (event) => {
+    const rect = container.getBoundingClientRect();
+    tooltip.show(html, event.clientX - rect.left, event.clientY - rect.top);
+    dot.classList.add('is-active');
+  };
+  hit.addEventListener('mouseenter', move);
+  hit.addEventListener('mousemove', move);
+  hit.addEventListener('mouseleave', () => {
+    tooltip.hide();
+    dot.classList.remove('is-active');
+  });
 }
 
 function animateDraw(path) {
