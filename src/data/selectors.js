@@ -98,11 +98,13 @@ export function districtsForProject() {
   return null;
 }
 
-// The Impact widget's L2 sub-metrics, per `designWidgets.png` (the
-// Paris/Cologne/Helsinki set — Lisbon shows a different trio, GA Index /
-// Naherholungsflächen / undecided, not modelled yet). Labels resolve via
-// `impact.<key>` in the i18n bundles.
-const IMPACT_SUB_METRIC_KEYS = ['modalSplit', 'carDensity', 'cycleNetwork'];
+// The Impact widget's L2 sub-metrics are Modal split, Car density and Cycle
+// network (per `designWidgets.png`; Lisbon's different trio is not modelled
+// yet). Labels resolve via `impact.<key>` in the i18n bundles.
+//
+// Modal-split transport modes, in the donut's segment order (matches the
+// `modal_split_<mode>` indicator keys in cities.csv). Labels: `impact.mode.<mode>`.
+const MODAL_SPLIT_MODES = ['transit', 'bike', 'walk', 'car'];
 
 /**
  * Cologne's sourced Pkw-Dichte (car density) series, oldest year first — the
@@ -127,24 +129,87 @@ export function carDensitySeriesForCity(cityIndicators, citySlug) {
 }
 
 /**
- * TODO(data): modal split and cycle network are not sourced yet (see
- * docs/DATA_TODO.md), so they stay null and render an honest placeholder slot,
- * matching `widgetMetricsForProject`'s Neutrality/Honesty guarantee — never a
- * fabricated number. Car density is sourced for Cologne (see
- * `carDensitySeriesForCity`) and carries its full time series so the widget can
- * chart it, not just show a single figure.
+ * A city's modal split as concentric rings (one per year, oldest first), for the
+ * donut. Pivots the long-format `modal_split_<mode>` rows into per-year values in
+ * fixed mode order. Null for cities without modal-split rows.
+ * @param {import('./types.js').CityIndicator[]} cityIndicators
+ * @param {string} citySlug
+ * @returns {{ modes: string[], rings: {year: number, values: number[]}[], latestYear: number|null, source: {url: string, label: string, accessed: string|null} } | null}
+ */
+export function modalSplitForCity(cityIndicators, citySlug) {
+  const rows = cityIndicatorsForCity(cityIndicators, citySlug).filter((indicator) =>
+    indicator.indicatorKey.startsWith('modal_split_'),
+  );
+  if (rows.length === 0) return null;
+  const years = [...new Set(rows.map((row) => row.year).filter((year) => year != null))].sort(
+    (a, b) => a - b,
+  );
+  const valueAt = (year, mode) =>
+    rows.find((row) => row.year === year && row.indicatorKey === `modal_split_${mode}`)?.value ?? 0;
+  const [first] = rows;
+  return {
+    modes: MODAL_SPLIT_MODES,
+    rings: years.map((year) => ({
+      year,
+      values: MODAL_SPLIT_MODES.map((mode) => valueAt(year, mode)),
+    })),
+    latestYear: years[years.length - 1] ?? null,
+    source: { url: first.sourceUrl, label: first.sourceLabel, accessed: first.sourceAccessed },
+  };
+}
+
+/**
+ * A city's single cycle-network figure (km per 1000 residents), or null.
+ * @param {import('./types.js').CityIndicator[]} cityIndicators
+ * @param {string} citySlug
+ * @returns {{ value: number, unit: string|null, source: {url: string, label: string, accessed: string|null} } | null}
+ */
+export function cycleNetworkForCity(cityIndicators, citySlug) {
+  const row = cityIndicatorsForCity(cityIndicators, citySlug).find(
+    (indicator) => indicator.indicatorKey === 'cycle_network',
+  );
+  if (!row) return null;
+  return {
+    value: row.value,
+    unit: row.unit,
+    source: { url: row.sourceUrl, label: row.sourceLabel, accessed: row.sourceAccessed },
+  };
+}
+
+/**
+ * The Impact widget's three L2 sub-metrics for a city, in display order. Each
+ * carries its own value shape (modal split → rings object, car density → year
+ * series, cycle network → single figure) and its own source; an unsourced one
+ * stays null and renders an honest placeholder — never a fabricated number.
  * @param {import('./types.js').CityIndicator[]} [cityIndicators]
  * @param {string|null} [citySlug]
- * @returns {{ key: string, value: number|{year: number, value: number}[]|null, unit: string|null, source: {url: string, label: string, accessed: string|null}|null }[]}
+ * @returns {{ key: string, value: unknown, unit: string|null, source: {url: string, label: string, accessed: string|null}|null }[]}
  */
 export function impactSubMetrics(cityIndicators = [], citySlug = null) {
+  const modalSplit = citySlug ? modalSplitForCity(cityIndicators, citySlug) : null;
   const carDensity = citySlug
     ? carDensitySeriesForCity(cityIndicators, citySlug)
     : { series: [], unit: null, source: null };
-  return IMPACT_SUB_METRIC_KEYS.map((key) => {
-    if (key === 'carDensity' && carDensity.series.length > 0) {
-      return { key, value: carDensity.series, unit: carDensity.unit, source: carDensity.source };
-    }
-    return { key, value: null, unit: null, source: null };
-  });
+  const cycleNetwork = citySlug ? cycleNetworkForCity(cityIndicators, citySlug) : null;
+  return [
+    modalSplit
+      ? { key: 'modalSplit', value: modalSplit, unit: '%', source: modalSplit.source }
+      : { key: 'modalSplit', value: null, unit: null, source: null },
+    carDensity.series.length > 0
+      ? {
+          key: 'carDensity',
+          value: carDensity.series,
+          unit: carDensity.unit,
+          source: carDensity.source,
+        }
+      : { key: 'carDensity', value: null, unit: null, source: null },
+    cycleNetwork
+      ? {
+          key: 'cycleNetwork',
+          value: cycleNetwork.value,
+          unit: cycleNetwork.unit,
+          source: cycleNetwork.source,
+        }
+      : { key: 'cycleNetwork', value: null, unit: null, source: null },
+  ];
 }

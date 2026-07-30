@@ -16,3 +16,20 @@ koeln,car_density,Car density (Pkw-Dichte),370,per 1000 residents,2022,https://w
 koeln,car_density,Car density (Pkw-Dichte),370,per 1000 residents,2023,https://www.stadt-koeln.de/artikel/73904/index.html,Stadt Köln – Kraftfahrzeuge in Köln im Überblick,2026-07-30
 koeln,car_density,Car density (Pkw-Dichte),371,per 1000 residents,2024,https://www.stadt-koeln.de/artikel/73904/index.html,Stadt Köln – Kraftfahrzeuge in Köln im Überblick,2026-07-30
 koeln,car_density,Car density (Pkw-Dichte),373,per 1000 residents,2025,https://www.stadt-koeln.de/artikel/73904/index.html,Stadt Köln – Kraftfahrzeuge in Köln im Überblick,2026-07-30
+koeln,cycle_network,Cycle network (Radverkehrsnetz),1.75,km per 1000 residents,,https://www.stadt-koeln.de/politik-und-verwaltung/presseservice/radverkehrshauptnetz-fuer-alle-stadtbezirke,Stadt Köln – Radverkehrshauptnetz für alle Stadtbezirke,2026-07-30
+koeln,modal_split_transit,Modal split – Transit (ÖPNV),18,%,1982,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30
+koeln,modal_split_bike,Modal split – Cycling (Rad),9,%,1982,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30
+koeln,modal_split_walk,Modal split – Walking (zu Fuß),25,%,1982,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30
+koeln,modal_split_car,Modal split – Car (PKW),48,%,1982,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30
+koeln,modal_split_transit,Modal split – Transit (ÖPNV),21,%,2006,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30
+koeln,modal_split_bike,Modal split – Cycling (Rad),12,%,2006,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30
+koeln,modal_split_walk,Modal split – Walking (zu Fuß),24,%,2006,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30
+koeln,modal_split_car,Modal split – Car (PKW),43,%,2006,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30
+koeln,modal_split_transit,Modal split – Transit (ÖPNV),21,%,2017,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30
+koeln,modal_split_bike,Modal split – Cycling (Rad),18,%,2017,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30
+koeln,modal_split_walk,Modal split – Walking (zu Fuß),26,%,2017,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30
+koeln,modal_split_car,Modal split – Car (PKW),35,%,2017,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30
+koeln,modal_split_transit,Modal split – Transit (ÖPNV),17,%,2022,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30
+koeln,modal_split_bike,Modal split – Cycling (Rad),25,%,2022,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30
+koeln,modal_split_walk,Modal split – Walking (zu Fuß),33,%,2022,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30
+koeln,modal_split_car,Modal split – Car (PKW),25,%,2022,https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf,Stadt Köln – Verkehrsentwicklung (VLR 2023),2026-07-30

@@ -5,6 +5,8 @@ import {
   populationDensityForCity,
   widgetMetricsForProject,
   carDensitySeriesForCity,
+  modalSplitForCity,
+  cycleNetworkForCity,
   impactSubMetrics,
 } from './selectors.js';
 
@@ -141,5 +143,93 @@ describe('impactSubMetrics', () => {
       },
       { key: 'cycleNetwork', value: null, unit: null, source: null },
     ]);
+  });
+});
+
+const MODAL_SOURCE = {
+  url: 'https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf',
+  label: 'Stadt Köln – Verkehrsentwicklung (VLR 2023)',
+  accessed: '2026-07-30',
+};
+// Two modes across two years, out of order, to exercise the pivot + sort.
+const modalRows = [
+  {
+    citySlug: 'koeln',
+    indicatorKey: 'modal_split_car',
+    value: 25,
+    year: 2022,
+    sourceUrl: MODAL_SOURCE.url,
+    sourceLabel: MODAL_SOURCE.label,
+    sourceAccessed: MODAL_SOURCE.accessed,
+  },
+  {
+    citySlug: 'koeln',
+    indicatorKey: 'modal_split_bike',
+    value: 9,
+    year: 1982,
+    sourceUrl: MODAL_SOURCE.url,
+    sourceLabel: MODAL_SOURCE.label,
+    sourceAccessed: MODAL_SOURCE.accessed,
+  },
+  {
+    citySlug: 'koeln',
+    indicatorKey: 'modal_split_car',
+    value: 48,
+    year: 1982,
+    sourceUrl: MODAL_SOURCE.url,
+    sourceLabel: MODAL_SOURCE.label,
+    sourceAccessed: MODAL_SOURCE.accessed,
+  },
+  {
+    citySlug: 'koeln',
+    indicatorKey: 'modal_split_bike',
+    value: 25,
+    year: 2022,
+    sourceUrl: MODAL_SOURCE.url,
+    sourceLabel: MODAL_SOURCE.label,
+    sourceAccessed: MODAL_SOURCE.accessed,
+  },
+];
+
+describe('modalSplitForCity', () => {
+  it('pivots long-format rows into per-year rings, oldest first, in mode order', () => {
+    // Missing modes (transit/walk here) fill as 0 so ring segments always align.
+    expect(modalSplitForCity(modalRows, 'koeln')).toEqual({
+      modes: ['transit', 'bike', 'walk', 'car'],
+      rings: [
+        { year: 1982, values: [0, 9, 0, 48] },
+        { year: 2022, values: [0, 25, 0, 25] },
+      ],
+      latestYear: 2022,
+      source: MODAL_SOURCE,
+    });
+  });
+
+  it('is null for a city with no modal-split rows', () => {
+    expect(modalSplitForCity(modalRows, 'lisboa')).toBeNull();
+  });
+});
+
+describe('cycleNetworkForCity', () => {
+  const cycleRow = {
+    citySlug: 'koeln',
+    indicatorKey: 'cycle_network',
+    value: 1.75,
+    unit: 'km per 1000 residents',
+    sourceUrl: 'https://example.test/cycle',
+    sourceLabel: 'Stadt Köln',
+    sourceAccessed: '2026-07-30',
+  };
+
+  it('exposes the single figure with its unit and source', () => {
+    expect(cycleNetworkForCity([cycleRow], 'koeln')).toEqual({
+      value: 1.75,
+      unit: 'km per 1000 residents',
+      source: { url: 'https://example.test/cycle', label: 'Stadt Köln', accessed: '2026-07-30' },
+    });
+  });
+
+  it('is null for a city with no cycle-network row', () => {
+    expect(cycleNetworkForCity([cycleRow], 'lisboa')).toBeNull();
   });
 });

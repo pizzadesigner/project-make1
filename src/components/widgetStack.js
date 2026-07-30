@@ -16,6 +16,7 @@
 import { t, getLocale } from '../lib/i18n.js';
 import { formatNumber } from '../lib/format.js';
 import * as lineChart from './lineChart.js';
+import * as modalSplitChart from './modalSplitChart.js';
 import * as sourceChip from './sourceChip.js';
 
 const WIDGETS = ['problemFit', 'impact', 'adoption'];
@@ -170,29 +171,49 @@ function buildDetail(onSelectCriterion) {
   return { node, sync };
 }
 
-/** Mounts a chart + source chip for each Impact sub-metric that carries a real
- * (array-valued, sourced) series — currently just Cologne's car density. Modal
- * split / cycle network stay honest placeholder stubs until they're sourced too. */
+/** Mounts each Impact sub-metric's live pieces once its markup is in the DOM:
+ * the modal-split donut, the car-density sparkline, and a source chip for any
+ * sourced metric (including the single-figure cycle network). */
 function mountSubmetricExtras(node, impactSubMetrics, children) {
   const locale = getLocale();
   for (const submetric of impactSubMetrics) {
-    if (!Array.isArray(submetric.value)) continue;
-    const chartSlot = node.querySelector(`[data-chart="${submetric.key}"]`);
-    if (chartSlot) {
-      children.push(
-        lineChart.render(chartSlot, {
-          series: submetric.value,
-          unit: submetric.unit,
-          locale,
-          compact: true,
-        }),
-      );
+    if (submetric.key === 'modalSplit' && submetric.value) {
+      const donutSlot = node.querySelector(`[data-donut="${submetric.key}"]`);
+      if (donutSlot) {
+        children.push(
+          modalSplitChart.render(donutSlot, {
+            modes: submetric.value.modes,
+            rings: submetric.value.rings,
+            ariaLabel: modalSplitAriaLabel(submetric.value),
+          }),
+        );
+      }
+    } else if (Array.isArray(submetric.value)) {
+      const chartSlot = node.querySelector(`[data-chart="${submetric.key}"]`);
+      if (chartSlot) {
+        children.push(
+          lineChart.render(chartSlot, {
+            series: submetric.value,
+            unit: submetric.unit,
+            locale,
+            compact: true,
+          }),
+        );
+      }
     }
     const chipSlot = node.querySelector(`[data-chip="${submetric.key}"]`);
     if (chipSlot && submetric.source) {
       children.push(sourceChip.render(chipSlot, { ...submetric.source, locale }));
     }
   }
+}
+
+/** Spoken summary of the modal-split donut — the latest ring, per mode. */
+function modalSplitAriaLabel({ modes, rings, latestYear }) {
+  const latest = rings[rings.length - 1];
+  if (!latest) return t('impact.modalSplit');
+  const parts = modes.map((mode, i) => `${t(`impact.mode.${mode}`)} ${latest.values[i]}%`);
+  return `${t('impact.modalSplit')} ${latestYear}: ${parts.join(', ')}`;
 }
 
 /** Placeholder L2 content — a heading, a body (Impact's three sub-metric
@@ -233,10 +254,22 @@ function submetricsHtml(impactSubMetrics) {
 
 function submetricHtml({ key, value, unit }) {
   const label = t(`impact.${key}`);
+  const cls = 'widget-detail__submetric';
+  // Modal split — a donut plus a per-mode legend (with the latest-year share).
+  if (key === 'modalSplit' && value) {
+    return `
+      <div class="${cls} widget-detail__submetric--span">
+        <span class="widget-detail__submetric-label">${label}</span>
+        <div class="widget-detail__donut" data-donut="${key}"></div>
+        ${modalSplitLegendHtml(value)}
+        <span class="widget-detail__submetric-chip" data-chip="${key}"></span>
+      </div>`;
+  }
+  // Car density — a sparkline of the year series (latest value shown big).
   if (Array.isArray(value)) {
     const latest = value[value.length - 1];
     return `
-      <div class="widget-detail__submetric">
+      <div class="${cls}">
         <span class="widget-detail__submetric-label">${label}</span>
         <span class="widget-detail__submetric-value">${formatNumber(latest.value, getLocale(), unit)}</span>
         <div class="widget-detail__submetric-chart" data-chart="${key}"></div>
@@ -245,16 +278,35 @@ function submetricHtml({ key, value, unit }) {
   }
   if (value == null) {
     return `
-      <div class="widget-detail__submetric">
+      <div class="${cls}">
         <span class="widget-detail__submetric-label">${label}</span>
         <div class="widget-detail__submetric-stub" aria-hidden="true"></div>
       </div>`;
   }
+  // Cycle network — a single sourced figure (with its unit + source chip).
   return `
-    <div class="widget-detail__submetric">
+    <div class="${cls}">
       <span class="widget-detail__submetric-label">${label}</span>
-      <span class="widget-detail__submetric-value">${value}</span>
+      <span class="widget-detail__submetric-value">${formatNumber(value, getLocale(), unit)}</span>
+      <span class="widget-detail__submetric-chip" data-chip="${key}"></span>
     </div>`;
+}
+
+/** Legend for the modal-split donut: a colour swatch, mode label and the
+ * latest-year share for each mode, in the donut's segment order. */
+function modalSplitLegendHtml({ modes, rings }) {
+  const latest = rings[rings.length - 1]?.values ?? [];
+  const items = modes
+    .map(
+      (mode, i) => `
+      <li class="widget-detail__legend-item">
+        <span class="widget-detail__legend-swatch widget-detail__legend-swatch--${mode}"></span>
+        <span>${t(`impact.mode.${mode}`)}</span>
+        <b>${latest[i] ?? 0}%</b>
+      </li>`,
+    )
+    .join('');
+  return `<ul class="widget-detail__legend">${items}</ul>`;
 }
 
 function applyWidget(widget, layout, contentHtml) {

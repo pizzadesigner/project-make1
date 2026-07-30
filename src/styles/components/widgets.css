@@ -296,12 +296,12 @@
   );
 }
 
-/* Impact's three sub-metrics (modal split, car density, cycle network) side
-   by side, replacing the single diagram slot above for this one criterion. */
+/* Impact's sub-metrics: the modal-split donut spans the top; car density and
+   cycle network share the row below. */
 .widget-detail__submetrics {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--space-3);
 }
 
@@ -312,6 +312,95 @@
   padding: var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--color-surface-raised);
+}
+
+.widget-detail__submetric--span {
+  grid-column: 1 / -1;
+  align-items: center;
+}
+
+/* The donut itself (see modalSplitChart.js) and its per-mode legend. */
+.widget-detail__donut {
+  width: 100%;
+  max-width: 12rem;
+}
+
+.modal-split {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.modal-split__seg {
+  stroke: var(--color-surface-raised);
+  stroke-width: 1;
+}
+
+/* Year label pill sitting on the top of each ring. */
+.modal-split__year-bg {
+  fill: var(--color-canvas);
+  opacity: 0.8;
+}
+
+.modal-split__year {
+  fill: var(--color-text);
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.modal-split__seg--transit,
+.widget-detail__legend-swatch--transit {
+  fill: var(--color-mode-transit);
+  background: var(--color-mode-transit);
+}
+
+.modal-split__seg--bike,
+.widget-detail__legend-swatch--bike {
+  fill: var(--color-mode-bike);
+  background: var(--color-mode-bike);
+}
+
+.modal-split__seg--walk,
+.widget-detail__legend-swatch--walk {
+  fill: var(--color-mode-walk);
+  background: var(--color-mode-walk);
+}
+
+.modal-split__seg--car,
+.widget-detail__legend-swatch--car {
+  fill: var(--color-mode-car);
+  background: var(--color-mode-car);
+}
+
+.widget-detail__legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.widget-detail__legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.widget-detail__legend-item b {
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.widget-detail__legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
 }
 
 .widget-detail__submetric-label {
