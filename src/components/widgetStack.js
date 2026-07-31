@@ -10,8 +10,9 @@
 // onSelectCriterion('problemFit'|'impact'|'adoption').
 // TODO(data): mostly placeholder content still — no fabricated number is shown
 // for anything unsourced (Neutrality/Honesty — see docs/DESIGN_RATIONALE.md).
-// Cologne's Impact → car density is the first sourced exception (see
-// selectors.js#impactSubMetrics) and renders a real chart, not a stub.
+// Impact → car density and cycle network are the first sourced exceptions (see
+// selectors.js#impactSubMetrics): Cologne and Paris both render a real chart,
+// not a stub, while Lisbon and Helsinki remain honest placeholders.
 
 import { t, getLocale } from '../lib/i18n.js';
 import { formatNumber } from '../lib/format.js';
@@ -243,9 +244,9 @@ function detailContent(criterion, metrics, impactSubMetrics) {
 
 /** Impact's three sub-metrics (modal split, car density, cycle network — see
  * selectors.js#impactSubMetrics), side by side. Each is an honest placeholder
- * slot until its figure is sourced — except car density for Cologne, which
- * renders its real chart (mounted by mountSubmetricExtras once this markup is
- * in the DOM). */
+ * slot until its figure is sourced — car density and cycle network already
+ * render real charts for Cologne and Paris (mounted by mountSubmetricExtras
+ * once this markup is in the DOM). */
 function submetricsHtml(impactSubMetrics) {
   return `
     <div class="widget-detail__submetrics">

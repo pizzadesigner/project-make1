@@ -107,9 +107,12 @@ export function districtsForProject() {
 const MODAL_SPLIT_MODES = ['transit', 'bike', 'walk', 'car'];
 
 /**
- * Cologne's sourced Pkw-Dichte (car density) series, oldest year first — the
- * only city with `car_density` rows in `cities.csv` so far (2021–2025, Stadt
- * Köln). Empty series and null source for any city without them.
+ * A city's sourced car-density series, oldest year first. Cologne (2021–2025,
+ * Stadt Köln, vehicles per 1000 residents) and Paris (2012/2017/2023, Insee,
+ * % of households with a car) both have rows in `cities.csv`; each city's own
+ * `unit` travels with its series rather than being assumed, since the two
+ * sources measure different things. Empty series and null source for any city
+ * without them.
  * @param {import('./types.js').CityIndicator[]} cityIndicators
  * @param {string} citySlug
  * @returns {{ series: {year: number, value: number}[], unit: string|null, source: {url: string, label: string, accessed: string|null}|null }}

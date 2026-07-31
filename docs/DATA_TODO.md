@@ -71,7 +71,7 @@ number as authoritative:
 - Cologne (`koeln`) has real city indicators even though `koeln-todo-2026` is a
   placeholder project — city data joins on `city_slug`, independent of the project.
 
-## `car_density` (Cologne) — sourced and wired, partial history only
+## `car_density` (Cologne, Paris) — sourced and wired, partial history only
 
 Added 5 rows for `koeln` (2021–2025, "per 1000 residents"), citing Stadt Köln's
 ["Kraftfahrzeuge in Köln im Überblick"](https://www.stadt-koeln.de/artikel/73904/index.html)
@@ -82,15 +82,51 @@ slot, which `widgetStack.js` now renders as a real sparkline + source chip for
 Cologne (the first of the three Impact sub-metrics — modal split, car density,
 cycle network — to move past its placeholder stub; see `TRACKER_30_07.md`).
 
-- **Only 2021–2025 are sourced.** A candidate longer series (2010/2015/2020,
-  355/356/374) was proposed alongside this one but isn't backed by the cited
-  page's "last 5 years" table — dropped rather than attached to a citation that
-  doesn't actually support it. If a source for the earlier years turns up,
-  those years can be added the same way.
-- **Paris, Lisbon, Helsinki have no `car_density` rows yet** — this is Cologne
-  only, same partial-coverage pattern as the infrastructure (cycle-route) layer.
-- `impactSubMetrics()`'s other two keys (`modalSplit`, `cycleNetwork`) are
-  still `null` for every city and still render the hatched placeholder stub.
+Added 3 rows for `paris-marne-la-vallee` (2012/2017/2023), citing Insee's
+["Comparateur de territoire — Département de Paris"](https://www.insee.fr/en/statistiques/6457611?geo=DEP-75#chiffre-cle-2),
+table LOG T12 "Household automotive equipment" (also saved as a screenshot,
+`pkwDichteParis`, at the repo root). **This is a different metric from
+Cologne's**, not a like-for-like number: Insee reports the **share of
+households owning at least one car** (`% of households`), not registered
+vehicles per 1000 residents — that per-capita motorisation figure isn't in
+this Insee table. Kept as its own honestly-labelled `unit` rather than forced
+into "per 1000 residents" (Neutrality/Comparability — see `CLAUDE.MD`);
+`carDensitySeriesForCity` already carries `unit` per series, so this needed no
+code change, only new CSV rows.
+
+- **Only 2021–2025 are sourced** for Cologne. A candidate longer series
+  (2010/2015/2020, 355/356/374) was proposed alongside this one but isn't
+  backed by the cited page's "last 5 years" table — dropped rather than
+  attached to a citation that doesn't actually support it. If a source for the
+  earlier years turns up, those years can be added the same way.
+- **Lisbon, Helsinki have no `car_density` rows yet** — same partial-coverage
+  pattern as the infrastructure (cycle-route) layer below.
+- `impactSubMetrics()`'s `modalSplit` key is still `null` for Paris (only
+  Cologne has `modal_split_*` rows), and `cycleNetwork` is still `null` for
+  every city except Cologne and Paris (see next entry).
+
+## `cycle_network` (Cologne, Paris) — sourced and wired, single figure each
+
+Cologne: `1.75 km per 1000 residents`, citing Stadt Köln's
+["Radverkehrshauptnetz für alle Stadtbezirke"](https://www.stadt-koeln.de/politik-und-verwaltung/presseservice/radverkehrshauptnetz-fuer-alle-stadtbezirke).
+
+Paris: `0.48 km per 1000 residents` (2021), **calculated** as 1000 km of
+`aménagements cyclables` ÷ the `paris-marne-la-vallee` population row
+(2,074,370) × 1000 — the same per-1000-residents method as Cologne's figure.
+Cited to Ville de Paris,
+["Comment se sont déplacés les Parisien·ne·s en 2025"](https://www.paris.fr/pages/comment-se-sont-deplaces-les-parisiens-en-2025-35425)
+(given as the source for the "1000 km (2021)" figure).
+
+- **Verify before treating as final.** As accessed 2026-07-31, that page's
+  visible text reports **1,607 km in 2025** (+2% vs. 2024) rather than the
+  cited 1000 km/2021 figure — plausible as the same series a few years on
+  (Paris's post-2020 "coronapistes" build-out is well documented), but the
+  1000 km/2021 number itself wasn't found in the page's fetched text, only
+  supplied as given. Confirm against the page's own chart/graphic (likely
+  image-rendered, like the `pkwDichteParis` car-density table) or find a more
+  specific citation before calling this settled — same spirit as the dropped
+  Cologne 2010/2015/2020 series above.
+- Lisbon, Helsinki have no `cycle_network` row yet.
 
 ## Paris / Helsinki — display name is narrower than the underlying project
 
