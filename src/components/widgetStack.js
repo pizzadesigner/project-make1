@@ -10,9 +10,10 @@
 // onSelectCriterion('problemFit'|'impact'|'adoption').
 // TODO(data): mostly placeholder content still — no fabricated number is shown
 // for anything unsourced (Neutrality/Honesty — see docs/DESIGN_RATIONALE.md).
-// Impact → car density and cycle network are the first sourced exceptions (see
-// selectors.js#impactSubMetrics): Cologne and Paris both render a real chart,
-// not a stub, while Lisbon and Helsinki remain honest placeholders.
+// Impact's three sub-metrics (see selectors.js#impactSubMetrics) are the first
+// sourced exceptions: Cologne and Paris both render real charts — modal split,
+// car density, cycle network — not stubs, while Lisbon and Helsinki remain
+// honest placeholders.
 
 import { t, getLocale } from '../lib/i18n.js';
 import { formatNumber } from '../lib/format.js';

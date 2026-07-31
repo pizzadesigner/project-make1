@@ -23,6 +23,7 @@
   "impact.mode.bike": "Cycling",
   "impact.mode.walk": "Walking",
   "impact.mode.car": "Car",
+  "impact.mode.moto": "Motorized two-wheelers",
   "legend.ariaLabel": "Map legend",
   "legend.actual": "Actual",
   "legend.target": "Target",

@@ -23,6 +23,7 @@
   "impact.mode.bike": "Rad",
   "impact.mode.walk": "zu Fuß",
   "impact.mode.car": "PKW",
+  "impact.mode.moto": "Motorisierte Zweiräder",
   "legend.ariaLabel": "Kartenlegende",
   "legend.actual": "Ist-Wert",
   "legend.target": "Ziel",

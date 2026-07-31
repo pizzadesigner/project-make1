@@ -18,11 +18,14 @@
   --color-cycle-path: #41ba41; /* city cycle routes (infrastructure layer) — gradient base */
   --color-cycle-path-2: #43cc43; /* cycle-route gradient highlight (the band that runs through) */
 
-  /* Modal-split transport modes (Impact donut). */
+  /* Modal-split transport modes (Impact donut). --color-mode-moto (Paris'
+   * "deux-roues motorisé") validated against the other four for CVD/normal-
+   * vision separation — see docs/DATA_TODO.md. */
   --color-mode-transit: #f5b400;
   --color-mode-bike: #e6007e;
   --color-mode-walk: #159fd4;
   --color-mode-car: #9aa0a6;
+  --color-mode-moto: #8a63d2;
 
   /* Text — light on dark. Every pair below clears WCAG AA (4.5:1) on
    * --color-canvas #0d1117 — the "comprehensibility" graphical design objective

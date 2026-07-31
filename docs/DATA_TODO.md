@@ -101,9 +101,9 @@ code change, only new CSV rows.
   earlier years turns up, those years can be added the same way.
 - **Lisbon, Helsinki have no `car_density` rows yet** — same partial-coverage
   pattern as the infrastructure (cycle-route) layer below.
-- `impactSubMetrics()`'s `modalSplit` key is still `null` for Paris (only
-  Cologne has `modal_split_*` rows), and `cycleNetwork` is still `null` for
-  every city except Cologne and Paris (see next entry).
+- `impactSubMetrics()`'s `modalSplit` and `cycleNetwork` keys are still `null`
+  for every city except Cologne and Paris (see the `cycle_network` and
+  `modal_split_*` entries below).
 
 ## `cycle_network` (Cologne, Paris) — sourced and wired, single figure each
 
@@ -127,6 +127,42 @@ Cited to Ville de Paris,
   specific citation before calling this settled — same spirit as the dropped
   Cologne 2010/2015/2020 series above.
 - Lisbon, Helsinki have no `cycle_network` row yet.
+
+## `modal_split_*` (Cologne, Paris) — sourced and wired, two rings each
+
+Cologne has four rings (1982/2006/2017/2022, Stadt Köln VLR 2023, see above).
+
+Paris has two rings (2015 and 2022 — the RP2022 census covers survey period
+2019–2024), citing Ville de Paris,
+["Comment se sont déplacés les Parisien·ne·s en 2025"](https://www.paris.fr/pages/comment-se-sont-deplaces-les-parisiens-en-2025-35425),
+which cites Insee's RP for "domicile-travail" (home-to-work) trips of Paris
+residents 15+, all destinations — the general table, not the "stayed within
+Paris" subset the page also reports (56.8/15.7/11.5/5.6/3.5/6.9), which is a
+different, narrower population.
+
+- **A fifth mode, `moto` (deux-roues motorisé — motorized two-wheelers), was
+  added** to `MODAL_SPLIT_MODES` in `selectors.js` (was `transit`/`bike`/
+  `walk`/`car`). Paris's source reports it as its own ~3.5–4.5% slice; folding
+  it into `car` would have inflated Paris's car share by roughly a third
+  (9%→12.5% in 2022) — a real Neutrality violation, so it gets its own segment
+  instead. Cologne has no `modal_split_moto` rows, so its rings render `0` for
+  that slot (the existing "missing mode defaults to 0" behaviour) — Cologne's
+  own four-mode split is unaffected. New token `--color-mode-moto` (`#8a63d2`)
+  in `tokens.css`, validated against the other four with the dataviz skill's
+  `validate_palette.js` for CVD/normal-vision separation (passes all pairs;
+  the pre-existing lightness-band/chroma-floor FAILs on `car`/`transit` are
+  inherited from the existing palette, not from this addition — out of scope
+  here). New `impact.mode.moto` string in both i18n bundles.
+- **The source's sixth category, "pas de déplacements" (no travel/remote
+  work), is deliberately excluded** — it isn't a transport mode, so it doesn't
+  belong in a mode-share donut. Each ring's percentages are left as raw
+  source values (not rescaled), and `modalSplitChart.js` normalises by each
+  ring's own total anyway (`total = sum(ring.values)`), so leaving "no travel"
+  out means the five real modes' wedges are sized as a share of trips actually
+  made (95.3% in 2015, 95.0% in 2022) — the same convention Cologne's own
+  source already uses (its four modes sum to exactly 100 with no equivalent
+  "did not travel" bucket).
+- Lisbon, Helsinki have no `modal_split_*` rows yet.
 
 ## Paris / Helsinki — display name is narrower than the underlying project
 

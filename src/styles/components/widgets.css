@@ -381,6 +381,12 @@
   background: var(--color-mode-car);
 }
 
+.modal-split__seg--moto,
+.widget-detail__legend-swatch--moto {
+  fill: var(--color-mode-moto);
+  background: var(--color-mode-moto);
+}
+
 .widget-detail__legend {
   list-style: none;
   margin: 0;

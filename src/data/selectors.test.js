@@ -193,12 +193,13 @@ const modalRows = [
 
 describe('modalSplitForCity', () => {
   it('pivots long-format rows into per-year rings, oldest first, in mode order', () => {
-    // Missing modes (transit/walk here) fill as 0 so ring segments always align.
+    // Missing modes (transit/walk here, and moto for every Cologne row) fill as
+    // 0 so ring segments always align.
     expect(modalSplitForCity(modalRows, 'koeln')).toEqual({
-      modes: ['transit', 'bike', 'walk', 'car'],
+      modes: ['transit', 'bike', 'walk', 'car', 'moto'],
       rings: [
-        { year: 1982, values: [0, 9, 0, 48] },
-        { year: 2022, values: [0, 25, 0, 25] },
+        { year: 1982, values: [0, 9, 0, 48, 0] },
+        { year: 2022, values: [0, 25, 0, 25, 0] },
       ],
       latestYear: 2022,
       source: MODAL_SOURCE,

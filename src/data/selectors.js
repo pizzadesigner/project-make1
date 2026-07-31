@@ -104,7 +104,9 @@ export function districtsForProject() {
 //
 // Modal-split transport modes, in the donut's segment order (matches the
 // `modal_split_<mode>` indicator keys in cities.csv). Labels: `impact.mode.<mode>`.
-const MODAL_SPLIT_MODES = ['transit', 'bike', 'walk', 'car'];
+// `moto` (motorized two-wheelers) only has rows for Paris so far — missing
+// modes default to 0 (see `valueAt` below), so Cologne's rings are unaffected.
+const MODAL_SPLIT_MODES = ['transit', 'bike', 'walk', 'car', 'moto'];
 
 /**
  * A city's sourced car-density series, oldest year first. Cologne (2021–2025,
