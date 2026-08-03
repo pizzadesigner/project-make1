@@ -439,6 +439,15 @@
   align-self: flex-start;
 }
 
+/* Named gaps, not silence: the benchmark and SDG-11 target a figure still
+ * needs (widgetStack.js#contextHtml). Recessive — it must never read as data. */
+.widget-detail__submetric-pending {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-style: italic;
+  color: var(--color-text-faint);
+}
+
 /* Placeholder until each sub-metric is sourced — a smaller hatched slot. */
 .widget-detail__submetric-stub {
   flex: 1;

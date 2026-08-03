@@ -255,9 +255,10 @@ function submetricsHtml(impactSubMetrics) {
     </div>`;
 }
 
-function submetricHtml({ key, value, unit }) {
+function submetricHtml({ key, value, unit, benchmark, sdgTarget }) {
   const label = t(`impact.${key}`);
   const cls = 'widget-detail__submetric';
+  const context = contextHtml(benchmark, sdgTarget);
   // Modal split — a donut plus a per-mode legend (with the latest-year share).
   if (key === 'modalSplit' && value) {
     return `
@@ -265,6 +266,7 @@ function submetricHtml({ key, value, unit }) {
         <span class="widget-detail__submetric-label">${label}</span>
         <div class="widget-detail__donut" data-donut="${key}"></div>
         ${modalSplitLegendHtml(value)}
+        ${context}
         <span class="widget-detail__submetric-chip" data-chip="${key}"></span>
       </div>`;
   }
@@ -276,6 +278,7 @@ function submetricHtml({ key, value, unit }) {
         <span class="widget-detail__submetric-label">${label}</span>
         <span class="widget-detail__submetric-value">${formatNumber(latest.value, getLocale(), unit)}</span>
         <div class="widget-detail__submetric-chart" data-chart="${key}"></div>
+        ${context}
         <span class="widget-detail__submetric-chip" data-chip="${key}"></span>
       </div>`;
   }
@@ -291,8 +294,23 @@ function submetricHtml({ key, value, unit }) {
     <div class="${cls}">
       <span class="widget-detail__submetric-label">${label}</span>
       <span class="widget-detail__submetric-value">${formatNumber(value, getLocale(), unit)}</span>
+      ${context}
       <span class="widget-detail__submetric-chip" data-chip="${key}"></span>
     </div>`;
+}
+
+/** What a figure should be read against, under the figure itself: the
+ * benchmark ("a lot or a little?") and the SDG-11 target it serves ("why does
+ * this matter?"). Both are pending seams — see selectors.js#benchmarkForIndicator
+ * and #sdgTargetForIndicator — so they render as named placeholders rather than
+ * silently missing, and only beside a figure that actually exists. */
+function contextHtml(benchmark, sdgTarget) {
+  const rows = [
+    benchmark == null ? t('widget.benchmarkPending') : null,
+    sdgTarget == null ? t('widget.sdgTargetPending') : null,
+  ].filter(Boolean);
+  if (rows.length === 0) return '';
+  return `<p class="widget-detail__submetric-pending">${rows.join(' · ')}</p>`;
 }
 
 /** Legend for the modal-split donut: a colour swatch, mode label and the

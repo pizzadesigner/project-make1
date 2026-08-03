@@ -8,6 +8,7 @@
 // reachable only as cold/shared links; nothing here navigates to them.
 
 import { t } from '../lib/i18n.js';
+import { SDG11_TARGETS, SDG11_TARGET_CODES } from '../lib/sdg11.js';
 import { widgetMetricsForProject, impactSubMetrics } from '../data/selectors.js';
 import { loadCityOutline, loadCityDistricts, loadCityInfrastructure } from '../data/load.js';
 import * as europeMap from '../components/europeMap.js';
@@ -155,7 +156,7 @@ export function render(container, props) {
         onSelect: (slug) => props.setFocusedCity(slug),
       });
       widgetHandle = widgetStack.render(refs.stage, widgetProps);
-      legendNode = buildLegend();
+      legendNode = buildLegend(next.projects);
       legendNode.hidden = !next.focusedCity;
       refs.stage.append(legendNode);
     }
@@ -225,30 +226,79 @@ function buildShell(container, props) {
   };
 }
 
-/** Ripples' actual/target/above/below/missing swatch legend — always
- * visible, not gated on focus (unlike the tagline; see legend.css). */
-function buildLegend() {
-  const legend = document.createElement('ul');
+/** The map's key. Every row describes something the map actually draws: the
+ * three marker states (europeMap.js#applyMarkerFocus), and the SDG-11 targets
+ * the loaded projects carry.
+ *
+ * Targets are keyed by glyph + code, never by their colour alone: the ten
+ * `--sdg-*` tokens are not colour-separable as a categorical palette (worst
+ * pairs 11.a↔11.2 ΔE 1.1 deutan, 11.7↔11.6 ΔE 4.5 in normal vision), so the
+ * swatch is decorative support and the glyph carries identity. See
+ * docs/HANDOFF.md §7. The swatch shares the marker's own token, so it stays
+ * truthful if the marker styling changes.
+ * @param {import('../data/types.js').Project[]} projects
+ */
+function buildLegend(projects) {
+  const legend = document.createElement('section');
   legend.className = 'legend';
   legend.setAttribute('aria-label', t('legend.ariaLabel'));
-  const items = [
-    ['actual', t('legend.actual')],
-    ['target', t('legend.target')],
-    ['above', t('legend.aboveTarget')],
-    ['below', t('legend.belowTarget')],
-    ['missing', t('legend.missing')],
-  ];
-  for (const [modifier, label] of items) {
-    const item = document.createElement('li');
-    item.className = 'legend__item';
-    const swatch = document.createElement('span');
-    swatch.className = `legend__swatch legend__swatch--${modifier}`;
-    const text = document.createElement('span');
-    text.textContent = label;
-    item.append(swatch, text);
-    legend.append(item);
+  legend.append(
+    legendGroup(t('legend.markers'), [
+      { modifier: 'city', label: t('legend.markerCity') },
+      { modifier: 'focused', label: t('legend.markerFocused') },
+      { modifier: 'other', label: t('legend.markerOther') },
+    ]),
+  );
+  const targets = targetsInDataset(projects);
+  if (targets.length > 0) {
+    legend.append(
+      legendGroup(
+        t('legend.targets'),
+        targets.map((code) => ({
+          glyph: SDG11_TARGETS[code].glyph,
+          label: `${code} ${t(`sdg.target.${code}`)}`,
+        })),
+      ),
+    );
   }
   return legend;
+}
+
+/** The SDG-11 targets actually present in the dataset, in SDG11_TARGET_CODES
+ * order. Listing all ten would describe markers that are not on the map. */
+function targetsInDataset(projects) {
+  const present = new Set(projects.map((project) => project.sdg11Target));
+  return SDG11_TARGET_CODES.filter((code) => present.has(code));
+}
+
+/** One titled block of legend rows. Each row is a swatch (a marker state) or a
+ * glyph (an SDG-11 target) plus its label. */
+function legendGroup(title, rows) {
+  const group = document.createElement('div');
+  group.className = 'legend__group';
+  const heading = document.createElement('h2');
+  heading.className = 'legend__title';
+  heading.textContent = title;
+  const list = document.createElement('ul');
+  list.className = 'legend__items';
+  for (const row of rows) {
+    const item = document.createElement('li');
+    item.className = 'legend__item';
+    const mark = document.createElement('span');
+    if (row.glyph) {
+      mark.className = 'legend__glyph';
+      mark.textContent = row.glyph;
+      mark.setAttribute('aria-hidden', 'true');
+    } else {
+      mark.className = `legend__swatch legend__swatch--${row.modifier}`;
+    }
+    const text = document.createElement('span');
+    text.textContent = row.label;
+    item.append(mark, text);
+    list.append(item);
+  }
+  group.append(heading, list);
+  return group;
 }
 
 function showSkeleton(stage) {

@@ -1,6 +1,7 @@
-/* Map legend (actual/target/above/below/missing swatches). Ported from
- * template_Ripples.html lines 193-215 — always visible, unlike the tagline,
- * matching the source markup which has no zoom-state conditional around it. */
+/* Map legend. Two titled groups — the marker states the map draws, and the
+ * SDG-11 targets present in the dataset (see mapView.js#buildLegend). Bottom
+ * left, shown from L1 on: at L0 the overview panel owns the left third of the
+ * stage and would cover it. */
 
 .legend {
   position: absolute;
@@ -8,14 +9,33 @@
   left: var(--space-4);
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  gap: var(--space-2) var(--space-6);
+  max-width: 40ch;
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   z-index: 10;
+}
+
+.legend__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.legend__title {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.legend__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .legend__item {
@@ -24,38 +44,34 @@
   gap: var(--space-2);
 }
 
+/* Marker swatches mirror europe-map.css: a filled dot in the marker colour,
+ * ringed against the map, and dimmed for the unfocused cities. */
 .legend__swatch {
   display: inline-block;
-  width: 16px;
+  flex: none;
+  width: 10px;
   height: 10px;
-  border-radius: 2px;
+  border-radius: 50%;
+  background: var(--color-marker);
+  box-shadow: 0 0 0 1.5px var(--color-marker-ring);
 }
 
-.legend__swatch--actual {
-  background: var(--color-country-fill);
+.legend__swatch--focused {
+  width: 14px;
+  height: 14px;
 }
 
-.legend__swatch--target {
-  width: 16px;
-  height: 0;
-  border-top: 2px dashed var(--color-text-muted);
+.legend__swatch--other {
+  opacity: 0.45;
 }
 
-.legend__swatch--above {
-  background: var(--color-success);
-}
-
-.legend__swatch--below {
-  background: var(--color-danger);
-}
-
-.legend__swatch--missing {
-  width: 18px;
-  background: repeating-linear-gradient(
-    45deg,
-    var(--color-country-outline) 0,
-    var(--color-country-outline) 3px,
-    transparent 3px,
-    transparent 6px
-  );
+/* The target glyph, not its colour, carries identity — the --sdg-* tokens are
+ * not colour-separable (mapView.js#buildLegend). */
+.legend__glyph {
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  font-size: var(--font-size-sm);
+  line-height: 1;
+  text-align: center;
 }

@@ -109,29 +109,35 @@ describe('carDensitySeriesForCity', () => {
   });
 });
 
+// The two seams every sub-metric carries but nothing fills yet (benchmark =
+// "is this a lot or a little?", sdgTarget = "which SDG-11 target does it
+// serve?"). Spread into each expectation so wiring either one up fails these
+// tests loudly rather than silently changing the widget contract.
+const PENDING = { benchmark: null, sdgTarget: null };
+
 describe('impactSubMetrics', () => {
   it('exposes modal split and cycle network as null until content is sourced', () => {
     // Same Neutrality/Honesty contract as widgetMetricsForProject — the keys
     // are what widgetStack.js relies on, the nulls keep any fabricated figure
     // from rendering (see docs/DATA_TODO.md).
     expect(impactSubMetrics(carDensityIndicators, 'lisboa')).toEqual([
-      { key: 'modalSplit', value: null, unit: null, source: null },
-      { key: 'carDensity', value: null, unit: null, source: null },
-      { key: 'cycleNetwork', value: null, unit: null, source: null },
+      { key: 'modalSplit', value: null, unit: null, source: null, ...PENDING },
+      { key: 'carDensity', value: null, unit: null, source: null, ...PENDING },
+      { key: 'cycleNetwork', value: null, unit: null, source: null, ...PENDING },
     ]);
   });
 
   it('defaults to all null when called with no city (e.g. no focused project)', () => {
     expect(impactSubMetrics()).toEqual([
-      { key: 'modalSplit', value: null, unit: null, source: null },
-      { key: 'carDensity', value: null, unit: null, source: null },
-      { key: 'cycleNetwork', value: null, unit: null, source: null },
+      { key: 'modalSplit', value: null, unit: null, source: null, ...PENDING },
+      { key: 'carDensity', value: null, unit: null, source: null, ...PENDING },
+      { key: 'cycleNetwork', value: null, unit: null, source: null, ...PENDING },
     ]);
   });
 
   it("exposes Cologne's car density as its sourced series, unit and source", () => {
     expect(impactSubMetrics(carDensityIndicators, 'koeln')).toEqual([
-      { key: 'modalSplit', value: null, unit: null, source: null },
+      { key: 'modalSplit', value: null, unit: null, source: null, ...PENDING },
       {
         key: 'carDensity',
         value: [
@@ -140,9 +146,19 @@ describe('impactSubMetrics', () => {
         ],
         unit: 'per 1000 residents',
         source: CAR_DENSITY_SOURCE,
+        ...PENDING,
       },
-      { key: 'cycleNetwork', value: null, unit: null, source: null },
+      { key: 'cycleNetwork', value: null, unit: null, source: null, ...PENDING },
     ]);
+  });
+
+  it('attaches the benchmark and SDG-11 target seams to a sourced sub-metric too', () => {
+    // A real figure is still uninterpretable without them, so they ride along
+    // whether or not the sub-metric itself is sourced.
+    const carDensity = impactSubMetrics(carDensityIndicators, 'koeln')[1];
+    expect(carDensity.value).not.toBeNull();
+    expect(carDensity.benchmark).toBeNull();
+    expect(carDensity.sdgTarget).toBeNull();
   });
 });
 

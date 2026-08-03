@@ -98,6 +98,57 @@ export function districtsForProject() {
   return null;
 }
 
+/**
+ * TODO(data): the reference value an indicator should be read against — "is 373
+ * cars per 1000 residents a lot or a little?" (Kennzahlen-Bewertung, review of
+ * 2026-08-03). A figure with no yardstick cannot be judged, so each widget
+ * figure needs its national / EU / global counterpart beside it.
+ *
+ * Returns null until sourced benchmark rows exist; `widgetStack.js` renders a
+ * "benchmark to follow" note in that case rather than an unlabelled number.
+ * Shape once real data lands, mirroring a `cities.csv` row so the same source
+ * chip renders: `{ scope: 'national'|'eu'|'global', value: number, unit: string,
+ * year: number|null, source: { url, label, accessed } }`.
+ * @returns {null}
+ */
+export function benchmarkForIndicator() {
+  return null;
+}
+
+/**
+ * TODO(data): which SDG-11 target an indicator serves, so the dashboard can show
+ * *why* a number matters and not just what it is (review of 2026-08-03,
+ * "Verbindung Daten zum Ziel"). `projects.csv` carries `sdg11_target` per
+ * project; `cities.csv` has no equivalent per indicator, so the link cannot be
+ * derived yet.
+ *
+ * Returns null until an `sdg_target` column exists. Expected mapping once it
+ * does: car density / modal split / cycle network → 11.2, green space → 11.7.
+ * Shape: an SDG11_TARGET_CODES code (`'11.2'`).
+ * @returns {null}
+ */
+export function sdgTargetForIndicator() {
+  return null;
+}
+
+/**
+ * TODO(data): the gap between a city's current value and the value its SDG-11
+ * target implies — "wenn weniger Autos weniger CO2 bedeutet, wie viel muss
+ * passieren?" (review of 2026-08-03). This is the seam for the Analysis layer's
+ * "what would have to change" panel.
+ *
+ * Deliberately unimplemented: it needs a per-city target value and a stated
+ * reduction pathway, both of which are decisions the team has not taken (see
+ * docs/HANDOFF.md §8). Returning a computed gap against a guessed target would
+ * fabricate a claim — Neutrality, docs/DESIGN_RATIONALE.md.
+ * Shape once decided: `{ current: number, targetValue: number, unit: string,
+ * targetYear: number, source: { url, label, accessed } }`.
+ * @returns {null}
+ */
+export function reductionPathwayForCity() {
+  return null;
+}
+
 // The Impact widget's L2 sub-metrics are Modal split, Car density and Cycle
 // network (per `designWidgets.png`; Lisbon's different trio is not modelled
 // yet). Labels resolve via `impact.<key>` in the i18n bundles.
@@ -186,9 +237,14 @@ export function cycleNetworkForCity(cityIndicators, citySlug) {
  * carries its own value shape (modal split → rings object, car density → year
  * series, cycle network → single figure) and its own source; an unsourced one
  * stays null and renders an honest placeholder — never a fabricated number.
+ *
+ * `benchmark` and `sdgTarget` ride along on every entry so the widget can show
+ * what a figure should be read against and which SDG-11 target it serves. Both
+ * are null today (see benchmarkForIndicator / sdgTargetForIndicator) and render
+ * as "to follow" notes; wiring them up needs only those two stubs.
  * @param {import('./types.js').CityIndicator[]} [cityIndicators]
  * @param {string|null} [citySlug]
- * @returns {{ key: string, value: unknown, unit: string|null, source: {url: string, label: string, accessed: string|null}|null }[]}
+ * @returns {{ key: string, value: unknown, unit: string|null, source: {url: string, label: string, accessed: string|null}|null, benchmark: null, sdgTarget: null }[]}
  */
 export function impactSubMetrics(cityIndicators = [], citySlug = null) {
   const modalSplit = citySlug ? modalSplitForCity(cityIndicators, citySlug) : null;
@@ -198,23 +254,26 @@ export function impactSubMetrics(cityIndicators = [], citySlug = null) {
   const cycleNetwork = citySlug ? cycleNetworkForCity(cityIndicators, citySlug) : null;
   return [
     modalSplit
-      ? { key: 'modalSplit', value: modalSplit, unit: '%', source: modalSplit.source }
-      : { key: 'modalSplit', value: null, unit: null, source: null },
+      ? subMetric('modalSplit', modalSplit, '%', modalSplit.source)
+      : subMetric('modalSplit', null, null, null),
     carDensity.series.length > 0
-      ? {
-          key: 'carDensity',
-          value: carDensity.series,
-          unit: carDensity.unit,
-          source: carDensity.source,
-        }
-      : { key: 'carDensity', value: null, unit: null, source: null },
+      ? subMetric('carDensity', carDensity.series, carDensity.unit, carDensity.source)
+      : subMetric('carDensity', null, null, null),
     cycleNetwork
-      ? {
-          key: 'cycleNetwork',
-          value: cycleNetwork.value,
-          unit: cycleNetwork.unit,
-          source: cycleNetwork.source,
-        }
-      : { key: 'cycleNetwork', value: null, unit: null, source: null },
+      ? subMetric('cycleNetwork', cycleNetwork.value, cycleNetwork.unit, cycleNetwork.source)
+      : subMetric('cycleNetwork', null, null, null),
   ];
+}
+
+/** One Impact sub-metric entry. The single place the entry shape is built, so
+ * the two pending seams stay attached to every key. */
+function subMetric(key, value, unit, source) {
+  return {
+    key,
+    value,
+    unit,
+    source,
+    benchmark: benchmarkForIndicator(),
+    sdgTarget: sdgTargetForIndicator(),
+  };
 }
