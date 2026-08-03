@@ -18,6 +18,17 @@ export function renderTooltip(container) {
       el.style.left = `${x}px`;
       el.style.top = `${y}px`;
       el.hidden = false;
+      // Keep the box within its anchor so an edge point — e.g. the first dot of a
+      // sparkline sitting at the chart's left edge — isn't half-clipped by a
+      // scrolling ancestor (the L2 panel). Measure the rendered box so this holds
+      // whatever transform the tooltip's own styles apply, then nudge x back in by
+      // however far it currently overflows.
+      const box = el.getBoundingClientRect();
+      const bounds = container.getBoundingClientRect();
+      const overflowRight = box.right - bounds.right;
+      const overflowLeft = bounds.left - box.left;
+      if (overflowRight > 0) el.style.left = `${x - overflowRight}px`;
+      else if (overflowLeft > 0) el.style.left = `${x + overflowLeft}px`;
     },
     hide() {
       el.hidden = true;

@@ -28,7 +28,7 @@ const WIDGETS = ['problemFit', 'impact', 'adoption'];
 // right-hand widgets; STACK_MARGIN insets each column from its edge.
 const STACK_TOP = 72;
 const STACK_MARGIN = 16;
-const STACK_STEP = 128;
+const STACK_STEP = 140;
 const WIDGET_WIDTH = '248px';
 const WIDGET_PADDING = '16px 18px';
 
@@ -94,15 +94,17 @@ export function render(container, props) {
     root.hidden = false;
     const active = next.activeCriterion ?? null;
     const layout = widgetLayout(active);
+    const headline = impactHeadline(next.project.citySlug, next.impactSubMetrics ?? []);
     for (const widget of widgets) {
-      applyWidget(widget, layout[widget.kind], widgetContent(widget.kind, next.metrics));
+      const extra = widget.kind === 'impact' ? headline : null;
+      applyWidget(widget, layout[widget.kind], widgetContent(widget.kind, next.metrics, extra));
       // With a panel open the small widgets are decorative — not click or focus
       // targets.
       widget.node.tabIndex = active ? -1 : 0;
       widget.node.style.pointerEvents = active ? 'none' : 'auto';
       widget.node.setAttribute('aria-hidden', String(Boolean(active)));
     }
-    detail.sync(active, next.metrics, next.impactSubMetrics);
+    detail.sync(active, next.impactSubMetrics);
   }
 
   update(props);
@@ -155,7 +157,7 @@ function buildDetail(onSelectCriterion) {
     for (const child of children.splice(0)) child.destroy();
   }
 
-  function sync(activeCriterion, metrics, impactSubMetrics) {
+  function sync(activeCriterion, impactSubMetrics) {
     clearChildren();
     if (!activeCriterion) {
       node.hidden = true;
@@ -165,7 +167,7 @@ function buildDetail(onSelectCriterion) {
     const wide = activeCriterion === 'impact' ? ' widget-detail--wide' : '';
     node.className = `widget-detail widget-detail--${widgetSide(activeCriterion)}${wide}`;
     node.setAttribute('aria-label', t(`criteria.${activeCriterion}`));
-    node.innerHTML = detailContent(activeCriterion, metrics, impactSubMetrics);
+    node.innerHTML = detailContent(activeCriterion, impactSubMetrics);
     node.hidden = false;
     if (activeCriterion === 'impact') mountSubmetricExtras(node, impactSubMetrics, children);
   }
@@ -219,14 +221,10 @@ function modalSplitAriaLabel({ modes, rings, latestYear }) {
   return `${t('impact.modalSplit')} ${latestYear}: ${parts.join(', ')}`;
 }
 
-/** Placeholder L2 content — a heading, a body (Impact's three sub-metric
- * slots, or a single empty diagram slot for the others) and a note. No
- * fabricated numbers until researched data lands (see widgetContent). */
-function detailContent(criterion, metrics, impactSubMetrics) {
-  const chip =
-    metrics[criterion] == null
-      ? `<span class="widget__chip">${t('widget.placeholder')}</span>`
-      : '';
+/** L2 content — a heading and a body (Impact's three sub-metric slots, or a
+ * single empty diagram slot for the others). No fabricated numbers until
+ * researched data lands (see widgetContent). */
+function detailContent(criterion, impactSubMetrics) {
   const body =
     criterion === 'impact'
       ? submetricsHtml(impactSubMetrics)
@@ -237,10 +235,8 @@ function detailContent(criterion, metrics, impactSubMetrics) {
         <span aria-hidden="true">←</span>
       </button>
       <h2 class="widget-detail__title">${t(`criteria.${criterion}`)}</h2>
-      ${chip}
     </header>
-    ${body}
-    <p class="widget-detail__note">${t('widget.placeholderNote')}</p>`;
+    ${body}`;
 }
 
 /** Impact's three sub-metrics (modal split, car density, cycle network — see
@@ -353,15 +349,44 @@ function widgetHeader(label, chip) {
 
 /** A widget's body. Until a real headline figure exists the widget is an
  * intentional placeholder shell (marked as such), never a fabricated number. */
-function widgetContent(criterion, metrics) {
+// Cities that surface one Impact sub-metric as a figure on the L1 widget itself,
+// by sub-metric key: Cologne → its cycle network, Paris → its car-ownership
+// share. Every other city keeps the honest placeholder until asked for.
+const IMPACT_HEADLINE_METRIC = {
+  koeln: 'cycleNetwork',
+  'paris-marne-la-vallee': 'carOwnership',
+};
+
+/** The figure to show on a city's L1 Impact widget, or null when the city has
+ * none configured / the metric isn't sourced. A year series (car ownership)
+ * headlines with its latest value; a single figure (cycle network) as-is. */
+function impactHeadline(citySlug, impactSubMetrics) {
+  const key = IMPACT_HEADLINE_METRIC[citySlug];
+  if (!key) return null;
+  const metric = impactSubMetrics.find((entry) => entry.key === key);
+  if (!metric || metric.value == null) return null;
+  const value = Array.isArray(metric.value)
+    ? metric.value[metric.value.length - 1].value
+    : metric.value;
+  return { label: t(`impact.${key}`), value, unit: metric.unit };
+}
+
+function widgetContent(criterion, metrics, headline = null) {
   const label = t(`criteria.${criterion}`);
+  // A real sourced figure on the widget itself (currently just Cologne → Impact).
+  if (headline) {
+    return (
+      widgetHeader(label, null) +
+      `<span class="widget__submetric">${headline.label}</span>
+       <div class="widget__value-row widget__value-row--headline">
+         <span class="widget__value widget__value--headline">${formatNumber(headline.value, getLocale())}</span>
+         <span class="widget__value-unit">${headline.unit}</span>
+       </div>`
+    );
+  }
   const value = metrics[criterion];
   if (value == null) {
-    return (
-      widgetHeader(label, t('widget.placeholder')) +
-      `<div class="widget__bar widget__bar--empty"></div>
-       <div class="widget__note">${t('widget.placeholderNote')}</div>`
-    );
+    return widgetHeader(label, null) + `<div class="widget__bar widget__bar--empty"></div>`;
   }
   return (
     widgetHeader(label, null) +

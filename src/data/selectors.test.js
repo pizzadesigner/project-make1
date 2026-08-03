@@ -48,6 +48,36 @@ const carDensityIndicators = [
   },
 ];
 
+// Real Paris car-ownership figures (Insee LOG T12, % of households with ≥1 car)
+// — a different indicator than Cologne's density, keyed `car_ownership`.
+const CAR_OWNERSHIP_SOURCE = {
+  url: 'https://www.insee.fr/en/statistiques/6457611?geo=DEP-75#chiffre-cle-2',
+  label: 'Insee – Household automotive equipment (LOG T12) Département de Paris',
+  accessed: '2026-07-31',
+};
+const carOwnershipIndicators = [
+  {
+    citySlug: 'paris-marne-la-vallee',
+    indicatorKey: 'car_ownership',
+    value: 34.4,
+    unit: '% of households',
+    year: 2017,
+    sourceUrl: CAR_OWNERSHIP_SOURCE.url,
+    sourceLabel: CAR_OWNERSHIP_SOURCE.label,
+    sourceAccessed: CAR_OWNERSHIP_SOURCE.accessed,
+  },
+  {
+    citySlug: 'paris-marne-la-vallee',
+    indicatorKey: 'car_ownership',
+    value: 31.2,
+    unit: '% of households',
+    year: 2023,
+    sourceUrl: CAR_OWNERSHIP_SOURCE.url,
+    sourceLabel: CAR_OWNERSHIP_SOURCE.label,
+    sourceAccessed: CAR_OWNERSHIP_SOURCE.accessed,
+  },
+];
+
 describe('cityIndicatorsForCity', () => {
   it('returns only the rows for the given city', () => {
     expect(cityIndicatorsForCity(indicators, 'koeln')).toHaveLength(2);
@@ -150,6 +180,22 @@ describe('impactSubMetrics', () => {
       },
       { key: 'cycleNetwork', value: null, unit: null, source: null, ...PENDING },
     ]);
+  });
+
+  it("exposes Paris's car ownership under its own key, not car density", () => {
+    // Different indicator, different (non-misleading) label — the car slot picks
+    // car_ownership and keys it 'carOwnership' so it never reads as "Car density".
+    const [, car] = impactSubMetrics(carOwnershipIndicators, 'paris-marne-la-vallee');
+    expect(car).toEqual({
+      key: 'carOwnership',
+      value: [
+        { year: 2017, value: 34.4 },
+        { year: 2023, value: 31.2 },
+      ],
+      unit: '% of households',
+      source: CAR_OWNERSHIP_SOURCE,
+      ...PENDING,
+    });
   });
 
   it('attaches the benchmark and SDG-11 target seams to a sourced sub-metric too', () => {

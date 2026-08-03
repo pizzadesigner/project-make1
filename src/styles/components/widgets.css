@@ -67,6 +67,24 @@
   color: var(--color-text-faint);
 }
 
+/* Names the figure shown on a widget (e.g. Impact → "Cycle network"). */
+.widget__submetric {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* A sourced figure carrying a long unit (e.g. "km per 1000 residents") stays on
+   one line — the value steps down from --font-size-xl so number + unit fit the
+   widget's width and the card keeps its height in the fixed stack. */
+.widget__value-row--headline {
+  flex-wrap: nowrap;
+}
+
+.widget__value--headline {
+  font-size: var(--font-size-lg);
+}
+
 .widget__bar {
   height: 6px;
   background: var(--color-border-glass);
@@ -89,12 +107,6 @@
     transparent 3px,
     transparent 6px
   );
-}
-
-.widget__note {
-  font-size: 0.75rem;
-  color: var(--color-text-faint);
-  margin-top: var(--space-2);
 }
 
 .widget__no-data {
@@ -243,13 +255,6 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-}
-
-/* Pushes the placeholder chip to the far right now that the back button and
-   title share the header's left side (space-between only reads as two
-   groups, and there are three items). */
-.widget-detail__header .widget__chip {
-  margin-left: auto;
 }
 
 .widget-detail__back {
@@ -460,12 +465,6 @@
     transparent 6px,
     transparent 12px
   );
-}
-
-.widget-detail__note {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-faint);
 }
 
 @media (prefers-reduced-motion: reduce) {

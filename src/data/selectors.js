@@ -160,19 +160,19 @@ export function reductionPathwayForCity() {
 const MODAL_SPLIT_MODES = ['transit', 'bike', 'walk', 'car', 'moto'];
 
 /**
- * A city's sourced car-density series, oldest year first. Cologne (2021–2025,
- * Stadt Köln, vehicles per 1000 residents) and Paris (2012/2017/2023, Insee,
- * % of households with a car) both have rows in `cities.csv`; each city's own
- * `unit` travels with its series rather than being assumed, since the two
- * sources measure different things. Empty series and null source for any city
- * without them.
+ * A city's sourced year series for one indicator key, oldest year first. Used
+ * for the Impact "car" slot, which is a different indicator per city — Cologne
+ * has `car_density` (vehicles per 1000 residents), Paris `car_ownership`
+ * (% of households with a car) — so each city's own `unit` travels with its
+ * series rather than being assumed. Empty series and null source when absent.
  * @param {import('./types.js').CityIndicator[]} cityIndicators
  * @param {string} citySlug
+ * @param {string} [indicatorKey]
  * @returns {{ series: {year: number, value: number}[], unit: string|null, source: {url: string, label: string, accessed: string|null}|null }}
  */
-export function carDensitySeriesForCity(cityIndicators, citySlug) {
+export function carDensitySeriesForCity(cityIndicators, citySlug, indicatorKey = 'car_density') {
   const rows = cityIndicatorsForCity(cityIndicators, citySlug)
-    .filter((indicator) => indicator.indicatorKey === 'car_density')
+    .filter((indicator) => indicator.indicatorKey === indicatorKey)
     .sort((a, b) => (a.year ?? 0) - (b.year ?? 0));
   const [first] = rows;
   return {
@@ -182,6 +182,29 @@ export function carDensitySeriesForCity(cityIndicators, citySlug) {
       ? { url: first.sourceUrl, label: first.sourceLabel, accessed: first.sourceAccessed }
       : null,
   };
+}
+
+// The Impact "car" slot is one of two genuinely different indicators depending
+// on the city: car density (vehicles per 1000 residents) or car ownership
+// (% of households with a car). Each keeps its own sub-metric key so it carries
+// the right, non-misleading label. First one with rows wins.
+const CAR_SLOT_INDICATORS = [
+  { indicatorKey: 'car_density', metric: 'carDensity' },
+  { indicatorKey: 'car_ownership', metric: 'carOwnership' },
+];
+
+/** The car sub-metric for a city — density or ownership, whichever it has —
+ * tagged with the metric key that names it. Null when the city has neither. */
+function carSlotForCity(cityIndicators, citySlug) {
+  for (const { indicatorKey, metric } of CAR_SLOT_INDICATORS) {
+    const { series, unit, source } = carDensitySeriesForCity(
+      cityIndicators,
+      citySlug,
+      indicatorKey,
+    );
+    if (series.length > 0) return { metric, series, unit, source };
+  }
+  return null;
 }
 
 /**
@@ -248,16 +271,14 @@ export function cycleNetworkForCity(cityIndicators, citySlug) {
  */
 export function impactSubMetrics(cityIndicators = [], citySlug = null) {
   const modalSplit = citySlug ? modalSplitForCity(cityIndicators, citySlug) : null;
-  const carDensity = citySlug
-    ? carDensitySeriesForCity(cityIndicators, citySlug)
-    : { series: [], unit: null, source: null };
+  const car = citySlug ? carSlotForCity(cityIndicators, citySlug) : null;
   const cycleNetwork = citySlug ? cycleNetworkForCity(cityIndicators, citySlug) : null;
   return [
     modalSplit
       ? subMetric('modalSplit', modalSplit, '%', modalSplit.source)
       : subMetric('modalSplit', null, null, null),
-    carDensity.series.length > 0
-      ? subMetric('carDensity', carDensity.series, carDensity.unit, carDensity.source)
+    car
+      ? subMetric(car.metric, car.series, car.unit, car.source)
       : subMetric('carDensity', null, null, null),
     cycleNetwork
       ? subMetric('cycleNetwork', cycleNetwork.value, cycleNetwork.unit, cycleNetwork.source)
