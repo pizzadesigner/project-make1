@@ -26,9 +26,10 @@ function citySideFor(activeCriterion) {
 const OVERVIEW_LEFT_FRACTION = 0.33;
 const OVERVIEW_MIN_WIDTH = 860;
 
-/** Left inset (px) to reserve for the overview panel, or 0 on narrow viewports. */
-function overviewInset(stage) {
-  const width = stage.clientWidth;
+/** Left inset (px) to reserve for the overview panel, or 0 on narrow viewports.
+ * Takes the width rather than the element because the map asks again on every
+ * resize, with the size it has just measured. */
+function overviewInset(width) {
   return width >= OVERVIEW_MIN_WIDTH ? Math.round(width * OVERVIEW_LEFT_FRACTION) : 0;
 }
 
@@ -78,8 +79,8 @@ export function render(container, props) {
     layersSlug = slug;
     if (!slug) {
       mapHandle.setDistricts(null, null);
-      mapHandle.setCityHighlight(null);
-      mapHandle.setInfrastructure(null);
+      mapHandle.setCityHighlight(null, null);
+      mapHandle.setInfrastructure(null, null);
       return undefined;
     }
     const token = ++layersToken;
@@ -87,10 +88,10 @@ export function render(container, props) {
       mapHandle.setDistricts(slug, data),
     );
     loadLayer(slug, outlineCache, loadCityOutline, token, (data) =>
-      mapHandle.setCityHighlight(data),
+      mapHandle.setCityHighlight(slug, data),
     );
     loadLayer(slug, infrastructureCache, loadCityInfrastructure, token, (data) =>
-      mapHandle.setInfrastructure(data),
+      mapHandle.setInfrastructure(slug, data),
     );
     return undefined;
   }
@@ -152,7 +153,7 @@ export function render(container, props) {
         geo: next.geo,
         focusedCity: next.focusedCity,
         locale: next.locale,
-        leftInset: overviewInset(refs.stage),
+        leftInset: (size) => overviewInset(size.width),
         onSelect: (slug) => props.setFocusedCity(slug),
       });
       widgetHandle = widgetStack.render(refs.stage, widgetProps);

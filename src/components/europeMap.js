@@ -8,6 +8,10 @@
 // render(container, { projects, geo, focusedCity, locale, leftInset, onSelect })
 // and the component never reads the store — data comes down, selection goes up
 // via onSelect(citySlug | null).
+//
+// The stage owns the map's size: a ResizeObserver re-fits the projection, the
+// markers and the city layers whenever it changes, so the map is sized by the
+// window rather than by whatever the window happened to be at mount.
 
 import { select, geoPath, zoom, zoomIdentity } from 'd3';
 import { feature, mesh } from 'topojson-client';
@@ -22,9 +26,15 @@ const MIN_ZOOM = 1;
 // deep zoom (~120x for Cologne); the ceiling leaves headroom above that.
 const MAX_ZOOM = 200;
 const FOCUS_ZOOM = 5; // L1 fallback for cities without a silhouette to fit
+const MAP_PADDING = 16; // uniform gap between the fitted continent and the stage
 // Width kept clear on each side for a widget column, so the focused city fits
 // between them; CITY_FILL is the fraction of that free area the silhouette fills.
+// The reserve is also capped at a fraction of the stage, because a flat 340px a
+// side eats a narrow one whole: at 760px wide it left 80px to fit the city into
+// and Cologne came out a 60px speck. Below ~1550px the cap takes over and the
+// city always keeps ~56% of the width.
 const WIDGET_STRIP = 340;
+const WIDGET_STRIP_MAX_FRACTION = 0.22;
 const CITY_FILL = 0.75;
 // L2 pushes the city into one half and zooms a touch deeper — a city-level
 // cutout, freeing the opposite half for the widget's data panel.
@@ -40,46 +50,48 @@ const IMPACT_ANCHOR_FRACTION = 0.14;
 const DEEP_ZOOM_THRESHOLD = 15;
 
 export function render(container, props) {
-  const size = measure(container);
+  let size = measure(container);
   // The committed TopoJSON has a single object; take it by value rather than a
   // fixed key so a re-simplified or hand-edited file (which may name the layer
   // differently) still loads.
   const topology = Object.values(props.geo.objects)[0];
   const countries = feature(props.geo, topology);
   const borders = mesh(props.geo, topology, (a, b) => a !== b);
+  // fitToViewport re-fits this projection in place, so geoPath keeps reading the
+  // live one and a resize needs no new path.
+  const projection = createEuropeProjection();
+  const path = geoPath(projection);
   // A left inset (for the L0 overview panel) frames Europe in the space to the
   // right; irrelevant at L1/L2, which zoom into a city regardless of framing.
-  const projection = fitToViewport(
-    createEuropeProjection(),
-    countries,
-    size.width,
-    size.height,
-    16,
-    props.leftInset ?? 0,
-  );
-  const path = geoPath(projection);
+  // It arrives as a function of the measured size because the panel is dropped
+  // on narrow stages — a resize has to be able to ask again.
+  const leftInsetFor = (measured) => props.leftInset?.(measured) ?? 0;
 
   const dom = buildDom(container, size);
-  drawGeometry(dom, countries, borders, path);
 
   // Whether the live selection started from a visible keyboard focus. Decides
   // whether stepping back to the overview hands the marker its focus back
   // (see releaseMarkerFocus).
   let keyboardSelection = false;
+  // The live zoom transform, mirrored out of the zoom handler so the tooltip can
+  // anchor to a marker's current screen position rather than its unzoomed one.
+  let viewTransform = zoomIdentity;
 
   const tooltip = renderTooltip(dom.root);
   const markers = drawMarkers(dom.markers, orderProjects(props.projects, props.locale), {
-    projection,
     onSelect: (citySlug, viaKeyboard) => {
       keyboardSelection = viaKeyboard;
       props.onSelect(citySlug);
     },
     tooltip,
+    pointOf: (marker) => viewTransform.apply([marker.x, marker.y]),
     onHover: (project) => applyCountryHover(dom, project.country),
     onHoverEnd: () => applyCountryHover(dom, null),
   });
 
-  const zoomBehavior = setupZoom(dom, size, markers);
+  const zoomBehavior = setupZoom(dom, markers, (transform) => {
+    viewTransform = transform;
+  });
   bindKeyboard(dom.markers, markers);
 
   let focusedCity = null;
@@ -88,22 +100,94 @@ export function render(container, props) {
   let citySide = null;
   // Impact's L2 pushes further than the other widgets (see IMPACT_L2_ZOOM).
   let deepZoom = false;
-  // Manual zoom/pan is for the overview only. Once a city is focused (L1/L2) the
-  // view is static — Esc, Back or Reset are the only ways out. Programmatic
-  // transforms (focus, reset) bypass this filter.
-  zoomBehavior.filter((event) => !focusedCity && defaultZoomFilter(event));
-  // Fit info per city with a loaded silhouette, so L1 can frame the city in one
-  // step once its geometry is known.
-  const cityFit = new Map();
+  // The focused city's geometry, kept rather than only drawn: a resize has to
+  // redraw it against the re-fitted projection. Only ever one city's, so its fit
+  // (which lets L1 frame the city in one step) is a single value beside it.
+  const cityLayers = { slug: null, districts: null, outline: null, infrastructure: null };
+  let cityFit = null;
+
+  /** Stash one of the focused city's layers and redraw. Moving to another city
+   * drops the layers still held for the previous one, so a slow fetch can never
+   * leave two cities' geometry drawn at once. */
+  function setCityLayer(slug, name, data) {
+    if (slug !== cityLayers.slug) {
+      Object.assign(cityLayers, { slug, districts: null, outline: null, infrastructure: null });
+    }
+    cityLayers[name] = data;
+    drawCityLayers();
+  }
+
+  /** Redraw the focused city's three layers and re-measure its fit. Called on
+   * every layer change and again whenever the stage resizes. */
+  function drawCityLayers() {
+    // Districts get one path per feature — they read as separate areas. The
+    // outline and the cycle network are each a single path; the network
+    // deliberately so, one animated element regardless of route count.
+    const districts = select(dom.districts);
+    districts.selectAll('*').remove();
+    if (cityLayers.districts) {
+      districts
+        .selectAll('.europe-map__district')
+        .data(cityLayers.districts.features)
+        .join('path')
+        .attr('class', 'europe-map__district')
+        .attr('d', path);
+    }
+    drawSinglePath(dom.cityHighlight, cityLayers.outline, 'europe-map__city-highlight-shape', path);
+    drawSinglePath(dom.infrastructure, cityLayers.infrastructure, 'europe-map__cycle-path', path);
+    cityFit = cityLayers.districts ? cityFitInfo(path, size, cityLayers.districts) : null;
+  }
 
   // The city transform for the current layer: L2 cutout when a side is set and
   // the fit is known, otherwise the centred L1 frame (or a regional fallback).
   function cityTransform(focused) {
-    const fit = cityFit.get(focused.citySlug);
+    const fit = cityLayers.slug === focused.citySlug ? cityFit : null;
     if (fit && citySide) return cityL2Transform(size, fit, citySide, deepZoom);
     if (fit) return cityFitTransform(size, fit);
     return focusTransform(size, ...projection([focused.lon, focused.lat]), FOCUS_ZOOM);
   }
+
+  /** The transform the current layer says the view should be at. */
+  function layerTransform() {
+    const focused = markers.find((m) => m.project.citySlug === focusedCity)?.project ?? null;
+    return focused ? cityTransform(focused) : zoomIdentity;
+  }
+
+  /** Size everything to the current stage: the viewBox and backdrop, the fitted
+   * projection, and everything drawn through it. */
+  function layout() {
+    select(dom.svg).attr('viewBox', `0 0 ${size.width} ${size.height}`);
+    dom.backdrop.attr('width', size.width).attr('height', size.height);
+    fitToViewport(projection, countries, size.width, size.height, MAP_PADDING, leftInsetFor(size));
+    drawGeometry(dom, countries, borders, path);
+    placeMarkers(markers, projection);
+    drawCityLayers();
+    zoomBehavior.translateExtent([
+      [0, 0],
+      [size.width, size.height],
+    ]);
+  }
+
+  // A resize invalidates the frame the current view was computed in, so re-frame
+  // the current layer rather than keep a transform fitted to a stage that is
+  // gone. That does drop a manual zoom, which only meant anything against the
+  // framing it was made in. Snapped, not animated: a drag-resize fires this per
+  // frame and a transition per frame would never land.
+  function handleResize() {
+    const next = measure(container);
+    if (next.width === size.width && next.height === size.height) return;
+    size = next;
+    layout();
+    setZoom(dom.svg, zoomBehavior, layerTransform(), 0);
+  }
+
+  layout();
+  let resizeFrame = 0;
+  const resizeObserver = new ResizeObserver(() => {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(handleResize);
+  });
+  resizeObserver.observe(container);
 
   return {
     update(next) {
@@ -137,22 +221,10 @@ export function render(container, props) {
     },
     // Draw (or clear, when passed null) a city's district overview. Geometry is
     // projected with the map's own projection so it lands over the real city and
-    // scales with the zoom. Recording the fit here also lets a still-focused
+    // scales with the zoom. Measuring the fit here also lets a still-focused
     // city snap to frame once its geometry finishes loading.
     setDistricts(slug, districts) {
-      const layer = select(dom.districts);
-      layer.selectAll('*').remove();
-      if (!districts) {
-        cityFit.delete(slug);
-        return;
-      }
-      layer
-        .selectAll('.europe-map__district')
-        .data(districts.features)
-        .join('path')
-        .attr('class', 'europe-map__district')
-        .attr('d', path);
-      cityFit.set(slug, cityFitInfo(path, size, districts));
+      setCityLayer(slug, 'districts', districts);
       const focused = markers.find((m) => m.project.citySlug === slug)?.project ?? null;
       if (focused && slug === focusedCity) {
         animateZoom(dom.svg, zoomBehavior, cityTransform(focused));
@@ -161,36 +233,32 @@ export function render(container, props) {
     // Draw (or clear, when passed null) the focused city's own highlight shape.
     // Cities without outline geometry simply show no highlight — the country is
     // never substituted in (see applyCountryFocus).
-    setCityHighlight(outline) {
-      const layer = select(dom.cityHighlight);
-      layer.selectAll('*').remove();
-      if (!outline) return;
-      layer
-        .append('path')
-        .attr('class', 'europe-map__city-highlight-shape')
-        .attr('d', path(outline));
+    setCityHighlight(slug, outline) {
+      setCityLayer(slug, 'outline', outline);
     },
     // Draw (or clear, when passed null) the city's infrastructure lines (cycle
     // routes). The whole collection renders as one path — one animated element
     // regardless of route count — with the "flow" a CSS dash animation. Static
     // geometry; only the dash offset moves (see the stylesheet).
-    setInfrastructure(data) {
-      const layer = select(dom.infrastructure);
-      layer.selectAll('*').remove();
-      if (!data) return;
-      layer.append('path').attr('class', 'europe-map__cycle-path').attr('d', path(data));
+    setInfrastructure(slug, data) {
+      setCityLayer(slug, 'infrastructure', data);
     },
     destroy() {
+      resizeObserver.disconnect();
+      cancelAnimationFrame(resizeFrame);
       tooltip.destroy();
       dom.root.remove();
     },
   };
 }
 
+// Fallbacks only for a stage that has not been laid out yet (both are 0 before
+// the first layout pass); once it has, the map takes its real size, so the
+// viewBox matches the box it is drawn into and nothing letterboxes.
 function measure(container) {
   return {
     width: container.clientWidth || 960,
-    height: Math.max(container.clientHeight, 480),
+    height: container.clientHeight || 480,
   };
 }
 
@@ -307,20 +375,30 @@ function setDeepZoom(dom, next, wasDeep) {
   return next;
 }
 
-function drawMarkers(group, projects, { projection, onSelect, tooltip, onHover, onHoverEnd }) {
+function drawMarkers(group, projects, handlers) {
   return projects.map((project) => {
-    const [x, y] = projection([project.lon, project.lat]);
-    const marker = createMarker(project, x, y);
+    const marker = createMarker(project);
     group.append(marker.node);
-    wireMarker(marker, project, { onSelect, tooltip, onHover, onHoverEnd });
+    wireMarker(marker, project, handlers);
     return marker;
   });
 }
 
-function createMarker(project, x, y) {
+/** Put every marker where the current projection says its city is. Re-run after
+ * a re-fit, so the dots move with the geometry instead of staying where the
+ * projection used to put them. */
+function placeMarkers(markers, projection) {
+  for (const marker of markers) {
+    const [x, y] = projection([marker.project.lon, marker.project.lat]);
+    marker.x = x;
+    marker.y = y;
+    marker.node.setAttribute('transform', `translate(${x}, ${y})`);
+  }
+}
+
+function createMarker(project) {
   const node = svgEl('g');
   node.setAttribute('class', 'marker');
-  node.setAttribute('transform', `translate(${x}, ${y})`);
   node.setAttribute('tabindex', '0');
   node.setAttribute('role', 'button');
   node.setAttribute('aria-label', markerLabel(project));
@@ -338,17 +416,19 @@ function createMarker(project, x, y) {
   pin.setAttribute('r', '7');
   scale.append(ripple1, ripple2, pin);
   node.append(scale);
-  return { node, scale, project, x, y };
+  return { node, scale, project, x: 0, y: 0 };
 }
 
-function wireMarker(marker, project, { onSelect, tooltip, onHover, onHoverEnd }) {
+function wireMarker(marker, project, { onSelect, tooltip, pointOf, onHover, onHoverEnd }) {
   // Report whether the focus ring was already showing when the marker was
   // activated: only a keyboard user should get focus handed back on the way out.
   const select_ = () => onSelect(project.citySlug, marker.node.matches(':focus-visible'));
   // Hovering (or keyboard-focusing) a marker shows its tooltip and highlights
-  // the country the city sits in; leaving reverts both.
+  // the country the city sits in; leaving reverts both. The tooltip is a plain
+  // DOM element over the map, so it needs the marker's *zoomed* position — its
+  // own coordinates are the unzoomed ones the geometry is drawn in.
   const enter = () => {
-    tooltip.show(tooltipHtml(project), marker.x, marker.y);
+    tooltip.show(tooltipHtml(project), ...pointOf(marker));
     onHover(project);
   };
   const leave = () => {
@@ -385,21 +465,16 @@ function focusNeighbour(markers, current, step) {
   next.node.focus();
 }
 
-/** d3.zoom's default gesture filter: allow wheel/drag unless a modifier or a
- * secondary mouse button is involved. Reused so focus-gating keeps that base. */
-function defaultZoomFilter(event) {
-  return (!event.ctrlKey || event.type === 'wheel') && !event.button;
-}
-
-function setupZoom(dom, size, markers) {
+/** Wheel and drag stay live at every layer, focused city or not: the fit frames
+ * a city, it does not decide how close the user is allowed to look. Esc, Back
+ * and Reset remain the way out; translateExtent (set in layout) keeps a pan
+ * inside the map. `onTransform` mirrors the live transform back to the caller. */
+function setupZoom(dom, markers, onTransform) {
   let isDeepZoom = false;
   const behavior = zoom()
     .scaleExtent([MIN_ZOOM, MAX_ZOOM])
-    .translateExtent([
-      [0, 0],
-      [size.width, size.height],
-    ])
     .on('zoom', (event) => {
+      onTransform(event.transform);
       dom.zoomLayer.setAttribute('transform', event.transform.toString());
       const inverse = 1 / event.transform.k;
       for (const marker of markers) marker.scale.setAttribute('transform', `scale(${inverse})`);
@@ -420,13 +495,20 @@ function focusTransform(size, x, y, scale) {
 }
 
 /** Fit info (centroid + scale) to frame a city's districts in the free area
- * between the two widget columns. */
-function cityFitInfo(path, size, districts) {
+ * between the two widget columns. Exported for the fit test: the numbers here
+ * decide whether a city fills its stage or shows up as a speck.
+ * @param {import('d3').GeoPath} path
+ * @param {{ width: number, height: number }} size
+ * @param {import('geojson').FeatureCollection} districts
+ */
+export function cityFitInfo(path, size, districts) {
   const [[x0, y0], [x1, y1]] = path.bounds(districts);
   const width = x1 - x0;
   const height = y1 - y0;
-  // A widget column sits on each side, so reserve both.
-  const usableWidth = size.width - 2 * WIDGET_STRIP;
+  // A widget column sits on each side, so reserve both — but never so much of a
+  // narrow stage that nothing is left to fit the city into (WIDGET_STRIP).
+  const strip = Math.min(WIDGET_STRIP, size.width * WIDGET_STRIP_MAX_FRACTION);
+  const usableWidth = size.width - 2 * strip;
   const scale = Math.min(usableWidth / width, size.height / height) * CITY_FILL;
   return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, scale: Math.min(scale, MAX_ZOOM) };
 }
@@ -454,11 +536,25 @@ function cityL2Transform(size, info, side, deepZoom) {
     .translate(-info.cx, -info.cy);
 }
 
-function animateZoom(svg, behavior, transform) {
-  const duration = motionMs('--motion-slow');
+/** Move the view to `transform`, over `duration` ms or at once when it is 0
+ * (which is also what prefers-reduced-motion resolves --motion-slow to). */
+function setZoom(svg, behavior, transform, duration) {
   const selection = select(svg);
   const target = duration > 0 ? selection.transition().duration(duration) : selection;
   target.call(behavior.transform, transform);
+}
+
+function animateZoom(svg, behavior, transform) {
+  setZoom(svg, behavior, transform, motionMs('--motion-slow'));
+}
+
+/** Replace a layer's contents with one path for the whole geometry, or clear it
+ * when there is none. */
+function drawSinglePath(node, geometry, className, path) {
+  const layer = select(node);
+  layer.selectAll('*').remove();
+  if (!geometry) return;
+  layer.append('path').attr('class', className).attr('d', path(geometry));
 }
 
 /** Dim every country but the focused project's own, which stays at its plain
