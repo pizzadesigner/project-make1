@@ -8,11 +8,20 @@
 // because `npm run check` does not run Playwright. Deriving keeps the suite
 // honest when a project is added or removed — only a real regression turns it red.
 //
-// Two traps live here. The map's attention-drawing affordances animate forever —
-// `.marker__ripple` and the `.map-view-project` pulse — so those elements never
-// satisfy Playwright's "stable" actionability check and every click on one needs
-// `{ force: true }` or it times out after 30s. And clicking a marker no longer
-// navigates: it zooms the map in place, so the URL must NOT change.
+// One trap lives here. The map's attention-drawing affordance animates forever —
+// `.marker__ripple` — so a marker never satisfies Playwright's "stable"
+// actionability check and every click on one needs `{ force: true }` or it times
+// out after 30s. And clicking a marker no longer navigates: it zooms the map in
+// place, so the URL must NOT change.
+//
+// The budget assertions used to hang off a `.map-view-project` pill clicked at
+// L1. That element (and the `.city-detail` wrapper they looked inside) no longer
+// exists in `src/` — the widget stack replaced the pill — so the test asserted a
+// path out of L1 the app does not have, and sat red. What it was really proving
+// is that a project's budget renders with a working source link, which does not
+// depend on *how* the detail view is reached, so it now proves that on the
+// `#/city/<slug>` route below. Which affordance replaces the pill at L1 is still
+// an open design decision; when it lands, assert the L1 → detail path here.
 
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
@@ -37,7 +46,7 @@ test('every project in the data reaches the map', async ({ page }) => {
   await expect(page.locator('.marker')).toHaveCount(projects.length);
 });
 
-test('focusing a city zooms in place and its project shows a sourced budget', async ({ page }) => {
+test('focusing a city zooms in place without navigating', async ({ page }) => {
   await page.goto('/');
   await page.waitForSelector('.marker');
 
@@ -48,9 +57,21 @@ test('focusing a city zooms in place and its project shows a sourced budget', as
   await expect(marker).toHaveClass(/is-focused/);
   await expect(page).not.toHaveURL(/#\/city\//);
 
-  // L2: the "View project" pill opens the detail overlay over the zoomed map.
-  await page.locator('.map-view-project').click({ force: true });
-  const budgetRow = page.locator('.city-detail .facts__row', { hasText: 'Budget' }).first();
+  // The widget stack is what L1 puts around the focused city.
+  await expect(page.locator('.widget').first()).toBeVisible();
+});
+
+test('a shared deep link loads the city cold, silhouette and sourced budget', async ({ page }) => {
+  await page.goto(`/#/city/${sourced.city}`);
+
+  // Non-ASCII in the title is deliberate: UTF-8 has to survive CSV → slug → URL
+  // → render (CLAUDE.md), and the fixtures that used to cover it left with Žilina.
+  await expect(page.locator('.city-header__title')).toHaveText(sourced.project_title);
+  await expect(page.locator('.city-silhouette__district').first()).toBeVisible();
+
+  // A figure and the source behind it, together — the Honesty objective's whole
+  // claim. The chip is a <details>, so the link only exists once it is opened.
+  const budgetRow = page.locator('.facts__row', { hasText: 'Budget' }).first();
   await expect(budgetRow.locator('dd')).toContainText('€');
 
   await budgetRow.locator('.source-chip__summary').click();
@@ -58,15 +79,6 @@ test('focusing a city zooms in place and its project shows a sourced budget', as
     'href',
     new RegExp(`^${sourced.source_url}`),
   );
-});
-
-test('a shared deep link loads the city cold, silhouette and all', async ({ page }) => {
-  await page.goto(`/#/city/${sourced.city}`);
-
-  // Non-ASCII in the title is deliberate: UTF-8 has to survive CSV → slug → URL
-  // → render (CLAUDE.md), and the fixtures that used to cover it left with Žilina.
-  await expect(page.locator('.city-header__title')).toHaveText(sourced.project_title);
-  await expect(page.locator('.city-silhouette__district').first()).toBeVisible();
 });
 
 test('the list view is a sortable equivalent of the map', async ({ page }) => {
