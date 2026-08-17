@@ -31,17 +31,54 @@ export function peersForProject(peers, projectId) {
   return peers.filter((peer) => peer.projectId === projectId);
 }
 
+// Which Impact sub-metric a city surfaces as its L1 headline figure, by
+// sub-metric key: Cologne → its cycle network, Paris → its car-ownership share.
+// A city absent from this map shows an empty widget rather than a fabricated
+// number. This mapping lives in the data layer, not in `widgetStack.js`, because
+// "which indicator stands for this city" is a data decision — the widget renders
+// whatever it is handed and knows nothing about city slugs.
+const IMPACT_HEADLINE_METRIC = {
+  koeln: 'cycleNetwork',
+  'paris-marne-la-vallee': 'carOwnership',
+};
+
 /**
  * Headline figure for each of the three Exploration widgets (Problem Fit /
- * Impact / Adoption Requirements). TODO(data): the per-widget content is not
- * researched yet, so every field is null and each widget renders an intentional
- * placeholder shell rather than a fabricated number (Neutrality/Honesty — see
- * docs/DESIGN_RATIONALE.md, docs/DATA_TODO.md). This is the one seam to wire up
- * once real, sourced content lands (Phase 2); nothing else should need to change.
- * @returns {{ problemFit: number|null, impact: number|null, adoption: number|null }}
+ * Impact / Adoption Requirements) — the single seam feeding the L1 widget stack.
+ *
+ * Each field is either null (the widget renders an empty shell — never a
+ * fabricated number, see docs/DESIGN_RATIONALE.md) or `{ key, value, unit }`,
+ * where `key` names the figure for the label (resolved by the view, `impact.<key>`
+ * for Impact's sub-metrics) and may be null when the widget's own title says it.
+ *
+ * TODO(data): Problem Fit and Adoption have no researched backing field at any
+ * city yet, so both are still null everywhere — see docs/research.md §5.4. Impact
+ * is wired for the two cities that have a sourced sub-metric.
+ * @param {import('./types.js').Project|null} project
+ * @param {ReturnType<typeof impactSubMetrics>} [subMetrics] as built for the same city
+ * @returns {{ problemFit: WidgetMetric, impact: WidgetMetric, adoption: WidgetMetric }}
+ * @typedef {{ key: string|null, value: number, unit: string|null }|null} WidgetMetric
  */
-export function widgetMetricsForProject() {
-  return { problemFit: null, impact: null, adoption: null };
+export function widgetMetricsForProject(project = null, subMetrics = []) {
+  return {
+    problemFit: null,
+    impact: impactHeadline(project?.citySlug ?? null, subMetrics),
+    adoption: null,
+  };
+}
+
+/** The figure for a city's L1 Impact widget, or null when the city has none
+ * configured or the metric isn't sourced. A year series (car ownership)
+ * headlines with its latest value; a single figure (cycle network) as-is. */
+function impactHeadline(citySlug, subMetrics) {
+  const key = IMPACT_HEADLINE_METRIC[citySlug];
+  if (!key) return null;
+  const metric = subMetrics.find((entry) => entry.key === key);
+  if (!metric || metric.value == null) return null;
+  const value = Array.isArray(metric.value)
+    ? metric.value[metric.value.length - 1].value
+    : metric.value;
+  return { key, value, unit: metric.unit };
 }
 
 /**

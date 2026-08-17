@@ -138,11 +138,14 @@ export function render(container, props) {
 
   function mountOrUpdateMap(next) {
     const focusedProject = next.projects.find((p) => p.citySlug === next.focusedCity) ?? null;
+    // Built once and passed to both seams: the L2 panel shows every sub-metric,
+    // and the L1 Impact widget headlines with one of them.
+    const subMetrics = impactSubMetrics(next.cityIndicators, focusedProject?.citySlug ?? null);
     const widgetProps = {
       project: focusedProject,
       activeCriterion: next.activeCriterion,
-      metrics: widgetMetricsForProject(focusedProject),
-      impactSubMetrics: impactSubMetrics(next.cityIndicators, focusedProject?.citySlug ?? null),
+      metrics: widgetMetricsForProject(focusedProject, subMetrics),
+      impactSubMetrics: subMetrics,
       onSelectCriterion: props.setActiveCriterion,
     };
 

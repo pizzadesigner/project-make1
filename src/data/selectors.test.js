@@ -107,14 +107,64 @@ describe('populationDensityForCity', () => {
 });
 
 describe('widgetMetricsForProject', () => {
-  it('exposes the three Exploration widgets, all null until content is researched', () => {
-    // Placeholder shells (see docs/DATA_TODO.md) — the keys are the contract the
-    // widget stack relies on; the nulls keep any fabricated figure from rendering.
+  it('exposes the three Exploration widgets, all null with no city and no data', () => {
+    // The keys are the contract the widget stack relies on; the nulls keep any
+    // fabricated figure from rendering (docs/DESIGN_RATIONALE.md).
     expect(widgetMetricsForProject()).toEqual({
       problemFit: null,
       impact: null,
       adoption: null,
     });
+  });
+
+  it("headlines Cologne's Impact widget with its cycle network", () => {
+    // Which indicator stands for a city is decided here, in the data layer — the
+    // widget renders what it is handed and knows nothing about city slugs.
+    const subMetrics = impactSubMetrics(
+      [
+        {
+          citySlug: 'koeln',
+          indicatorKey: 'cycle_network',
+          value: 1.75,
+          unit: 'km per 1000 residents',
+          sourceUrl: 'https://example.test/cycle',
+          sourceLabel: 'Stadt Köln',
+          sourceAccessed: '2026-07-30',
+        },
+      ],
+      'koeln',
+    );
+    expect(widgetMetricsForProject({ citySlug: 'koeln' }, subMetrics)).toEqual({
+      problemFit: null,
+      impact: { key: 'cycleNetwork', value: 1.75, unit: 'km per 1000 residents' },
+      adoption: null,
+    });
+  });
+
+  it("headlines Paris's Impact widget with the latest year of its car-ownership series", () => {
+    // A year series headlines with its most recent value, not its first.
+    const subMetrics = impactSubMetrics(carOwnershipIndicators, 'paris-marne-la-vallee');
+    expect(
+      widgetMetricsForProject({ citySlug: 'paris-marne-la-vallee' }, subMetrics).impact,
+    ).toEqual({
+      key: 'carOwnership',
+      value: 31.2,
+      unit: '% of households',
+    });
+  });
+
+  it('leaves Impact null for a city with no headline metric configured', () => {
+    // Lisbon and Helsinki have no sourced sub-metric — an empty widget, never a
+    // borrowed or fabricated figure.
+    const subMetrics = impactSubMetrics(carDensityIndicators, 'lisboa');
+    expect(widgetMetricsForProject({ citySlug: 'lisboa' }, subMetrics).impact).toBeNull();
+  });
+
+  it('leaves Impact null when the configured metric has no sourced value', () => {
+    // Cologne is configured for cycle network, but if the row is absent the
+    // widget stays empty rather than falling back to another indicator.
+    const subMetrics = impactSubMetrics(carDensityIndicators, 'koeln');
+    expect(widgetMetricsForProject({ citySlug: 'koeln' }, subMetrics).impact).toBeNull();
   });
 });
 

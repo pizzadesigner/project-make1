@@ -8,12 +8,16 @@
 // onSelectCriterion }) and the component never reads the store — data comes
 // down, the clicked widget goes up via
 // onSelectCriterion('problemFit'|'impact'|'adoption').
-// TODO(data): mostly placeholder content still — no fabricated number is shown
-// for anything unsourced (Neutrality/Honesty — see docs/DESIGN_RATIONALE.md).
-// Impact's three sub-metrics (see selectors.js#impactSubMetrics) are the first
-// sourced exceptions: Cologne and Paris both render real charts — modal split,
-// car density, cycle network — not stubs, while Lisbon and Helsinki remain
-// honest placeholders.
+//
+// `metrics` is keyed by widget (`selectors.js#widgetMetricsForProject`): each
+// value is `{ key, value, unit }` or null. This component decides nothing about
+// *which* figure a city shows — it renders what it is handed, and an empty shell
+// for null, so no fabricated number can appear for anything unsourced
+// (Neutrality/Honesty — see docs/DESIGN_RATIONALE.md).
+// TODO(data): Problem Fit and Adoption are null at every city (docs/research.md
+// §5.4). Impact's three sub-metrics (see selectors.js#impactSubMetrics) are the
+// sourced exception: Cologne and Paris render real charts at L2 — modal split,
+// car density, cycle network — while Lisbon and Helsinki remain empty.
 
 import { t, getLocale } from '../lib/i18n.js';
 import { formatNumber } from '../lib/format.js';
@@ -94,10 +98,12 @@ export function render(container, props) {
     root.hidden = false;
     const active = next.activeCriterion ?? null;
     const layout = widgetLayout(active);
-    const headline = impactHeadline(next.project.citySlug, next.impactSubMetrics ?? []);
     for (const widget of widgets) {
-      const extra = widget.kind === 'impact' ? headline : null;
-      applyWidget(widget, layout[widget.kind], widgetContent(widget.kind, next.metrics, extra));
+      applyWidget(
+        widget,
+        layout[widget.kind],
+        widgetContent(widget.kind, next.metrics[widget.kind]),
+      );
       // With a panel open the small widgets are decorative — not click or focus
       // targets.
       widget.node.tabIndex = active ? -1 : 0;
@@ -347,49 +353,28 @@ function widgetHeader(label, chip) {
     </div>`;
 }
 
-/** A widget's body. Until a real headline figure exists the widget is an
- * intentional placeholder shell (marked as such), never a fabricated number. */
-// Cities that surface one Impact sub-metric as a figure on the L1 widget itself,
-// by sub-metric key: Cologne → its cycle network, Paris → its car-ownership
-// share. Every other city keeps the honest placeholder until asked for.
-const IMPACT_HEADLINE_METRIC = {
-  koeln: 'cycleNetwork',
-  'paris-marne-la-vallee': 'carOwnership',
-};
-
-/** The figure to show on a city's L1 Impact widget, or null when the city has
- * none configured / the metric isn't sourced. A year series (car ownership)
- * headlines with its latest value; a single figure (cycle network) as-is. */
-function impactHeadline(citySlug, impactSubMetrics) {
-  const key = IMPACT_HEADLINE_METRIC[citySlug];
-  if (!key) return null;
-  const metric = impactSubMetrics.find((entry) => entry.key === key);
-  if (!metric || metric.value == null) return null;
-  const value = Array.isArray(metric.value)
-    ? metric.value[metric.value.length - 1].value
-    : metric.value;
-  return { label: t(`impact.${key}`), value, unit: metric.unit };
-}
-
-function widgetContent(criterion, metrics, headline = null) {
+/** A widget's body: a sourced figure when `metric` is one, otherwise an empty
+ * shell — never a fabricated number. `metric` is whatever
+ * `selectors.js#widgetMetricsForProject` handed down for this widget:
+ * `{ key, value, unit }` or null. `key` names the figure (Impact's sub-metrics
+ * resolve via `impact.<key>`) and is null when the widget's own title says it;
+ * `unit` is null for a bare count. */
+function widgetContent(criterion, metric) {
   const label = t(`criteria.${criterion}`);
-  // A real sourced figure on the widget itself (currently just Cologne → Impact).
-  if (headline) {
-    return (
-      widgetHeader(label, null) +
-      `<span class="widget__submetric">${headline.label}</span>
-       <div class="widget__value-row widget__value-row--headline">
-         <span class="widget__value widget__value--headline">${formatNumber(headline.value, getLocale())}</span>
-         <span class="widget__value-unit">${headline.unit}</span>
-       </div>`
-    );
-  }
-  const value = metrics[criterion];
-  if (value == null) {
+  if (!metric) {
     return widgetHeader(label, null) + `<div class="widget__bar widget__bar--empty"></div>`;
   }
+  const subLabel = metric.key
+    ? `<span class="widget__submetric">${t(`impact.${metric.key}`)}</span>`
+    : '';
+  const unit = metric.unit ? `<span class="widget__value-unit">${metric.unit}</span>` : '';
+  const headline = metric.key ? ' widget__value-row--headline' : '';
   return (
     widgetHeader(label, null) +
-    `<div class="widget__value-row"><span class="widget__value">${value}</span></div>`
+    subLabel +
+    `<div class="widget__value-row${headline}">
+       <span class="widget__value${metric.key ? ' widget__value--headline' : ''}">${formatNumber(metric.value, getLocale())}</span>
+       ${unit}
+     </div>`
   );
 }
