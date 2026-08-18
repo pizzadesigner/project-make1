@@ -336,8 +336,11 @@ const MODAL_SPLIT_TARGETS = {
  * To remove this feature: delete this constant + function, the
  * `modalSplitTarget` prop in mapView.js, the matching parameter threaded
  * through widgetStack.js, its `.widget-detail__modal-split-compare` block in
- * widgets.css, the `--color-target-umweltverbund` / `--color-target-other`
- * tokens, and the `impact.modalSplitTarget` / `impact.modalSplitNow` /
+ * widgets.css *and* the chip bottom-alignment rule near
+ * `.widget-detail__submetric-chip` further down that same file (kept apart
+ * from the block above for stylelint's specificity-order rule), the
+ * `--color-target-umweltverbund` / `--color-target-other` tokens, and the
+ * `impact.modalSplitTarget` / `impact.modalSplitNow` /
  * `impact.modalSplitProgress.*` / `impact.mode.umweltverbund` /
  * `impact.mode.other` i18n keys. Nothing else depends on any of it.
  * @param {string|null} citySlug

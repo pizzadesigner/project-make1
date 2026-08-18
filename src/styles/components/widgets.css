@@ -455,7 +455,9 @@
    holds a single flex child that grows to fill the row, so it looks the same
    as the donut-plus-legend row alone — the feature degrades to nothing
    visible rather than an empty gap, even though the wrapper divs are always
-   in the markup. Self-contained: delete this whole block, the
+   in the markup. Self-contained: delete this whole block, the chip
+   bottom-alignment rule near .widget-detail__submetric-chip below (kept
+   separate so stylelint's specificity-order rule is happy), the
    --color-target-umweltverbund / --color-target-other tokens in tokens.css,
    and the matching JS (see selectors.js#modalSplitTargetForCity's doc
    comment for the full removal list) to pull it back out. */
@@ -470,6 +472,8 @@
 .widget-detail__modal-split-target {
   flex: 1 1 17rem;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .widget-detail__modal-split-heading {
@@ -528,6 +532,17 @@
 
 .widget-detail__submetric-chip {
   align-self: flex-start;
+}
+
+/* Both modal-split columns are stretched to equal height by the compare
+   row's default flex align-items (stretch); pinning each column's chip to
+   its own bottom with margin-top: auto lands them at the same Y regardless
+   of the target column's extra progress/caveat line, instead of each chip
+   just following its own content's natural height. */
+.widget-detail__modal-split-actual .widget-detail__submetric-chip,
+.widget-detail__modal-split-target .widget-detail__submetric-chip {
+  margin-top: auto;
+  padding-top: var(--space-2);
 }
 
 /* Named gaps, not silence: the benchmark and SDG-11 target a figure still

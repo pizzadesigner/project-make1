@@ -164,6 +164,76 @@ different, narrower population.
   "did not travel" bucket).
 - Lisbon, Helsinki have no `modal_split_*` rows yet.
 
+## `modal_split_*` target — Cologne and Paris, a sourced "how it should look"
+
+Added a second, smaller donut beside the modal-split one:
+`selectors.js#modalSplitTargetForCity`, wired through `mapView.js` →
+`widgetStack.js` (`modalSplitTarget` prop). Only renders for a city with an
+entry in `MODAL_SPLIT_TARGETS`; every other city's panel looks the same as
+before this existed (see the layout comment in `widgets.css`).
+
+- **Cologne**: Stadt Köln's own **3. Nahverkehrsplan** (Dec 2017; PDF text-
+  extracted and read directly, not taken from the earlier tracker note that
+  first flagged it) states, citing the city's 2014 **"Köln mobil 2025"**
+  strategy paper: « eine Reduzierung des Anteils des motorisierten
+  Individualverkehrs von derzeit 40 % auf 33 % … bis 2025/2030 » and
+  elsewhere « den Anteil des Umweltverbundes bis 2025 auf 2/3 des gesamten
+  Verkehrsaufkommens zu erhöhen ». Recorded as `{ year: 2025, umweltverbund:
+  67, car: 33 }` — 2/3 rounds to 67, matching the MIV-side 33 the same
+  document states directly.
+  Source: https://www.stadt-koeln.de/mediaasset/content/pdf66/dritter-nahverkehrsplan-12-2017.pdf
+  **The target is aggregate-only** (Umweltverbund vs car), not a per-mode
+  breakdown — the source never splits transit/bike/walk shares individually,
+  so the target donut shows two segments, not the actual donut's five. Don't
+  add per-mode target values without a source that actually states them.
+  Cologne's own latest (2022) ring already clears this target — transit 17 +
+  bike 25 + walk 33 = 75% vs. the 67% goal — which the panel now says
+  directly (`impact.modalSplitProgress.met`), computed from the two sourced
+  figures rather than asserted.
+- **Paris**: the regional (Île-de-France, not city-of-Paris) target from
+  *Plan des mobilités en Île-de-France 2030* is still not used — it's
+  expressed as relative change (bike triples, transit +15%, car −15%), not
+  an absolute split, so it still isn't like-for-like with this donut.
+  Instead, Paris's **own** city-level **Plan Local de Mobilité**
+  ("Scénario prospectif 2030", Ville de Paris, formally approved by the
+  Conseil de Paris 2024 — deliberation 2024 DVD 18) states one absolute,
+  sourced target: « une part modale vélo de 13% » by 2030. Recorded as
+  `{ year: 2030, bike: 13, other: 87 }` — 87 is the ring's own complement
+  (a donut always sums to 100; it is not a second number the source states).
+  Source: https://cdn.paris.fr/paris/2024/03/29/partie-3-scenario-prospectif-2030-vf-7ukO.pdf
+  **Two things stop this from being Cologne's twin:**
+  1. **No full split exists for Paris**, unlike Cologne's two independently
+     stated numbers — car/transit are only ever described as *relative*
+     shifts ("50% less road traffic", "40% of car users move to bike"),
+     never as target shares. Recording a car/transit target share for Paris
+     would mean inventing a number the source doesn't give, so the target
+     ring shows bike vs. "other modes" (unnamed), not five modes.
+  2. **The 13% target's own baseline doesn't match this app's actual
+     data.** The Plan Local de Mobilité benchmarks 13% against the EGT 2020
+     survey of *all trips* (bike was 2.5% there). The app's actual Paris
+     donut is Insee RP2022 *home-to-work commute* trips (bike 10.1% in
+     2022) — a different population; commuters cycle far more than the
+     general population, so the two bike figures are not measuring the same
+     thing. `comparable: false` on this entry (`selectors.js`) makes the
+     panel say so explicitly (`impact.modalSplitProgress.notComparable`)
+     instead of showing a percentage-point gap that would look like a valid
+     comparison and isn't. Decided with the user 2026-08-18 rather than
+     silently picking a framing, given the stakes for this app's
+     Neutrality/Honesty rule.
+- New colours in `tokens.css`: `--color-target-umweltverbund` (`#159895`,
+  teal, Cologne's aggregate segment) and `--color-target-other` (`#6c7684`,
+  slate grey, Paris's unnamed "everything else" segment — deliberately
+  desaturated since it isn't a tracked category, so the dataviz skill's
+  chroma-floor FAIL on it is expected, not an oversight). Both validated
+  with `validate_palette.js` against `--color-surface-raised` and against
+  their ring-neighbour (`--color-mode-car` for Cologne, `--color-mode-bike`
+  for Paris — the only ring-neighbour either target has, since each ring is
+  just two segments): Cologne CVD ΔE 9.1 / normal-vision ΔE 28.6; Paris CVD
+  ΔE 15.3 / normal-vision ΔE 21.2. Both target rings reuse an existing
+  `--color-mode-*` token for their named segment (car, bike) directly
+  rather than a new colour, so that wedge reads as the same colour in both
+  donuts.
+
 ## Paris / Helsinki — display name is narrower than the underlying project
 
 Per decision (use rows as-is, relabel only): `paris-marne-la-vallee-ecoquartier-2022`

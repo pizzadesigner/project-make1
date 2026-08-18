@@ -306,6 +306,12 @@ function submetricHtml({ key, value, unit, benchmark, sdgTarget }, modalSplitTar
   // compare row's only child fills it, and it looks the same as before.
   if (key === 'modalSplit' && value) {
     const target = modalSplitTarget ?? null;
+    // With a target column beside it, the actual donut's own chip moves into
+    // its column too (mirroring the target's) so both chips share one flex
+    // column layout with `margin-top: auto` (widgets.css) and land at the
+    // same Y regardless of the target column's extra progress/caveat line.
+    // No target → single column, chip stays at the card's bottom as before.
+    const actualChip = `<span class="widget-detail__submetric-chip" data-chip="${key}"></span>`;
     return `
       <div class="${cls} widget-detail__submetric--span">
         <span class="widget-detail__submetric-label">${label}</span>
@@ -316,11 +322,12 @@ function submetricHtml({ key, value, unit, benchmark, sdgTarget }, modalSplitTar
               <div class="widget-detail__donut" data-donut="${key}"></div>
               ${modalSplitLegendHtml(value)}
             </div>
+            ${target ? actualChip : ''}
           </div>
           ${target ? modalSplitTargetHtml(target, value) : ''}
         </div>
         ${context}
-        <span class="widget-detail__submetric-chip" data-chip="${key}"></span>
+        ${target ? '' : actualChip}
       </div>`;
   }
   // Car density — a sparkline of the year series (latest value shown big).
