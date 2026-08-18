@@ -13,6 +13,8 @@ import {
   widgetMetricsForProject,
   impactSubMetrics,
   modalSplitTargetForCity,
+  problemFitForCity,
+  cityHasResearchedContent,
 } from '../data/selectors.js';
 import { loadCityOutline, loadCityDistricts, loadCityInfrastructure } from '../data/load.js';
 import * as europeMap from '../components/europeMap.js';
@@ -47,6 +49,7 @@ export function render(container, props) {
   let mapHandle = null;
   let widgetHandle = null;
   let legendNode = null;
+  let comingSoonNode = null;
   let focusedCity = null;
   let activeCriterion = null;
   // Each focused city has three independent geometry layers. They load in
@@ -145,6 +148,11 @@ export function render(container, props) {
     // Built once and passed to both seams: the L2 panel shows every sub-metric,
     // and the L1 Impact widget headlines with one of them.
     const subMetrics = impactSubMetrics(next.cityIndicators, focusedProject?.citySlug ?? null);
+    // A focused city with no researched figures (Lisbon, Helsinki) is covered by
+    // the "coming soon" overlay instead of empty widgets — see buildComingSoon
+    // and .map-coming-soon. Derived, so it clears itself once their data lands.
+    const comingSoon =
+      Boolean(next.focusedCity) && !cityHasResearchedContent(next.focusedCity, next.cityIndicators);
     const widgetProps = {
       project: focusedProject,
       activeCriterion: next.activeCriterion,
@@ -154,6 +162,12 @@ export function render(container, props) {
       // for every city without a sourced target (see selectors.js), so the
       // extra diagram simply doesn't render there.
       modalSplitTarget: modalSplitTargetForCity(focusedProject?.citySlug ?? null),
+      // Problem Fit's SDG targets (L1) + the slug keying its prose (L2); null for
+      // every city without researched content, so the widget stays empty there.
+      problemFit: problemFitForCity(focusedProject?.citySlug ?? null),
+      // Under the coming-soon overlay the widgets are covered, so they go inert
+      // (not click/focus targets) rather than offering an empty L2 to open.
+      comingSoon,
       onSelectCriterion: props.setActiveCriterion,
     };
 
@@ -171,6 +185,8 @@ export function render(container, props) {
       legendNode = buildLegend(next.projects);
       legendNode.hidden = !next.focusedCity;
       refs.stage.append(legendNode);
+      comingSoonNode = buildComingSoon();
+      refs.stage.append(comingSoonNode);
     }
 
     mapHandle.update({
@@ -180,6 +196,7 @@ export function render(container, props) {
     });
     syncCityLayers(next.focusedCity);
     widgetHandle.update(widgetProps);
+    comingSoonNode.hidden = !comingSoon;
   }
 
   function teardownMap() {
@@ -189,6 +206,7 @@ export function render(container, props) {
     widgetHandle.destroy();
     widgetHandle = null;
     legendNode = null;
+    comingSoonNode = null;
   }
 
   update(props);
@@ -274,6 +292,19 @@ function buildLegend(projects) {
     );
   }
   return legend;
+}
+
+/** The L1 "coming soon" scrim: a black-transparent layer covering the focused
+ * city and its widgets (see .map-coming-soon), shown for cities with no
+ * researched content (cityHasResearchedContent). Kept in the DOM and toggled via
+ * `hidden`; sits below the corner controls so Back/Reset stay reachable. */
+function buildComingSoon() {
+  const overlay = document.createElement('div');
+  overlay.className = 'map-coming-soon';
+  overlay.hidden = true;
+  overlay.setAttribute('role', 'status');
+  overlay.innerHTML = `<span class="map-coming-soon__label">${t('city.comingSoon')}</span>`;
+  return overlay;
 }
 
 /** The SDG-11 targets actually present in the dataset, in SDG11_TARGET_CODES

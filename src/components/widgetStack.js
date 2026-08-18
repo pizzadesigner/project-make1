@@ -14,10 +14,13 @@
 // *which* figure a city shows — it renders what it is handed, and an empty shell
 // for null, so no fabricated number can appear for anything unsourced
 // (Neutrality/Honesty — see docs/DESIGN_RATIONALE.md).
-// TODO(data): Problem Fit and Adoption are null at every city (docs/research.md
-// §5.4). Impact's three sub-metrics (see selectors.js#impactSubMetrics) are the
-// sourced exception: Cologne and Paris render real charts at L2 — modal split,
-// car density, cycle network — while Lisbon and Helsinki remain empty.
+// Problem Fit carries its own content per city (selectors.js#problemFitForCity):
+// the SDG 11 targets at L1 and a narrative at L2 — Cologne is wired, other
+// cities stay empty. Impact's three sub-metrics (see
+// selectors.js#impactSubMetrics) are the sourced figures: Cologne and Paris
+// render real charts at L2 — modal split, car density, cycle network — while
+// Lisbon and Helsinki remain empty.
+// TODO(data): Adoption is null at every city (docs/research.md §5.4).
 
 import { t, getLocale } from '../lib/i18n.js';
 import { formatNumber } from '../lib/format.js';
@@ -33,14 +36,23 @@ const WIDGETS = ['problemFit', 'impact', 'adoption'];
 const STACK_TOP = 72;
 const STACK_MARGIN = 16;
 const STACK_STEP = 140;
-const WIDGET_WIDTH = '248px';
+const WIDGET_WIDTH = '320px';
+// Problem Fit carries the SDG explanations as prose, so rather than a fixed width
+// it sizes to its content (fit-content) clamped between a min and max: a short
+// entry hugs its text, a long one caps at the max and wraps taller. The value
+// widgets (Impact/Adoption) keep the fixed width and ignore the min/max.
+const PROBLEM_FIT_WIDTH = 'fit-content';
+const PROBLEM_FIT_MIN_WIDTH = '260px';
+const PROBLEM_FIT_MAX_WIDTH = '380px';
 const WIDGET_PADDING = '16px 18px';
 
 const BASE_LAYOUT = {
   problemFit: {
     top: `${STACK_TOP}px`,
     left: `${STACK_MARGIN}px`,
-    width: WIDGET_WIDTH,
+    width: PROBLEM_FIT_WIDTH,
+    minWidth: PROBLEM_FIT_MIN_WIDTH,
+    maxWidth: PROBLEM_FIT_MAX_WIDTH,
     padding: WIDGET_PADDING,
     opacity: '1',
     z: '10',
@@ -98,19 +110,25 @@ export function render(container, props) {
     root.hidden = false;
     const active = next.activeCriterion ?? null;
     const layout = widgetLayout(active);
+    // Inert when a panel is open (widgets are decorative) or when the coming-soon
+    // overlay covers them — either way not click or focus targets.
+    const inert = Boolean(active) || Boolean(next.comingSoon);
     for (const widget of widgets) {
       applyWidget(
         widget,
         layout[widget.kind],
-        widgetContent(widget.kind, next.metrics[widget.kind]),
+        widgetContent(widget.kind, next.metrics[widget.kind], next.problemFit ?? null),
       );
-      // With a panel open the small widgets are decorative — not click or focus
-      // targets.
-      widget.node.tabIndex = active ? -1 : 0;
-      widget.node.style.pointerEvents = active ? 'none' : 'auto';
-      widget.node.setAttribute('aria-hidden', String(Boolean(active)));
+      widget.node.tabIndex = inert ? -1 : 0;
+      widget.node.style.pointerEvents = inert ? 'none' : 'auto';
+      widget.node.setAttribute('aria-hidden', String(inert));
     }
-    detail.sync(active, next.impactSubMetrics, next.modalSplitTarget ?? null);
+    detail.sync(
+      active,
+      next.impactSubMetrics,
+      next.modalSplitTarget ?? null,
+      next.problemFit ?? null,
+    );
   }
 
   update(props);
@@ -163,7 +181,7 @@ function buildDetail(onSelectCriterion) {
     for (const child of children.splice(0)) child.destroy();
   }
 
-  function sync(activeCriterion, impactSubMetrics, modalSplitTarget) {
+  function sync(activeCriterion, impactSubMetrics, modalSplitTarget, problemFit) {
     clearChildren();
     if (!activeCriterion) {
       node.hidden = true;
@@ -173,7 +191,7 @@ function buildDetail(onSelectCriterion) {
     const wide = activeCriterion === 'impact' ? ' widget-detail--wide' : '';
     node.className = `widget-detail widget-detail--${widgetSide(activeCriterion)}${wide}`;
     node.setAttribute('aria-label', t(`criteria.${activeCriterion}`));
-    node.innerHTML = detailContent(activeCriterion, impactSubMetrics, modalSplitTarget);
+    node.innerHTML = detailContent(activeCriterion, impactSubMetrics, modalSplitTarget, problemFit);
     node.hidden = false;
     if (activeCriterion === 'impact') {
       mountSubmetricExtras(node, impactSubMetrics, children, modalSplitTarget);
@@ -268,11 +286,15 @@ function modalSplitTargetAriaLabel(target) {
 /** L2 content — a heading and a body (Impact's three sub-metric slots, or a
  * single empty diagram slot for the others). No fabricated numbers until
  * researched data lands (see widgetContent). */
-function detailContent(criterion, impactSubMetrics, modalSplitTarget) {
-  const body =
-    criterion === 'impact'
-      ? submetricsHtml(impactSubMetrics, modalSplitTarget)
-      : `<div class="widget-detail__diagram" aria-hidden="true"></div>`;
+function detailContent(criterion, impactSubMetrics, modalSplitTarget, problemFit) {
+  let body;
+  if (criterion === 'impact') {
+    body = submetricsHtml(impactSubMetrics, modalSplitTarget);
+  } else if (criterion === 'problemFit' && problemFit) {
+    body = problemFitHtml(problemFit);
+  } else {
+    body = `<div class="widget-detail__diagram" aria-hidden="true"></div>`;
+  }
   return `
     <header class="widget-detail__header">
       <button type="button" class="widget-detail__back" aria-label="${t('detail.back')}">
@@ -281,6 +303,43 @@ function detailContent(criterion, impactSubMetrics, modalSplitTarget) {
       <h2 class="widget-detail__title">${t(`criteria.${criterion}`)}</h2>
     </header>
     ${body}`;
+}
+
+/** Problem Fit's L2 prose for a city — the ordered `body` blocks from
+ * selectors.js (a plain paragraph, or a bold lead-in term + description, with
+ * the closing goal block set off by a divider). Every string lives in i18n keyed
+ * by the city slug (`problemFit.<slug>.*`); this only lays the blocks out, so the
+ * component stays free of any city-specific copy or shape. */
+function problemFitHtml({ slug, body }) {
+  const line = (suffix) => t(`problemFit.${slug}.${suffix}`);
+  const blocks = body
+    .map((block) => {
+      const cls = block.goal ? ' class="widget-detail__problem-fit-goal"' : '';
+      const content = block.term
+        ? `<strong>${line(block.term)}:</strong> ${line(block.text)}`
+        : line(block.text);
+      return `<p${cls}>${content}</p>`;
+    })
+    .join('');
+  return `<div class="widget-detail__problem-fit">${blocks}</div>`;
+}
+
+/** Problem Fit's L1 body: each SDG 11 target the project addresses, with a
+ * one-line explanation of how. The explanations live in i18n keyed by slug and
+ * target code (`problemFit.<slug>.target.<code>`); this only lays them out. */
+function problemFitTargetsHtml({ slug, targets }) {
+  const items = targets
+    .map((code) => {
+      const heading = t('problemFit.targetHeading').replace('{code}', code);
+      const text = t(`problemFit.${slug}.target.${code}`);
+      return `
+        <li class="widget__problem-fit-target">
+          <span class="widget__problem-fit-code">${heading}</span>
+          <span class="widget__problem-fit-text">${text}</span>
+        </li>`;
+    })
+    .join('');
+  return `<ul class="widget__problem-fit-targets">${items}</ul>`;
 }
 
 /** Impact's three sub-metrics (modal split, car density, cycle network — see
@@ -451,6 +510,10 @@ function applyWidget(widget, layout, contentHtml) {
     left: layout.left ?? 'auto',
     right: layout.right ?? 'auto',
     width: layout.width,
+    // Only Problem Fit's fit-content width is clamped; the fixed-width widgets
+    // pass no min/max and fall back to 'none'.
+    minWidth: layout.minWidth ?? 'none',
+    maxWidth: layout.maxWidth ?? 'none',
     padding: layout.padding,
     opacity: layout.opacity,
     zIndex: layout.z,
@@ -472,8 +535,14 @@ function widgetHeader(label, chip) {
  * `{ key, value, unit }` or null. `key` names the figure (Impact's sub-metrics
  * resolve via `impact.<key>`) and is null when the widget's own title says it;
  * `unit` is null for a bare count. */
-function widgetContent(criterion, metric) {
+function widgetContent(criterion, metric, problemFit) {
   const label = t(`criteria.${criterion}`);
+  // Problem Fit headlines with the SDG 11 targets it addresses, each with a
+  // one-line explanation of how — not a figure, so it renders text where the
+  // other widgets show a bar.
+  if (criterion === 'problemFit' && problemFit) {
+    return widgetHeader(label, null) + problemFitTargetsHtml(problemFit);
+  }
   if (!metric) {
     return widgetHeader(label, null) + `<div class="widget__bar widget__bar--empty"></div>`;
   }

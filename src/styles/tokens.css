@@ -79,6 +79,10 @@
   /* Glass widget surface (Ripples-style overlay cards). */
   --color-surface-glass: rgba(13, 17, 23, 0.88);
   --color-border-glass: rgba(200, 200, 200, 0.07);
+
+  /* Black-transparent scrim over a whole layer (e.g. the L1 "coming soon"
+   * overlay). Dark enough that light text on it clears WCAG AA. */
+  --color-scrim: rgba(0, 0, 0, 0.62);
   --blur-glass: 16px;
   --ease-glass: cubic-bezier(0.25, 0.1, 0.25, 1);
 

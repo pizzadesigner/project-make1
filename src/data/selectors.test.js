@@ -7,6 +7,8 @@ import {
   carDensitySeriesForCity,
   modalSplitForCity,
   modalSplitTargetForCity,
+  problemFitForCity,
+  cityHasResearchedContent,
   cycleNetworkForCity,
   impactSubMetrics,
 } from './selectors.js';
@@ -366,6 +368,51 @@ describe('modalSplitTargetForCity', () => {
 
   it('is null with no city (e.g. no focused project)', () => {
     expect(modalSplitTargetForCity(null)).toBeNull();
+  });
+});
+
+describe('problemFitForCity', () => {
+  it("exposes Cologne's SDG 11 targets, L2 body blocks, and the slug keying its i18n", () => {
+    const pf = problemFitForCity('koeln');
+    expect(pf.slug).toBe('koeln');
+    expect(pf.targets).toEqual(['11.2', '11.6']);
+    // Cologne's L2 breaks into named components + a goal block.
+    expect(pf.body.length).toBeGreaterThan(1);
+    expect(pf.body.at(-1)).toMatchObject({ goal: true });
+  });
+
+  it('exposes Paris as a single overview body block', () => {
+    expect(problemFitForCity('paris-marne-la-vallee')).toEqual({
+      slug: 'paris-marne-la-vallee',
+      targets: ['11.2', '11.6'],
+      body: [{ text: 'overview' }],
+    });
+  });
+
+  it('is null for a city with no researched Problem Fit content', () => {
+    expect(problemFitForCity('lisboa')).toBeNull();
+  });
+
+  it('is null with no city (e.g. no focused project)', () => {
+    expect(problemFitForCity(null)).toBeNull();
+  });
+});
+
+describe('cityHasResearchedContent', () => {
+  it('is true for Cologne — a Problem Fit entry alone qualifies', () => {
+    expect(cityHasResearchedContent('koeln', indicators)).toBe(true);
+  });
+
+  it('is true for Paris via a sourced Impact sub-metric', () => {
+    expect(cityHasResearchedContent('paris-marne-la-vallee', carOwnershipIndicators)).toBe(true);
+  });
+
+  it('is false for a city with only context rows (Lisbon → coming soon)', () => {
+    expect(cityHasResearchedContent('lisboa', indicators)).toBe(false);
+  });
+
+  it('is false with no focused city', () => {
+    expect(cityHasResearchedContent(null, indicators)).toBe(false);
   });
 });
 

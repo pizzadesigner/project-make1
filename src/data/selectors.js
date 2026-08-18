@@ -350,6 +350,64 @@ export function modalSplitTargetForCity(citySlug) {
   return (citySlug && MODAL_SPLIT_TARGETS[citySlug]) ?? null;
 }
 
+// The Problem Fit widget's content, per city. Only structure lives here; the
+// prose is translated copy in i18n keyed by slug (`problemFit.<slug>.*`), the
+// same division modalSplitProgress keeps between data and text. Two pieces:
+//  - `targets`: the SDG 11 codes (L1), each with a one-line explanation keyed
+//    `problemFit.<slug>.target.<code>`.
+//  - `body`: the L2 narrative, as ordered blocks. A `{ text }` block is a plain
+//    paragraph (i18n suffix in `text`); a `{ term, text }` block is a bold
+//    lead-in term + description; `goal: true` marks the closing block for its
+//    divider styling. Cities differ in shape — Cologne breaks into two named
+//    components + a goal, Paris is a single overview paragraph — so the block
+//    list carries that shape rather than the renderer assuming one.
+// Cities absent here show an empty Problem Fit widget and the L2 placeholder —
+// the same graceful-null pattern as MODAL_SPLIT_TARGETS.
+const PROBLEM_FIT = {
+  koeln: {
+    targets: ['11.2', '11.6'],
+    body: [
+      { text: 'intro' },
+      { term: 'ringsTerm', text: 'ringsBody' },
+      { term: 'routesTerm', text: 'routesBody' },
+      { term: 'goalTerm', text: 'goalBody', goal: true },
+    ],
+  },
+  'paris-marne-la-vallee': {
+    targets: ['11.2', '11.6'],
+    body: [{ text: 'overview' }],
+  },
+};
+
+/**
+ * A city's Problem Fit content: its SDG 11 target list, the L2 body blocks, and
+ * the slug keying the prose in i18n (`problemFit.<slug>.*`). Null for every city
+ * without researched Problem Fit content, so widgetStack.js renders its empty
+ * widget and L2 placeholder unchanged.
+ * @param {string|null} citySlug
+ * @returns {{ slug: string, targets: string[], body: { term?: string, text: string, goal?: boolean }[] } | null}
+ */
+export function problemFitForCity(citySlug) {
+  if (!citySlug || !PROBLEM_FIT[citySlug]) return null;
+  return { slug: citySlug, ...PROBLEM_FIT[citySlug] };
+}
+
+/**
+ * Whether a city has any researched widget content — a Problem Fit entry or at
+ * least one sourced Impact sub-metric. Cities without it (Lisbon and Helsinki
+ * carry only context rows, no project figures) get a "coming soon" overlay at L1
+ * (see mapView.js). Derived, not listed: it flips to true the moment a city's
+ * data lands, so the overlay clears itself with nothing to maintain.
+ * @param {string|null} citySlug
+ * @param {import('./types.js').CityIndicator[]} [cityIndicators]
+ * @returns {boolean}
+ */
+export function cityHasResearchedContent(citySlug, cityIndicators = []) {
+  if (!citySlug) return false;
+  if (problemFitForCity(citySlug)) return true;
+  return impactSubMetrics(cityIndicators, citySlug).some((metric) => metric.value != null);
+}
+
 /**
  * A city's single cycle-network figure (km per 1000 residents), or null.
  * @param {import('./types.js').CityIndicator[]} cityIndicators

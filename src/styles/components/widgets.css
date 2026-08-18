@@ -109,6 +109,36 @@
   );
 }
 
+/* Problem Fit's L1 body: the SDG 11 targets it addresses, each with a one-line
+   explanation, in place of the bar the other unsourced widgets show (see
+   widgetStack.js#widgetContent). */
+.widget__problem-fit-targets {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.widget__problem-fit-target {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.widget__problem-fit-code {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--color-accent);
+}
+
+.widget__problem-fit-text {
+  font-size: var(--font-size-base);
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
 .widget__no-data {
   font-size: 0.625rem;
   color: var(--color-danger);
@@ -301,6 +331,35 @@
   );
 }
 
+/* Problem Fit's L2: narrative prose (see widgetStack.js#problemFitHtml) rather
+   than Impact's grid of figures — an intro, the two network components and the
+   goal, each a bold lead-in term followed by its description. Scrolls within the
+   panel if the copy runs past the viewport. */
+.widget-detail__problem-fit {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  line-height: 1.55;
+}
+
+.widget-detail__problem-fit p {
+  margin: 0;
+}
+
+.widget-detail__problem-fit strong {
+  font-weight: 700;
+}
+
+.widget-detail__problem-fit-goal {
+  margin-top: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-glass);
+}
+
 /* Impact's sub-metrics: the modal-split donut spans the top; car density and
    cycle network share the row below. */
 .widget-detail__submetrics {
@@ -324,13 +383,14 @@
   align-items: center;
 }
 
-/* The donut and its legend side by side, so the chart and the percentages are
-   both readable at once instead of stacked (chart on top, legend wrapped
-   below it). */
+/* The donut on top with its legend wrapped below, so the ring can grow to fill
+   the column's width instead of splitting the row with the legend (which capped
+   it small and, when the legend got tight, wrapped mode labels mid-word). */
 .widget-detail__modal-split-body {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
   width: 100%;
 }
 
@@ -432,20 +492,11 @@
   flex-shrink: 0;
 }
 
-/* Inside the side-by-side body, the donut takes a fixed share and the legend
-   becomes a plain vertical list instead of a wrapped, centred row. */
+/* Stacked above its legend, the donut fills the column's width; the legend
+   below keeps the base wrapped, centred row so its labels have the full width
+   and never wrap mid-word. */
 .widget-detail__modal-split-body .widget-detail__donut {
-  flex: 0 1 42%;
-  max-width: 11rem;
-}
-
-.widget-detail__modal-split-body .widget-detail__legend {
-  flex: 1 1 auto;
-  flex-flow: column nowrap;
-  align-items: flex-start;
-  justify-content: center;
-  gap: var(--space-2);
-  min-width: 0;
+  max-width: none;
 }
 
 /* --- Modal-split target comparison ---------------------------------------
@@ -485,10 +536,10 @@
   text-align: center;
 }
 
-/* Big enough that the segment percentages and the legend's numbers are both
-   comfortably readable, not just the shape of the ring. */
+/* Fills most of its column now the legend sits below it — capped so an
+   ultra-wide panel doesn't blow the ring up to an unreadable size. */
 .widget-detail__modal-split-compare .widget-detail__donut {
-  max-width: 10.5rem;
+  max-width: 16rem;
 }
 
 .modal-split__seg--umweltverbund,

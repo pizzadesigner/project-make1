@@ -220,6 +220,29 @@ a:hover {
   inset: 0;
 }
 
+/* L1 "coming soon" scrim: covers the focused city + its widgets for cities with
+ * no researched data (see mapView.js#buildComingSoon). Sits above the widgets
+ * (z 10) and the L2 panel (z 20) but below the corner controls (z 30), so Back
+ * and Reset stay reachable. Being on top, it also blocks pointer events to the
+ * inert widgets beneath. */
+.map-coming-soon {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-scrim);
+}
+
+.map-coming-soon__label {
+  color: var(--color-text);
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
 /* Loading, error and empty states share this surface so no view ever paints a
  * half-populated card. */
 .skeleton {
