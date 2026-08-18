@@ -274,6 +274,79 @@ export function modalSplitForCity(cityIndicators, citySlug) {
   };
 }
 
+// A single, hand-picked lookup, not CSV-driven like the year-series
+// indicators above — a strategic target is a one-off goal statement, not a
+// repeated measurement. Only a city whose target has actually been opened and
+// read (see docs/DATA_TODO.md) gets a row; every other city stays out rather
+// than get a guessed number. This is the modal-split-specific edge of the gap
+// benchmarkForIndicator / reductionPathwayForCity describe generally above —
+// narrower, but sourced, so it doesn't wait on those.
+//
+// `segments` is the target ring's own two slices (always sums to 100 — that's
+// a donut, not an extra claim). Each may carry `actualModes`: which of this
+// city's real MODAL_SPLIT_MODES to sum from the latest actual ring for the
+// progress line. `comparable: false` means that sum isn't measuring the same
+// thing as the target (different survey/population) — widgetStack.js then
+// shows a methodology caveat instead of a percentage comparison.
+const MODAL_SPLIT_TARGETS = {
+  koeln: {
+    year: 2025,
+    comparable: true,
+    segments: [
+      { mode: 'umweltverbund', share: 67, actualModes: ['transit', 'bike', 'walk'] },
+      { mode: 'car', share: 33 },
+    ],
+    source: {
+      url: 'https://www.stadt-koeln.de/mediaasset/content/pdf66/dritter-nahverkehrsplan-12-2017.pdf',
+      label: 'Stadt Köln – 3. Nahverkehrsplan (2017), zitiert „Köln mobil 2025“',
+      accessed: '2026-08-18',
+    },
+  },
+  // Paris has no full-split target — only one absolute, city-official share
+  // (bike) is ever stated; car/transit are described as relative shifts
+  // ("50% less road traffic"), never as target shares, so they can't be
+  // recorded without inventing a number the source doesn't give. And the
+  // 13% itself is benchmarked against an all-trips survey (EGT 2020), not
+  // the home-to-work-commute survey behind this city's actual donut
+  // (Insee RP2022) — comparable: false so the panel says so instead of
+  // implying a clean percentage-point gap.
+  'paris-marne-la-vallee': {
+    year: 2030,
+    comparable: false,
+    segments: [
+      { mode: 'bike', share: 13, actualModes: ['bike'] },
+      { mode: 'other', share: 87 },
+    ],
+    source: {
+      url: 'https://cdn.paris.fr/paris/2024/03/29/partie-3-scenario-prospectif-2030-vf-7ukO.pdf',
+      label: 'Ville de Paris – Plan Local de Mobilité, Scénario prospectif 2030',
+      accessed: '2026-08-18',
+    },
+  },
+};
+
+/**
+ * A city's *target* modal split — the "how it should look" companion to
+ * modalSplitForCity's "how it looks now" — as a two-segment ring (see
+ * MODAL_SPLIT_TARGETS above for what each city's segments mean and whether
+ * they're comparable to the real data). Null for every city without a
+ * sourced, city-official target; widgetStack.js renders nothing extra in
+ * that case — the same graceful-null pattern as every other sub-metric here.
+ *
+ * To remove this feature: delete this constant + function, the
+ * `modalSplitTarget` prop in mapView.js, the matching parameter threaded
+ * through widgetStack.js, its `.widget-detail__modal-split-compare` block in
+ * widgets.css, the `--color-target-umweltverbund` / `--color-target-other`
+ * tokens, and the `impact.modalSplitTarget` / `impact.modalSplitNow` /
+ * `impact.modalSplitProgress.*` / `impact.mode.umweltverbund` /
+ * `impact.mode.other` i18n keys. Nothing else depends on any of it.
+ * @param {string|null} citySlug
+ * @returns {{ year: number, comparable: boolean, segments: { mode: string, share: number, actualModes?: string[] }[], source: { url: string, label: string, accessed: string } } | null}
+ */
+export function modalSplitTargetForCity(citySlug) {
+  return (citySlug && MODAL_SPLIT_TARGETS[citySlug]) ?? null;
+}
+
 /**
  * A city's single cycle-network figure (km per 1000 residents), or null.
  * @param {import('./types.js').CityIndicator[]} cityIndicators

@@ -110,7 +110,7 @@ export function render(container, props) {
       widget.node.style.pointerEvents = active ? 'none' : 'auto';
       widget.node.setAttribute('aria-hidden', String(Boolean(active)));
     }
-    detail.sync(active, next.impactSubMetrics);
+    detail.sync(active, next.impactSubMetrics, next.modalSplitTarget ?? null);
   }
 
   update(props);
@@ -163,7 +163,7 @@ function buildDetail(onSelectCriterion) {
     for (const child of children.splice(0)) child.destroy();
   }
 
-  function sync(activeCriterion, impactSubMetrics) {
+  function sync(activeCriterion, impactSubMetrics, modalSplitTarget) {
     clearChildren();
     if (!activeCriterion) {
       node.hidden = true;
@@ -173,18 +173,20 @@ function buildDetail(onSelectCriterion) {
     const wide = activeCriterion === 'impact' ? ' widget-detail--wide' : '';
     node.className = `widget-detail widget-detail--${widgetSide(activeCriterion)}${wide}`;
     node.setAttribute('aria-label', t(`criteria.${activeCriterion}`));
-    node.innerHTML = detailContent(activeCriterion, impactSubMetrics);
+    node.innerHTML = detailContent(activeCriterion, impactSubMetrics, modalSplitTarget);
     node.hidden = false;
-    if (activeCriterion === 'impact') mountSubmetricExtras(node, impactSubMetrics, children);
+    if (activeCriterion === 'impact') {
+      mountSubmetricExtras(node, impactSubMetrics, children, modalSplitTarget);
+    }
   }
 
   return { node, sync };
 }
 
 /** Mounts each Impact sub-metric's live pieces once its markup is in the DOM:
- * the modal-split donut, the car-density sparkline, and a source chip for any
- * sourced metric (including the single-figure cycle network). */
-function mountSubmetricExtras(node, impactSubMetrics, children) {
+ * the modal-split donut(s), the car-density sparkline, and a source chip for
+ * any sourced metric (including the single-figure cycle network). */
+function mountSubmetricExtras(node, impactSubMetrics, children, modalSplitTarget) {
   const locale = getLocale();
   for (const submetric of impactSubMetrics) {
     if (submetric.key === 'modalSplit' && submetric.value) {
@@ -198,6 +200,33 @@ function mountSubmetricExtras(node, impactSubMetrics, children) {
             ariaLabel: modalSplitAriaLabel(submetric.value),
           }),
         );
+      }
+      // The target donut only exists in the DOM when submetricHtml decided
+      // there's a sourced target for this city (see there) — same slot
+      // pattern, one ring, two segments (whatever selectors.js's
+      // MODAL_SPLIT_TARGETS defines for this city).
+      const targetSlot = node.querySelector('[data-donut="modalSplitTarget"]');
+      if (targetSlot && modalSplitTarget) {
+        children.push(
+          modalSplitChart.render(targetSlot, {
+            modes: modalSplitTarget.segments.map((segment) => segment.mode),
+            labels: modalSplitTarget.segments.map((segment) => t(`impact.mode.${segment.mode}`)),
+            rings: [
+              {
+                year: modalSplitTarget.year,
+                values: modalSplitTarget.segments.map((segment) => segment.share),
+              },
+            ],
+            ariaLabel: modalSplitTargetAriaLabel(modalSplitTarget),
+          }),
+        );
+        // The target's own source — a different document from the actual
+        // donut's (submetric.source, chipped separately below) — so it gets
+        // its own chip rather than sharing one.
+        const targetChipSlot = node.querySelector('[data-chip="modalSplitTarget"]');
+        if (targetChipSlot) {
+          children.push(sourceChip.render(targetChipSlot, { ...modalSplitTarget.source, locale }));
+        }
       }
     } else if (Array.isArray(submetric.value)) {
       const chartSlot = node.querySelector(`[data-chart="${submetric.key}"]`);
@@ -227,13 +256,22 @@ function modalSplitAriaLabel({ modes, rings, latestYear }) {
   return `${t('impact.modalSplit')} ${latestYear}: ${parts.join(', ')}`;
 }
 
+/** Spoken summary of the target donut — a single ring, two segments. */
+function modalSplitTargetAriaLabel(target) {
+  const label = t('impact.modalSplitTarget').replace('{year}', String(target.year));
+  const parts = target.segments.map(
+    (segment) => `${t(`impact.mode.${segment.mode}`)} ${segment.share}%`,
+  );
+  return `${label}: ${parts.join(', ')}`;
+}
+
 /** L2 content — a heading and a body (Impact's three sub-metric slots, or a
  * single empty diagram slot for the others). No fabricated numbers until
  * researched data lands (see widgetContent). */
-function detailContent(criterion, impactSubMetrics) {
+function detailContent(criterion, impactSubMetrics, modalSplitTarget) {
   const body =
     criterion === 'impact'
-      ? submetricsHtml(impactSubMetrics)
+      ? submetricsHtml(impactSubMetrics, modalSplitTarget)
       : `<div class="widget-detail__diagram" aria-hidden="true"></div>`;
   return `
     <header class="widget-detail__header">
@@ -250,25 +288,36 @@ function detailContent(criterion, impactSubMetrics) {
  * slot until its figure is sourced — car density and cycle network already
  * render real charts for Cologne and Paris (mounted by mountSubmetricExtras
  * once this markup is in the DOM). */
-function submetricsHtml(impactSubMetrics) {
+function submetricsHtml(impactSubMetrics, modalSplitTarget) {
   return `
     <div class="widget-detail__submetrics">
-      ${impactSubMetrics.map(submetricHtml).join('')}
+      ${impactSubMetrics.map((submetric) => submetricHtml(submetric, modalSplitTarget)).join('')}
     </div>`;
 }
 
-function submetricHtml({ key, value, unit, benchmark, sdgTarget }) {
+function submetricHtml({ key, value, unit, benchmark, sdgTarget }, modalSplitTarget) {
   const label = t(`impact.${key}`);
   const cls = 'widget-detail__submetric';
   const context = contextHtml(benchmark, sdgTarget);
   // Modal split — a donut plus a per-mode legend (with the latest-year share).
+  // Cities with a sourced target (selectors.js#modalSplitTargetForCity) get a
+  // second, smaller donut beside it: "how it should look" next to "how it
+  // looks now". No target for this city → modalSplitTarget is null, the
+  // compare row's only child fills it, and it looks the same as before.
   if (key === 'modalSplit' && value) {
+    const target = modalSplitTarget ?? null;
     return `
       <div class="${cls} widget-detail__submetric--span">
         <span class="widget-detail__submetric-label">${label}</span>
-        <div class="widget-detail__modal-split-body">
-          <div class="widget-detail__donut" data-donut="${key}"></div>
-          ${modalSplitLegendHtml(value)}
+        <div class="widget-detail__modal-split-compare">
+          <div class="widget-detail__modal-split-actual">
+            ${target ? `<span class="widget-detail__modal-split-heading">${t('impact.modalSplitNow')}</span>` : ''}
+            <div class="widget-detail__modal-split-body">
+              <div class="widget-detail__donut" data-donut="${key}"></div>
+              ${modalSplitLegendHtml(value)}
+            </div>
+          </div>
+          ${target ? modalSplitTargetHtml(target, value) : ''}
         </div>
         ${context}
         <span class="widget-detail__submetric-chip" data-chip="${key}"></span>
@@ -332,6 +381,61 @@ function modalSplitLegendHtml({ modes, rings }) {
     )
     .join('');
   return `<ul class="widget-detail__legend">${items}</ul>`;
+}
+
+/** The target donut's own heading, mini donut slot and two-row legend —
+ * matching the actual donut's markup shape (donut + `.widget-detail__legend`)
+ * so it inherits the same side-by-side donut/legend styling for free. */
+function modalSplitTargetHtml(target, value) {
+  const legendItems = target.segments
+    .map(
+      (segment) => `
+      <li class="widget-detail__legend-item">
+        <span class="widget-detail__legend-swatch widget-detail__legend-swatch--${segment.mode}"></span>
+        <span>${t(`impact.mode.${segment.mode}`)}</span>
+        <b>${segment.share}%</b>
+      </li>`,
+    )
+    .join('');
+  return `
+    <div class="widget-detail__modal-split-target">
+      <span class="widget-detail__modal-split-heading">${t('impact.modalSplitTarget').replace('{year}', String(target.year))}</span>
+      <div class="widget-detail__modal-split-body">
+        <div class="widget-detail__donut" data-donut="modalSplitTarget"></div>
+        <ul class="widget-detail__legend">${legendItems}</ul>
+      </div>
+      ${modalSplitProgressHtml(value, target)}
+      <span class="widget-detail__submetric-chip" data-chip="modalSplitTarget"></span>
+    </div>`;
+}
+
+/** How close the latest actual ring already is to the sourced target — pure
+ * arithmetic on two sourced figures (never a guessed target, see
+ * selectors.js#modalSplitTargetForCity), stated as "goal already met" or the
+ * remaining points to close. When the target isn't measuring the same thing
+ * as the actual data (`comparable: false`, e.g. Paris's different survey
+ * population), states that instead of a percentage-point gap that would
+ * imply a comparison that isn't actually valid. */
+function modalSplitProgressHtml({ modes, rings }, target) {
+  const latest = rings[rings.length - 1];
+  const [primary] = target.segments;
+  if (!latest || !primary.actualModes) return '';
+  const actual = primary.actualModes.reduce((sum, mode) => {
+    const i = modes.indexOf(mode);
+    return sum + (i === -1 ? 0 : latest.values[i]);
+  }, 0);
+  if (target.comparable === false) {
+    const text = t('impact.modalSplitProgress.notComparable').replace('{actual}', String(actual));
+    return `<p class="widget-detail__target-progress">${text}</p>`;
+  }
+  const gap = primary.share - actual;
+  const key = gap <= 0 ? 'impact.modalSplitProgress.met' : 'impact.modalSplitProgress.gap';
+  const text = t(key)
+    .replace('{actual}', String(actual))
+    .replace('{target}', String(primary.share))
+    .replace('{year}', String(target.year))
+    .replace('{gap}', String(Math.abs(gap)));
+  return `<p class="widget-detail__target-progress">${text}</p>`;
 }
 
 function applyWidget(widget, layout, contentHtml) {

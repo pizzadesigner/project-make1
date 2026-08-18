@@ -35,6 +35,28 @@
   --color-mode-car: #d9455f;
   --color-mode-moto: #c98500;
 
+  /* Modal-split *target* ring (the Impact donut's "how it should look"
+   * companion — selectors.js#modalSplitTargetForCity, Cologne and Paris).
+   * A single new hue, distinct from the five modes above, for Cologne's
+   * "Umweltverbund" (transit+bike+walk combined) segment; that ring's other
+   * segment reuses --color-mode-car directly, so the shrinking wedge reads
+   * as the same colour in both donuts. Validated against --surface #1f293e
+   * and against --color-mode-car (its only ring-neighbour, since this ring
+   * has just two segments): CVD ΔE 9.1, normal-vision ΔE 28.6, contrast
+   * >= 3:1 — passes every check with no WARNs. Remove alongside the rest of
+   * that feature (see selectors.js#modalSplitTargetForCity for the full
+   * removal list). */
+  --color-target-umweltverbund: #159895;
+
+  /* Paris's target ring's "everything else" segment (its only named segment
+   * is bike — see selectors.js#modalSplitTargetForCity). Deliberately
+   * desaturated: it's a residual, not a tracked category, so it should read
+   * as neutral rather than compete with the real hues — the dataviz skill's
+   * validate_palette.js chroma-floor FAIL on this token is expected and
+   * accepted for that reason, not an oversight. CVD ΔE vs --color-mode-bike
+   * (its ring-neighbour) 15.3, normal-vision ΔE 21.2, contrast >= 3:1. */
+  --color-target-other: #6c7684;
+
   /* Text — light on dark. Every pair below clears WCAG AA (4.5:1) on
    * --color-canvas #0d1117 — the "comprehensibility" graphical design objective
    * (see docs/DESIGN_RATIONALE.md). --color-text-faint was lightened from the

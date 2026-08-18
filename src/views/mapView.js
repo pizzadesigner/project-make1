@@ -9,7 +9,11 @@
 
 import { t } from '../lib/i18n.js';
 import { SDG11_TARGETS, SDG11_TARGET_CODES } from '../lib/sdg11.js';
-import { widgetMetricsForProject, impactSubMetrics } from '../data/selectors.js';
+import {
+  widgetMetricsForProject,
+  impactSubMetrics,
+  modalSplitTargetForCity,
+} from '../data/selectors.js';
 import { loadCityOutline, loadCityDistricts, loadCityInfrastructure } from '../data/load.js';
 import * as europeMap from '../components/europeMap.js';
 import * as widgetStack from '../components/widgetStack.js';
@@ -146,6 +150,10 @@ export function render(container, props) {
       activeCriterion: next.activeCriterion,
       metrics: widgetMetricsForProject(focusedProject, subMetrics),
       impactSubMetrics: subMetrics,
+      // "How it should look" beside modal split's "how it looks now" — null
+      // for every city without a sourced target (see selectors.js), so the
+      // extra diagram simply doesn't render there.
+      modalSplitTarget: modalSplitTargetForCity(focusedProject?.citySlug ?? null),
       onSelectCriterion: props.setActiveCriterion,
     };
 

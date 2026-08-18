@@ -448,6 +448,66 @@
   min-width: 0;
 }
 
+/* --- Modal-split target comparison ---------------------------------------
+   "How it should look" (a sourced strategic target, Cologne and Paris —
+   selectors.js#modalSplitTargetForCity) beside "how it looks now" (the donut
+   above). When a city has no sourced target, .widget-detail__modal-split-compare
+   holds a single flex child that grows to fill the row, so it looks the same
+   as the donut-plus-legend row alone — the feature degrades to nothing
+   visible rather than an empty gap, even though the wrapper divs are always
+   in the markup. Self-contained: delete this whole block, the
+   --color-target-umweltverbund / --color-target-other tokens in tokens.css,
+   and the matching JS (see selectors.js#modalSplitTargetForCity's doc
+   comment for the full removal list) to pull it back out. */
+.widget-detail__modal-split-compare {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.widget-detail__modal-split-actual,
+.widget-detail__modal-split-target {
+  flex: 1 1 17rem;
+  min-width: 0;
+}
+
+.widget-detail__modal-split-heading {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* Big enough that the segment percentages and the legend's numbers are both
+   comfortably readable, not just the shape of the ring. */
+.widget-detail__modal-split-compare .widget-detail__donut {
+  max-width: 10.5rem;
+}
+
+.modal-split__seg--umweltverbund,
+.widget-detail__legend-swatch--umweltverbund {
+  fill: var(--color-target-umweltverbund);
+  background: var(--color-target-umweltverbund);
+}
+
+.modal-split__seg--other,
+.widget-detail__legend-swatch--other {
+  fill: var(--color-target-other);
+  background: var(--color-target-other);
+}
+
+.widget-detail__target-progress {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* --- end modal-split target comparison ------------------------------------ */
+
 .widget-detail__submetric-label {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);

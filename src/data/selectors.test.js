@@ -6,6 +6,7 @@ import {
   widgetMetricsForProject,
   carDensitySeriesForCity,
   modalSplitForCity,
+  modalSplitTargetForCity,
   cycleNetworkForCity,
   impactSubMetrics,
 } from './selectors.js';
@@ -320,6 +321,51 @@ describe('modalSplitForCity', () => {
 
   it('is null for a city with no modal-split rows', () => {
     expect(modalSplitForCity(modalRows, 'lisboa')).toBeNull();
+  });
+});
+
+describe('modalSplitTargetForCity', () => {
+  it("exposes Cologne's sourced Umweltverbund-vs-car target, comparable to the actual ring", () => {
+    expect(modalSplitTargetForCity('koeln')).toEqual({
+      year: 2025,
+      comparable: true,
+      segments: [
+        { mode: 'umweltverbund', share: 67, actualModes: ['transit', 'bike', 'walk'] },
+        { mode: 'car', share: 33 },
+      ],
+      source: {
+        url: 'https://www.stadt-koeln.de/mediaasset/content/pdf66/dritter-nahverkehrsplan-12-2017.pdf',
+        label: 'Stadt Köln – 3. Nahverkehrsplan (2017), zitiert „Köln mobil 2025“',
+        accessed: '2026-08-18',
+      },
+    });
+  });
+
+  it("exposes Paris's sourced bike-only target, flagged as not comparable to the actual ring", () => {
+    // Paris's actual donut is Insee RP2022 commute trips; this target is
+    // benchmarked against an all-trips survey (EGT 2020) — different
+    // populations, so comparable: false rather than a false percentage gap.
+    expect(modalSplitTargetForCity('paris-marne-la-vallee')).toEqual({
+      year: 2030,
+      comparable: false,
+      segments: [
+        { mode: 'bike', share: 13, actualModes: ['bike'] },
+        { mode: 'other', share: 87 },
+      ],
+      source: {
+        url: 'https://cdn.paris.fr/paris/2024/03/29/partie-3-scenario-prospectif-2030-vf-7ukO.pdf',
+        label: 'Ville de Paris – Plan Local de Mobilité, Scénario prospectif 2030',
+        accessed: '2026-08-18',
+      },
+    });
+  });
+
+  it('is null for a city with no sourced target', () => {
+    expect(modalSplitTargetForCity('lisboa')).toBeNull();
+  });
+
+  it('is null with no city (e.g. no focused project)', () => {
+    expect(modalSplitTargetForCity(null)).toBeNull();
   });
 });
 
