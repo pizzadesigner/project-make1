@@ -324,8 +324,18 @@
   align-items: center;
 }
 
-/* The donut itself (see modalSplitChart.js) and its per-mode legend. The slot is
-   positioned so the hover tooltip can anchor within it. */
+/* The donut and its legend side by side, so the chart and the percentages are
+   both readable at once instead of stacked (chart on top, legend wrapped
+   below it). */
+.widget-detail__modal-split-body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+/* The donut itself (see modalSplitChart.js). The slot is positioned so the
+   hover tooltip can anchor within it. */
 .widget-detail__donut {
   position: relative;
   width: 100%;
@@ -420,6 +430,22 @@
   height: 12px;
   border-radius: 3px;
   flex-shrink: 0;
+}
+
+/* Inside the side-by-side body, the donut takes a fixed share and the legend
+   becomes a plain vertical list instead of a wrapped, centred row. */
+.widget-detail__modal-split-body .widget-detail__donut {
+  flex: 0 1 42%;
+  max-width: 11rem;
+}
+
+.widget-detail__modal-split-body .widget-detail__legend {
+  flex: 1 1 auto;
+  flex-flow: column nowrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 0;
 }
 
 .widget-detail__submetric-label {

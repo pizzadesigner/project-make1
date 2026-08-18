@@ -266,8 +266,10 @@ function submetricHtml({ key, value, unit, benchmark, sdgTarget }) {
     return `
       <div class="${cls} widget-detail__submetric--span">
         <span class="widget-detail__submetric-label">${label}</span>
-        <div class="widget-detail__donut" data-donut="${key}"></div>
-        ${modalSplitLegendHtml(value)}
+        <div class="widget-detail__modal-split-body">
+          <div class="widget-detail__donut" data-donut="${key}"></div>
+          ${modalSplitLegendHtml(value)}
+        </div>
         ${context}
         <span class="widget-detail__submetric-chip" data-chip="${key}"></span>
       </div>`;
