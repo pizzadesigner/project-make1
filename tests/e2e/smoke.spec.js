@@ -61,6 +61,149 @@ test('focusing a city zooms in place without navigating', async ({ page }) => {
   await expect(page.locator('.widget').first()).toBeVisible();
 });
 
+// The L1 → L2 path the note above was waiting on: a widget is the affordance,
+// and its detail arrives as a set of modules standing in the half of the screen
+// the map has just vacated. Unit tests cover the mount and the teardown; what
+// only a browser can show is that the modules actually travel into place, and
+// that none of them reaches over the map.
+test('opening a widget stands its modules in the freed half', async ({ page }) => {
+  await page.goto('/');
+  await page.waitForSelector('.marker');
+  await page.locator(`.marker[aria-label*="${sourced.city_display}"]`).click({ force: true });
+
+  const widget = page.locator('.widget--impact');
+  await expect(widget).toBeVisible();
+  await widget.click();
+
+  const region = page.locator('.widget-detail');
+  await expect(region).toBeVisible();
+  const modules = page.locator('.widget-detail__module');
+  await expect(modules).toHaveCount(6);
+
+  // Mid-entrance: sampled rather than read once, so a module that jump-cut to
+  // its final position would still fail here.
+  const offsets = await modules.first().evaluate(async (node) => {
+    const seen = [];
+    for (let i = 0; i < 6; i += 1) {
+      seen.push(getComputedStyle(node).transform);
+      await new Promise((resolve) => requestAnimationFrame(() => resolve()));
+    }
+    return seen;
+  });
+  expect(offsets.some((transform) => transform !== 'none' && !transform.endsWith('0, 0)'))).toBe(
+    true,
+  );
+
+  // Three staggered columns: the second column's boxes sit between the first
+  // column's, and the third column's single box is level with the last of the
+  // first. Read once everything has landed.
+  //
+  // "Level" is deliberately approximate. Each module sits up to --module-nudge
+  // off the line the grid put it on so the arrangement does not read as ruled,
+  // which is a design decision and not drift: the tolerance below is twice that
+  // nudge, and anything past it means the grid placement itself has moved.
+  const NUDGE_TOLERANCE = 24;
+  await expect(modules.nth(5)).toHaveCSS('opacity', '1', { timeout: 5000 });
+  const box = async (n) => modules.nth(n).boundingBox();
+  const [one, two, three, four, six] = await Promise.all([box(0), box(1), box(2), box(3), box(5)]);
+  expect(four.x).toBeGreaterThan(one.x);
+  expect(six.x).toBeGreaterThan(four.x);
+  expect(four.y).toBeGreaterThan(one.y);
+  expect(four.y).toBeLessThan(two.y);
+  expect(Math.abs(six.y - three.y)).toBeLessThanOrEqual(NUDGE_TOLERANCE);
+
+  // And no two of them sit on exactly the same line, which is the point of the
+  // nudge — a perfectly ruled column would put these three at one x.
+  const columnOne = await Promise.all([box(0), box(1), box(2)]);
+  expect(new Set(columnOne.map((each) => Math.round(each.x))).size).toBeGreaterThan(1);
+
+  // And no scrollbar. The nudge and the idle drift both reach past the cells
+  // the grid measured, so the region has to keep room for them — it grew a
+  // scrollbar over 9px of decoration once already.
+  const overflow = await region.evaluate((node) => ({
+    y: node.scrollHeight - node.clientHeight,
+    x: node.scrollWidth - node.clientWidth,
+  }));
+  expect(overflow.y).toBeLessThanOrEqual(0);
+  expect(overflow.x).toBeLessThanOrEqual(0);
+
+  // The arrows wait for the modules. They are drawn only once every module has
+  // landed — the whole point of hanging their delay off the entrance — so a
+  // line that is already on screen mid-flight means that timing has come apart.
+  const arrows = page.locator('.connector__line');
+  await expect(arrows).toHaveCount(2);
+  await expect
+    .poll(async () => arrows.first().evaluate((node) => getComputedStyle(node).strokeDashoffset), {
+      timeout: 5000,
+    })
+    .toBe('0px');
+  const heads = page.locator('.connector__head');
+  await expect(heads).toHaveCount(2);
+  await expect(heads.first()).toHaveCSS('opacity', '1');
+  await expect(heads.nth(1)).toHaveCSS('opacity', '1');
+
+  // The head is what draws the line, so once the draw is over it has to be
+  // sitting on the tip — not near it, and not still on its way there. Measured
+  // against the line's own end point, which is the thing it is supposed to
+  // track; the tolerance is the head's own size, since a bounding box centre is
+  // not quite the point the path carries it by.
+  const offTip = await page.evaluate(() => {
+    const line = document.querySelector('.connector__line');
+    const head = document.querySelector('.connector__head');
+    const tip = line.getPointAtLength(line.getTotalLength());
+    const svg = line.ownerSVGElement.getBoundingClientRect();
+    const box = head.getBoundingClientRect();
+    return Math.hypot(
+      svg.x + tip.x - (box.x + box.width / 2),
+      svg.y + tip.y - (box.y + box.height / 2),
+    );
+  });
+  expect(offTip).toBeLessThan(8);
+
+  // The map keeps clear of the modules rather than running under them. Before
+  // the L2 anchor was pulled towards the edge the two overlapped by ~90px on
+  // this stage, so the modules stood on top of the city instead of beside it.
+  const clearance = await page.evaluate(() => {
+    const el = document.querySelector('.widget-detail');
+    const region = el.getBoundingClientRect();
+    const city = document
+      .querySelector('.europe-map__districts, .europe-map__city')
+      .getBoundingClientRect();
+    return el.classList.contains('widget-detail--left')
+      ? city.left - region.right
+      : region.left - city.right;
+  });
+  expect(clearance).toBeGreaterThan(0);
+
+  // The map owns the other half: no module may reach across into it.
+  const regionBox = await region.boundingBox();
+  expect(six.x + six.width).toBeLessThanOrEqual(regionBox.x + regionBox.width + 1);
+  expect(one.x).toBeGreaterThanOrEqual(regionBox.x - 1);
+});
+
+// The hard rule (CLAUDE.md): asking for reduced motion must leave the content in
+// its final position, motionless. The components carry no branch for it — the
+// tokens go to 0 and the same CSS resolves to no movement — so this is the check
+// that the wiring actually reaches the browser.
+test.describe('with reduced motion', () => {
+  test.use({ reducedMotion: 'reduce' });
+
+  test('a widget opens with its modules already in place', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForSelector('.marker');
+    await page.locator(`.marker[aria-label*="${sourced.city_display}"]`).click({ force: true });
+    await page.locator('.widget--impact').click();
+
+    // Read immediately: under the entrance these would be mid-flight.
+    // The transform resolves to the identity matrix rather than the `none`
+    // keyword — a 0ms animation still applies its final frame — which is the
+    // same thing: the module is carrying no offset.
+    const module = page.locator('.widget-detail__module').first();
+    await expect(module).toHaveCSS('opacity', '1');
+    await expect(module).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
+  });
+});
+
 test('a shared deep link loads the city cold, silhouette and sourced budget', async ({ page }) => {
   await page.goto(`/#/city/${sourced.city}`);
 

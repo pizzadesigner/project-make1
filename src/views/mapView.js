@@ -127,7 +127,12 @@ export function render(container, props) {
     const atOverview = !(focusedCity || activeCriterion);
     refs.back.hidden = atOverview;
     refs.overview.hidden = !atOverview;
-    if (legendNode) legendNode.hidden = atOverview;
+    // The legend sits bottom-left. An L2 opening on that side now stands its
+    // modules directly on the canvas, with no panel to hide what is underneath,
+    // so the legend steps aside until that layer closes.
+    const legendCovered =
+      Boolean(activeCriterion) && widgetStack.widgetSide(activeCriterion) === 'left';
+    if (legendNode) legendNode.hidden = atOverview || legendCovered;
     if (next.status === 'error') {
       teardownMap();
       return showState(refs.stage, 'state--error', t('state.error'));

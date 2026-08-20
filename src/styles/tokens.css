@@ -130,8 +130,67 @@
   --motion-entrance: 620ms; /* gentle content float-ins (e.g. the L0 overview text) */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
+  /* The L2 modules (widgets.css, widgetStack.js#moduleScaffold). --module-fly is
+   * how far a module travels on its way in; each one scales it differently so
+   * no two arrive along the same line. --module-leave-duration is also read in
+   * JS (widgetStack.js#leave) to know how long to hold the region on the way
+   * out. The boxes divide the height the region has; --module-box-min is the
+   * floor below which they stop shrinking and the region scrolls instead. */
+  --module-box-min: 10rem;
+  --module-fly: 40px;
+
+  /* How far a module sits off the line the grid put it on, and how far it drifts
+   * once it has landed. The drift is meant to be felt rather than seen — a few
+   * px over several seconds — so it stays well under the nudge. */
+  --module-nudge: 12px;
+  --module-idle: 3px;
+  --module-idle-duration: 7s;
+
+  /* How far a module can stray from its grid cell, all told. The region keeps
+   * this much clear around the arrangement: a nudged module reaches past the
+   * cell the grid measured, and without the room for it the region grows a
+   * scrollbar over a few px of decoration. */
+  --module-slack: calc(var(--module-nudge) + var(--module-idle));
+  --module-fly-duration: 720ms;
+  --module-stagger: 100ms;
+  --module-leave-duration: 260ms;
+
+  /* One easing per axis — that difference is what bends a module's path (see
+   * .widget-detail__module). Across: away quickly, settled early. Down: slower
+   * to leave, still descending after the sideways travel has finished. Both are
+   * single unbroken curves, so neither axis changes velocity mid-flight. */
+  --ease-module-x: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-module-y: cubic-bezier(0.45, 0, 0.25, 1);
+
+  /* The arrows between modules (connector.js, connector.css). They are drawn
+   * only once every module has landed, which is what --arrow-draw-delay adds up
+   * to: the flight itself, plus the stagger of all six modules ahead of it. It
+   * follows the entrance rather than being timed against it by hand, so
+   * retuning the entrance carries the arrows with it. --arrow-breathe-duration
+   * is the resting state of a drawn pair, and never ends — see the
+   * reduced-motion block, which switches it off rather than shortening it. */
+  --arrow-draw-delay: calc(var(--module-fly-duration) + var(--module-stagger) * 6);
+  --arrow-draw-duration: 700ms;
+  --arrow-stagger: 160ms;
+  --arrow-breathe-duration: 4.2s;
+  --arrow-width: 1.5px;
+
+  /* Eased at both ends rather than thrown and coasting: the head is visible for
+   * the whole draw, so the curve it travels has to look considered the entire
+   * way rather than only where it stops. */
+  --ease-arrow: cubic-bezier(0.4, 0, 0.2, 1);
+
   /* Layout. */
   --content-max: 72rem;
+
+  /* The L2 split: how much of the stage the modules take, and how much clear
+   * canvas is left between them and the city. Unitless share rather than a
+   * percentage because europeMap.js reads it too — it places the city so that
+   * its inner edge lands exactly on this split, at any stage size. Defined once
+   * here so the two sides cannot drift apart. */
+  --l2-region-share: 0.55;
+  --l2-region-gap: 40px;
+  --l2-region-margin: var(--space-4);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -140,5 +199,19 @@
     --motion-base: 0ms;
     --motion-slow: 0ms;
     --motion-entrance: 0ms;
+
+    /* The modules arrive already in their places: no travel, no stagger, no
+     * duration. Zeroing --module-fly as well as the clocks means there is no
+     * frame in which a module is offset from where it belongs.
+     * tokens.test.js fails if a --module-* or --thread-* token is added above
+     * without a 0 here. */
+    --module-fly: 0px;
+    --module-idle: 0px;
+    --module-fly-duration: 0ms;
+    --module-stagger: 0ms;
+    --module-leave-duration: 0ms;
+    --arrow-draw-delay: 0ms;
+    --arrow-draw-duration: 0ms;
+    --arrow-stagger: 0ms;
   }
 }

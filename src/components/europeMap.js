@@ -37,13 +37,12 @@ const WIDGET_STRIP = 340;
 const WIDGET_STRIP_MAX_FRACTION = 0.22;
 const CITY_FILL = 0.75;
 // L2 pushes the city into one half and zooms a touch deeper — a city-level
-// cutout, freeing the opposite half for the widget's data panel.
+// cutout, freeing the opposite half for the widget's modules.
 const CITY_L2_ZOOM = 1.2;
-// Impact's L2 goes further: the city is pushed almost off-canvas on its side
-// (just a corner staying visible, ~30-40% of the viewport) so its data panel
-// can use most of the freed width for the sub-metric breakdown.
+// Impact's L2 goes deeper still: the city is pushed almost off-canvas on its
+// side (just a corner staying visible) so its modules can use most of the freed
+// width for the sub-metric breakdown.
 const IMPACT_L2_ZOOM = 2.4;
-const IMPACT_ANCHOR_FRACTION = 0.14;
 // Above this scale, the country/border geometry is swapped for a flat backdrop
 // (see buildDom) — well above FOCUS_ZOOM (the regional zoom for cities without a
 // silhouette), well below a real city fit (40x-120x+).
@@ -510,7 +509,15 @@ export function cityFitInfo(path, size, districts) {
   const strip = Math.min(WIDGET_STRIP, size.width * WIDGET_STRIP_MAX_FRACTION);
   const usableWidth = size.width - 2 * strip;
   const scale = Math.min(usableWidth / width, size.height / height) * CITY_FILL;
-  return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, scale: Math.min(scale, MAX_ZOOM) };
+  // halfWidth is in projection units, so it scales with whatever zoom is applied
+  // to it — it is what cityL2Transform needs to know where the city's edge will
+  // land once it is placed.
+  return {
+    cx: (x0 + x1) / 2,
+    cy: (y0 + y1) / 2,
+    halfWidth: width / 2,
+    scale: Math.min(scale, MAX_ZOOM),
+  };
 }
 
 /** Transform centring the fitted city between the two widget columns. */
@@ -521,19 +528,40 @@ function cityFitTransform(size, info) {
     .translate(-info.cx, -info.cy);
 }
 
-/** L2 cutout: the city anchored into one half and zoomed a touch deeper, so the
- * opposite half is free for the widget data panel. Impact's L2 (`deepZoom`)
- * pushes the anchor almost to the edge and zooms further still, so only a
- * corner of the city stays visible and its panel can take most of the width. */
+/** L2 cutout: the city pushed into its own half and zoomed a touch deeper, so
+ * the other half is free for the widget's modules. Impact's L2 (`deepZoom`)
+ * zooms further still, so only a corner of the city stays visible.
+ *
+ * The city is placed by where it has to *end* rather than by a fraction of the
+ * stage width, because its size does not track the stage's: the fit is
+ * height-driven on anything wide (see cityFitInfo), so a fixed anchor fraction
+ * left a 41px gap to the modules at 1440 and 173px of dead canvas at 2560. Its
+ * inner edge now lands on the same split the modules are sized from, whatever
+ * shape the stage is. */
 function cityL2Transform(size, info, side, deepZoom) {
-  const anchorFraction = deepZoom ? IMPACT_ANCHOR_FRACTION : 0.3;
-  const anchorX = side === 'left' ? size.width * anchorFraction : size.width * (1 - anchorFraction);
   const zoomMultiplier = deepZoom ? IMPACT_L2_ZOOM : CITY_L2_ZOOM;
   const scale = Math.min(info.scale * zoomMultiplier, MAX_ZOOM);
+  const edge = l2SplitEdge(size.width);
+  // Half the city's own width once scaled — the distance from its centre to the
+  // edge that faces the modules.
+  const reach = info.halfWidth * scale;
+  const anchorX = side === 'left' ? edge - reach : size.width - edge + reach;
   return zoomIdentity
     .translate(anchorX, size.height / 2)
     .scale(scale)
     .translate(-info.cx, -info.cy);
+}
+
+/** Where the map's half ends: the stage less the modules' share, their margin
+ * and the clear canvas between the two. All three live in tokens.css, which is
+ * also where the modules read their own width from, so the two halves of the
+ * split cannot drift apart. */
+function l2SplitEdge(stageWidth) {
+  const styles = getComputedStyle(document.documentElement);
+  const share = Number.parseFloat(styles.getPropertyValue('--l2-region-share')) || 0.55;
+  const margin = Number.parseFloat(styles.getPropertyValue('--l2-region-margin')) || 16;
+  const gap = Number.parseFloat(styles.getPropertyValue('--l2-region-gap')) || 40;
+  return stageWidth * (1 - share) - margin - gap;
 }
 
 /** Move the view to `transform`, over `duration` ms or at once when it is 0

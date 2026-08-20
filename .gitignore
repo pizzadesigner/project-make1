@@ -9,7 +9,7 @@ dist
 playwright-report
 test-results
 HANDOFF.md
-PROJECT_STATE.md
+PROJECT_OVERVIEW.md
 prompt_2.md
 widget-transition.md
 DATA_TODO.md

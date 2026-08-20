@@ -21,6 +21,7 @@
     left var(--motion-slow) var(--ease-glass),
     width var(--motion-slow) var(--ease-glass),
     padding var(--motion-slow) var(--ease-glass),
+    transform var(--motion-slow) var(--ease-glass),
     opacity var(--motion-slow) var(--ease-glass);
 }
 
@@ -228,56 +229,281 @@
   text-align: right;
 }
 
-/* L2 data panel: opens on the active widget's side (left for Problem Fit, right
- * for Impact/Adoption); the map cuts to the opposite half. Glass surface to
- * match the widgets; scrolls if content overflows. */
+/* The L2 region: the half of the screen the active widget hands its detail to,
+ * while the map cuts to the other half. Deliberately no surface of its own —
+ * one slab holding everything made three sub-metrics read as one figure. What
+ * stands here is a set of separate modules; this element is only the space they
+ * are placed in, and their scroll container. */
 .widget-detail {
   position: absolute;
   top: 72px; /* aligns with the widget stack (STACK_TOP in widgetStack.js) */
   bottom: var(--space-4);
-  width: 40%;
-  max-width: 34rem;
+
+  /* The modules' share of the stage. europeMap.js reads the same token and
+     stops the city on the other side of it, so the two cannot drift apart. */
+  width: calc(var(--l2-region-share) * 100%);
   z-index: 20;
   pointer-events: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding: var(--space-5);
-  background: var(--color-surface-glass);
-  border: 1px solid var(--color-border-glass);
-  border-radius: var(--radius-md);
-  backdrop-filter: blur(var(--blur-glass));
+
+  /* Room for the modules to stray: they are nudged off their grid cells and
+     drift a few px at rest, and both reach past what the grid measured. The
+     grid takes what is left, so the arrangement still fits the screen. */
+  padding: calc(var(--space-2) + var(--module-slack)) var(--space-4) var(--module-slack);
   overflow-y: auto;
-  animation: widget-detail-in var(--motion-base) var(--ease-standard) both;
 }
 
 .widget-detail--left {
-  left: var(--space-4);
-  transform-origin: left center;
+  left: var(--l2-region-margin);
+
+  /* Which way the modules come in from: the widget they flew out of sits at the
+     top of this side, so on the left region they arrive from the left. The
+     placement itself reads left to right on both sides. */
+  --fly-dir: -1;
 }
 
 .widget-detail--right {
-  right: var(--space-4);
-  transform-origin: right center;
+  right: var(--l2-region-margin);
+  --fly-dir: 1;
 }
 
-/* Impact's L2 pushes the city almost off-canvas on its side (see
-   IMPACT_L2_ZOOM in europeMap.js), so its panel can claim most of the freed
-   width for the sub-metric breakdown instead of the standard 40%. */
-.widget-detail--wide {
-  width: 65%;
-  max-width: 56rem;
+/* Three columns, staggered: three modules down the first, two down the second
+   sitting between them, and one in the third level with the last of the first.
+   The columns are an orientation grid, never drawn.
+
+   A row is half a module tall (less half the gap), so a module spans two of
+   them and column two can start half a step lower than column one — that half
+   step is the whole stagger, and it stays correct at any module height. */
+.widget-detail__modules {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+
+  /* Six rows share the height the region has, so the arrangement fits whatever
+     it is given instead of running off the foot of a short screen — down to
+     --module-box-min, below which it scrolls rather than squashing. */
+  grid-template-rows: repeat(6, minmax(calc((var(--module-box-min) - var(--space-4)) / 2), 1fr));
+
+  /* Rows tight, columns wide: the row gap is half the stagger step and the
+     grid-template-rows calc above depends on it, while the column gap is what
+     separates the three columns as columns — and the columns have the width to
+     stand apart now that the map has been pushed clear of them. */
+  gap: var(--space-4) var(--space-8);
 }
 
-@keyframes widget-detail-in {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
+/* The arrows layer: behind the modules, so an arrow runs out from under one
+   card and in under the next rather than across their faces. Inset to the
+   region's padding box, which is the box widgetStack.js measures every module
+   against. */
+.widget-detail__connectors {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* One module, in two parts. A curved path needs its two axes eased differently,
+   and one element can only carry one timing function — so the outer element
+   flies the horizontal half and the card inside it the vertical half, and the
+   two compose into an arc. Each axis is a single unbroken curve, which is what
+   makes it read as smooth: a mid-keyframe on one element would break the
+   velocity at the point it sits.
+
+   The card, not the module, carries the surface, so the arc is drawn by two
+   transforms rather than one transform and a layout box. --module-index is set
+   on the module and inherits, so both halves start together. */
+.widget-detail__module {
+  --fly-x: calc(var(--module-fly) * var(--fly-x-step, 0) * var(--fly-dir, -1));
+  --fly-y: calc(var(--module-fly) * var(--fly-y-step, 1) * -1);
+
+  /* Off the ruled line. The grid places the boxes; each one then sits a few px
+     off where it was put, so the arrangement reads as placed rather than
+     plotted. Relative, so it shifts what is drawn and not what the grid
+     measured — the stagger stays exactly what the rows say it is. */
+  position: relative;
+  top: calc(var(--module-nudge) * var(--nudge-y-step, 0));
+  left: calc(var(--module-nudge) * var(--nudge-x-step, 0));
+  min-height: 0;
+  animation: module-fly-x var(--module-fly-duration) var(--ease-module-x) both;
+  animation-delay: calc(var(--module-index, 0) * var(--module-stagger));
+}
+
+/* Empty for now: the boxes are being placed first and filled second
+   (widgetStack.js#moduleScaffold), and an empty shell is the honest stand-in
+   until real content is moved into it.
+
+   No backdrop blur while it is in flight — recomputing one behind six moving
+   cards is what makes an otherwise smooth animation stutter, and at 88% opaque
+   the surface barely shows what is behind it anyway. */
+.widget-detail__card {
+  height: 100%;
+  background-color: var(--color-surface-glass);
+  border: 1px solid var(--color-border-glass);
+  border-radius: var(--radius-md);
+
+  /* Two animations at once, which works because they drive different
+     properties: the flight in uses `transform`, the idle drift the standalone
+     `translate`. The used transform composes translate before transform, so
+     neither overwrites the other and the drift can start while the flight's
+     final frame is still being held. */
+  animation:
+    module-fly-y var(--module-fly-duration) var(--ease-module-y) both,
+    module-idle var(--module-idle-duration) ease-in-out infinite alternate;
+  animation-duration:
+    var(--module-fly-duration), calc(var(--module-idle-duration) * var(--idle-speed, 1));
+
+  /* The drift waits for its own module to land, then never stops. */
+  animation-delay:
+    calc(var(--module-index, 0) * var(--module-stagger)),
+    calc(var(--module-fly-duration) + var(--module-index, 0) * var(--module-stagger));
+}
+
+/* Placement, entrance order, and each module's own path in. The steps differ
+   per module so no two travel the same line — the point of them arriving
+   separately rather than as one block. */
+.widget-detail__module--1 {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+
+  --module-index: 0;
+  --fly-x-step: 0.5;
+  --fly-y-step: 1;
+  --nudge-x-step: 0.6;
+  --nudge-y-step: -0.45;
+  --idle-x: calc(var(--module-idle) * 0.8);
+  --idle-y: calc(var(--module-idle) * -1);
+  --idle-speed: 1;
+}
+
+.widget-detail__module--2 {
+  grid-column: 1;
+  grid-row: 3 / span 2;
+
+  --module-index: 1;
+  --fly-x-step: 0.9;
+  --fly-y-step: 0.5;
+  --nudge-x-step: -0.8;
+  --nudge-y-step: 0.5;
+  --idle-x: calc(var(--module-idle) * -1);
+  --idle-y: calc(var(--module-idle) * 0.7);
+  --idle-speed: 1.25;
+}
+
+.widget-detail__module--3 {
+  grid-column: 1;
+  grid-row: 5 / span 2;
+
+  --module-index: 2;
+  --fly-x-step: 1;
+  --fly-y-step: 0.15;
+  --nudge-x-step: 0.35;
+  --nudge-y-step: 0.7;
+  --idle-x: calc(var(--module-idle) * 0.6);
+  --idle-y: calc(var(--module-idle) * 1);
+  --idle-speed: 0.85;
+}
+
+.widget-detail__module--4 {
+  grid-column: 2;
+  grid-row: 2 / span 2;
+
+  --module-index: 3;
+  --fly-x-step: 0.2;
+  --fly-y-step: 1.1;
+  --nudge-x-step: -0.5;
+  --nudge-y-step: -0.7;
+  --idle-x: calc(var(--module-idle) * -0.7);
+  --idle-y: calc(var(--module-idle) * -0.9);
+  --idle-speed: 1.4;
+}
+
+.widget-detail__module--5 {
+  grid-column: 2;
+  grid-row: 4 / span 2;
+
+  --module-index: 4;
+  --fly-x-step: 0.6;
+  --fly-y-step: 0.8;
+  --nudge-x-step: 0.9;
+  --nudge-y-step: 0.3;
+  --idle-x: calc(var(--module-idle) * 1);
+  --idle-y: calc(var(--module-idle) * 0.5);
+  --idle-speed: 1.1;
+}
+
+.widget-detail__module--6 {
+  grid-column: 3;
+  grid-row: 5 / span 2;
+
+  --module-index: 5;
+  --fly-x-step: -0.4;
+  --fly-y-step: 1.2;
+  --nudge-x-step: -0.6;
+  --nudge-y-step: -0.5;
+  --idle-x: calc(var(--module-idle) * -0.5);
+  --idle-y: calc(var(--module-idle) * 1);
+  --idle-speed: 0.95;
+}
+
+/* Sideways first and settling early (--ease-module-x), downward later and more
+   evenly (--ease-module-y): the module is still descending after it has stopped
+   travelling across, which is the bend in its path. */
+@keyframes module-fly-x {
+  0% {
+    transform: translateX(var(--fly-x));
   }
 
-  to {
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes module-fly-y {
+  0% {
+    opacity: 0;
+    transform: translateY(var(--fly-y));
+  }
+
+  100% {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0);
+  }
+}
+
+/* At rest, barely: a couple of px each way over several seconds, each module on
+   its own heading and its own clock so they never drift in step. Enough that the
+   arrangement is not quite still, not enough to be watched. */
+@keyframes module-idle {
+  0% {
+    translate: 0 0;
+  }
+
+  100% {
+    translate: var(--idle-x) var(--idle-y);
+  }
+}
+
+/* A locale switch at L2 rewrites this content; it should reappear where it was
+   rather than fly in a second time. */
+.widget-detail.is-settled .widget-detail__module {
+  animation-delay: calc(var(--module-fly-duration) * -1);
+}
+
+.widget-detail.is-settled .widget-detail__card {
+  animation-delay: calc(var(--module-fly-duration) * -1), 0s;
+}
+
+/* Leaving L2: the whole region fades, header included, so nothing is left at
+   full strength at the moment it is removed (widgetStack.js#leave). */
+.widget-detail.is-leaving {
+  animation: widget-detail-out var(--module-leave-duration) var(--ease-standard) both;
+}
+
+@keyframes widget-detail-out {
+  to {
+    opacity: 0;
   }
 }
 
@@ -285,31 +511,6 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-}
-
-.widget-detail__back {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  padding: 0;
-  border: 1px solid var(--color-border-glass);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-text);
-  font-size: var(--font-size-base);
-  cursor: pointer;
-}
-
-.widget-detail__back:hover {
-  background: var(--color-surface-raised);
-}
-
-.widget-detail__back:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
 }
 
 .widget-detail__title {
@@ -624,7 +825,13 @@
     transition: none;
   }
 
-  .widget-detail {
+  /* The tokens already flatten the entrance; these are the two that run forever
+     and so cannot be handled by zeroing a duration — the modules' idle drift and
+     the pulse travelling along a drawn arrow. Switched off outright, the modules
+     sit where they belong and the arrows are simply drawn. */
+  .widget-detail__module,
+  .widget-detail__card,
+  .connector {
     animation: none;
   }
 }

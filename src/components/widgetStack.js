@@ -24,9 +24,8 @@
 
 import { t, getLocale } from '../lib/i18n.js';
 import { formatNumber } from '../lib/format.js';
-import * as lineChart from './lineChart.js';
-import * as modalSplitChart from './modalSplitChart.js';
-import * as sourceChip from './sourceChip.js';
+import { motionMs } from '../lib/a11y.js';
+import * as connector from './connector.js';
 
 const WIDGETS = ['problemFit', 'impact', 'adoption'];
 
@@ -45,6 +44,11 @@ const PROBLEM_FIT_WIDTH = 'fit-content';
 const PROBLEM_FIT_MIN_WIDTH = '260px';
 const PROBLEM_FIT_MAX_WIDTH = '380px';
 const WIDGET_PADDING = '16px 18px';
+// At L2 the widgets left standing on the map's side are context, not content:
+// already inert and dimmed, they also step down in size so the modules have the
+// attention. Scaled rather than re-sized, so the whole card shrinks together
+// instead of its text reflowing into a different shape.
+const L2_BYSTANDER_SCALE = '0.78';
 
 const BASE_LAYOUT = {
   problemFit: {
@@ -80,14 +84,22 @@ export function widgetSide(criterion) {
   return 'left' in BASE_LAYOUT[criterion] ? 'left' : 'right';
 }
 
-/** At L2 the clicked widget hands off to its data panel (hidden here); the
- * others dim in place. All positions hold. */
+/** At L2 the clicked widget hands off to its modules. All positions hold; only
+ * opacity changes.
+ *
+ * The modules stand on the canvas with no panel behind them, so a widget on the
+ * side they occupy would show through the gaps between them — it steps out of
+ * the way entirely. The widgets on the map's side have nothing over them and
+ * dim in place, as before. */
 function widgetLayout(activeCriterion) {
   const layout = Object.fromEntries(WIDGETS.map((key) => [key, { ...BASE_LAYOUT[key] }]));
   if (!activeCriterion) return layout;
 
+  const detailSide = widgetSide(activeCriterion);
   for (const key of WIDGETS) {
-    layout[key].opacity = key === activeCriterion ? '0' : '0.35';
+    const covered = widgetSide(key) === detailSide;
+    layout[key].opacity = covered ? '0' : '0.35';
+    layout[key].scale = covered ? '1' : L2_BYSTANDER_SCALE;
   }
   return layout;
 }
@@ -98,7 +110,7 @@ export function render(container, props) {
   root.hidden = true;
 
   const widgets = WIDGETS.map((key) => buildWidget(key, props.onSelectCriterion));
-  const detail = buildDetail(props.onSelectCriterion);
+  const detail = buildDetail();
   root.append(...widgets.map((w) => w.node), detail.node);
   container.append(root);
 
@@ -123,12 +135,7 @@ export function render(container, props) {
       widget.node.style.pointerEvents = inert ? 'none' : 'auto';
       widget.node.setAttribute('aria-hidden', String(inert));
     }
-    detail.sync(
-      active,
-      next.impactSubMetrics,
-      next.modalSplitTarget ?? null,
-      next.problemFit ?? null,
-    );
+    detail.sync(active);
   }
 
   update(props);
@@ -136,6 +143,7 @@ export function render(container, props) {
   return {
     update,
     destroy() {
+      detail.destroy();
       root.remove();
     },
   };
@@ -156,172 +164,144 @@ function buildWidget(kind, onSelectCriterion) {
   return { node, kind };
 }
 
-/** The L2 data panel: one reused element, shown on the active widget's side
- * with that dimension's (placeholder) content. A back arrow in its header
- * steps back to L1 — the same action as the screen's Back button/Escape —
- * since once the panel is open it's what the user is actually looking at, not
- * the far corner where the global Back control sits. Delegated on `node`
- * (rather than attached in detailContent's markup) so the listener survives
- * the innerHTML rewrite on every sync. */
-function buildDetail(onSelectCriterion) {
+/** The L2 region: one reused element, shown on the active widget's side while
+ * the map cuts to the other half. It carries no back control of its own — the
+ * screen's Back button (and Escape) already step back one layer from anywhere,
+ * and a second one inside the region was a duplicate of that. */
+function buildDetail() {
   const node = document.createElement('section');
   node.className = 'widget-detail';
   node.hidden = true;
   node.setAttribute('aria-live', 'polite');
-  node.addEventListener('click', (event) => {
-    if (event.target.closest('.widget-detail__back')) onSelectCriterion(null);
-  });
 
-  // Sub-metrics with real (sourced) data mount their own components — a chart,
-  // a source chip — into slots left by detailContent's innerHTML. Track them so
-  // they're torn down before the next sync rewrites that innerHTML, rather than
-  // left as orphaned DOM/listeners.
-  const children = [];
-  function clearChildren() {
-    for (const child of children.splice(0)) child.destroy();
+  let leaveTimer = null;
+  let openCriterion = null;
+  let arrows = null;
+
+  /** Empty the region: nothing left in the DOM, no pending timer. */
+  function teardown() {
+    clearTimeout(leaveTimer);
+    leaveTimer = null;
+    arrows?.destroy();
+    arrows = null;
+    node.classList.remove('is-leaving');
+    node.hidden = true;
+    node.replaceChildren();
   }
 
-  function sync(activeCriterion, impactSubMetrics, modalSplitTarget, problemFit) {
-    clearChildren();
+  /** L2→L1: the modules fade back the way they came in, then the region clears.
+   * Held on a timer read from the token rather than driven by animationend, so
+   * a dropped frame can never strand the region open — and so reduced motion
+   * (0ms) clears it in this same tick. */
+  function leave() {
+    if (node.hidden) return;
+    node.classList.add('is-leaving');
+    const hold = motionMs('--module-leave-duration');
+    if (hold === 0) teardown();
+    else leaveTimer = setTimeout(teardown, hold);
+  }
+
+  function sync(activeCriterion) {
     if (!activeCriterion) {
-      node.hidden = true;
-      node.replaceChildren();
-      return;
+      openCriterion = null;
+      return leave();
     }
-    const wide = activeCriterion === 'impact' ? ' widget-detail--wide' : '';
-    node.className = `widget-detail widget-detail--${widgetSide(activeCriterion)}${wide}`;
+    // Re-syncing a region that is already open (a locale switch, new data) must
+    // not replay the entrance: these modules have already flown out once.
+    const settled = activeCriterion === openCriterion;
+    openCriterion = activeCriterion;
+    teardown();
+    node.className = detailClass(activeCriterion, settled);
     node.setAttribute('aria-label', t(`criteria.${activeCriterion}`));
-    node.innerHTML = detailContent(activeCriterion, impactSubMetrics, modalSplitTarget, problemFit);
+    node.innerHTML = detailHeader(activeCriterion) + moduleScaffold();
     node.hidden = false;
-    if (activeCriterion === 'impact') {
-      mountSubmetricExtras(node, impactSubMetrics, children, modalSplitTarget);
-    }
+    arrows = mountArrows(node);
+    return undefined;
   }
 
-  return { node, sync };
+  return { node, sync, destroy: teardown };
 }
 
-/** Mounts each Impact sub-metric's live pieces once its markup is in the DOM:
- * the modal-split donut(s), the car-density sparkline, and a source chip for
- * any sourced metric (including the single-figure cycle network). */
-function mountSubmetricExtras(node, impactSubMetrics, children, modalSplitTarget) {
-  const locale = getLocale();
-  for (const submetric of impactSubMetrics) {
-    if (submetric.key === 'modalSplit' && submetric.value) {
-      const donutSlot = node.querySelector(`[data-donut="${submetric.key}"]`);
-      if (donutSlot) {
-        children.push(
-          modalSplitChart.render(donutSlot, {
-            modes: submetric.value.modes,
-            labels: submetric.value.modes.map((mode) => t(`impact.mode.${mode}`)),
-            rings: submetric.value.rings,
-            ariaLabel: modalSplitAriaLabel(submetric.value),
-          }),
-        );
-      }
-      // The target donut only exists in the DOM when submetricHtml decided
-      // there's a sourced target for this city (see there) — same slot
-      // pattern, one ring, two segments (whatever selectors.js's
-      // MODAL_SPLIT_TARGETS defines for this city).
-      const targetSlot = node.querySelector('[data-donut="modalSplitTarget"]');
-      if (targetSlot && modalSplitTarget) {
-        children.push(
-          modalSplitChart.render(targetSlot, {
-            modes: modalSplitTarget.segments.map((segment) => segment.mode),
-            labels: modalSplitTarget.segments.map((segment) => t(`impact.mode.${segment.mode}`)),
-            rings: [
-              {
-                year: modalSplitTarget.year,
-                values: modalSplitTarget.segments.map((segment) => segment.share),
-              },
-            ],
-            ariaLabel: modalSplitTargetAriaLabel(modalSplitTarget),
-          }),
-        );
-        // The target's own source — a different document from the actual
-        // donut's (submetric.source, chipped separately below) — so it gets
-        // its own chip rather than sharing one.
-        const targetChipSlot = node.querySelector('[data-chip="modalSplitTarget"]');
-        if (targetChipSlot) {
-          children.push(sourceChip.render(targetChipSlot, { ...modalSplitTarget.source, locale }));
-        }
-      }
-    } else if (Array.isArray(submetric.value)) {
-      const chartSlot = node.querySelector(`[data-chart="${submetric.key}"]`);
-      if (chartSlot) {
-        children.push(
-          lineChart.render(chartSlot, {
-            series: submetric.value,
-            unit: submetric.unit,
-            locale,
-            compact: true,
-          }),
-        );
-      }
-    }
-    const chipSlot = node.querySelector(`[data-chip="${submetric.key}"]`);
-    if (chipSlot && submetric.source) {
-      children.push(sourceChip.render(chipSlot, { ...submetric.source, locale }));
-    }
-  }
+/** The region's classes: which side it opens on, and — when it is being
+ * re-synced rather than opened — the flag that suppresses the entrance (see
+ * .is-settled in widgets.css). */
+function detailClass(criterion, settled) {
+  return `widget-detail widget-detail--${widgetSide(criterion)}${settled ? ' is-settled' : ''}`;
 }
 
-/** Spoken summary of the modal-split donut — the latest ring, per mode. */
-function modalSplitAriaLabel({ modes, rings, latestYear }) {
-  const latest = rings[rings.length - 1];
-  if (!latest) return t('impact.modalSplit');
-  const parts = modes.map((mode, i) => `${t(`impact.mode.${mode}`)} ${latest.values[i]}%`);
-  return `${t('impact.modalSplit')} ${latestYear}: ${parts.join(', ')}`;
-}
-
-/** Spoken summary of the target donut — a single ring, two segments. */
-function modalSplitTargetAriaLabel(target) {
-  const label = t('impact.modalSplitTarget').replace('{year}', String(target.year));
-  const parts = target.segments.map(
-    (segment) => `${t(`impact.mode.${segment.mode}`)} ${segment.share}%`,
-  );
-  return `${label}: ${parts.join(', ')}`;
-}
-
-/** L2 content — a heading and a body (Impact's three sub-metric slots, or a
- * single empty diagram slot for the others). No fabricated numbers until
- * researched data lands (see widgetContent). */
-function detailContent(criterion, impactSubMetrics, modalSplitTarget, problemFit) {
-  let body;
-  if (criterion === 'impact') {
-    body = submetricsHtml(impactSubMetrics, modalSplitTarget);
-  } else if (criterion === 'problemFit' && problemFit) {
-    body = problemFitHtml(problemFit);
-  } else {
-    body = `<div class="widget-detail__diagram" aria-hidden="true"></div>`;
-  }
+/** The region's heading: the criterion's name. */
+function detailHeader(criterion) {
   return `
     <header class="widget-detail__header">
-      <button type="button" class="widget-detail__back" aria-label="${t('detail.back')}">
-        <span aria-hidden="true">←</span>
-      </button>
       <h2 class="widget-detail__title">${t(`criteria.${criterion}`)}</h2>
-    </header>
-    ${body}`;
+    </header>`;
 }
 
-/** Problem Fit's L2 prose for a city — the ordered `body` blocks from
- * selectors.js (a plain paragraph, or a bold lead-in term + description, with
- * the closing goal block set off by a divider). Every string lives in i18n keyed
- * by the city slug (`problemFit.<slug>.*`); this only lays the blocks out, so the
- * component stays free of any city-specific copy or shape. */
-function problemFitHtml({ slug, body }) {
-  const line = (suffix) => t(`problemFit.${slug}.${suffix}`);
-  const blocks = body
-    .map((block) => {
-      const cls = block.goal ? ' class="widget-detail__problem-fit-goal"' : '';
-      const content = block.term
-        ? `<strong>${line(block.term)}:</strong> ${line(block.text)}`
-        : line(block.text);
-      return `<p${cls}>${content}</p>`;
-    })
-    .join('');
-  return `<div class="widget-detail__problem-fit">${blocks}</div>`;
+// The L2 module scaffold, in three staggered columns: three boxes down the
+// first, two down the second sitting between them, and one in the third level
+// with the last of the first. The columns exist only to place the boxes — they
+// are never drawn. Widths and offsets live in widgets.css; the count and the
+// order are here because the order is also the order they fly out in.
+const MODULE_SLOTS = 6;
+
+// Which modules the arrows join, as indices into the scaffold: both leave the
+// second module of the first column, one into each of the second column's two.
+// Pairs rather than a from/to list, so an arrow that points somewhere else later
+// is a change here and nowhere else.
+const MODULE_ARROWS = [
+  [1, 3],
+  [1, 4],
+];
+
+/** Six empty modules. They are placed and animated first and filled second —
+ * detailContent.js holds the content that goes into them, and until it does
+ * these are honest empty shells rather than boxes of invented figures. */
+function moduleScaffold() {
+  const boxes = Array.from(
+    { length: MODULE_SLOTS },
+    (unused, index) =>
+      `<div class="widget-detail__module widget-detail__module--${index + 1}">
+         <div class="widget-detail__card"></div>
+       </div>`,
+  ).join('');
+  return `<div class="widget-detail__modules" aria-hidden="true">${boxes}</div>`;
+}
+
+/** Mount the arrows between modules: a layer inside the region carrying one
+ * curve per pair in MODULE_ARROWS (connector.js). The layer is inset to the
+ * region's padding box, which is the box every module is measured against, so
+ * an arrow can only ever be drawn inside the region and never across the map
+ * half beside it.
+ * @returns {{ update(props: object): void, destroy(): void } | null}
+ */
+function mountArrows(node) {
+  const layer = document.createElement('div');
+  layer.className = 'widget-detail__connectors';
+  node.append(layer);
+  const modules = [...node.querySelectorAll('.widget-detail__module')];
+  const links = MODULE_ARROWS.filter(([from, to]) => modules[from] && modules[to]).map(
+    ([from, to]) => ({ source: moduleRect(modules[from]), target: moduleRect(modules[to]) }),
+  );
+  if (links.length === 0) return null;
+  return connector.render(layer, { links });
+}
+
+/** A module's resting place, in the layer's coordinates.
+ *
+ * Offsets rather than getBoundingClientRect, and the difference matters: at the
+ * moment this runs every module is at the start of its flight, and a transform
+ * moves what an element looks like without moving where it is. Offsets give the
+ * position the module is flying *to* — which is where it will be by the time
+ * the arrow is drawn, and where it stays afterwards apart from a few px of
+ * drift. Both are measured from the region's padding edge, which is exactly the
+ * box the layer fills. */
+function moduleRect(module) {
+  return {
+    x: module.offsetLeft,
+    y: module.offsetTop,
+    width: module.offsetWidth,
+    height: module.offsetHeight,
+  };
 }
 
 /** Problem Fit's L1 body: each SDG 11 target the project addresses, with a
@@ -342,168 +322,6 @@ function problemFitTargetsHtml({ slug, targets }) {
   return `<ul class="widget__problem-fit-targets">${items}</ul>`;
 }
 
-/** Impact's three sub-metrics (modal split, car density, cycle network — see
- * selectors.js#impactSubMetrics), side by side. Each is an honest placeholder
- * slot until its figure is sourced — car density and cycle network already
- * render real charts for Cologne and Paris (mounted by mountSubmetricExtras
- * once this markup is in the DOM). */
-function submetricsHtml(impactSubMetrics, modalSplitTarget) {
-  return `
-    <div class="widget-detail__submetrics">
-      ${impactSubMetrics.map((submetric) => submetricHtml(submetric, modalSplitTarget)).join('')}
-    </div>`;
-}
-
-function submetricHtml({ key, value, unit, benchmark, sdgTarget }, modalSplitTarget) {
-  const label = t(`impact.${key}`);
-  const cls = 'widget-detail__submetric';
-  const context = contextHtml(benchmark, sdgTarget);
-  // Modal split — a donut plus a per-mode legend (with the latest-year share).
-  // Cities with a sourced target (selectors.js#modalSplitTargetForCity) get a
-  // second, smaller donut beside it: "how it should look" next to "how it
-  // looks now". No target for this city → modalSplitTarget is null, the
-  // compare row's only child fills it, and it looks the same as before.
-  if (key === 'modalSplit' && value) {
-    const target = modalSplitTarget ?? null;
-    // With a target column beside it, the actual donut's own chip moves into
-    // its column too (mirroring the target's) so both chips share one flex
-    // column layout with `margin-top: auto` (widgets.css) and land at the
-    // same Y regardless of the target column's extra progress/caveat line.
-    // No target → single column, chip stays at the card's bottom as before.
-    const actualChip = `<span class="widget-detail__submetric-chip" data-chip="${key}"></span>`;
-    return `
-      <div class="${cls} widget-detail__submetric--span">
-        <span class="widget-detail__submetric-label">${label}</span>
-        <div class="widget-detail__modal-split-compare">
-          <div class="widget-detail__modal-split-actual">
-            ${target ? `<span class="widget-detail__modal-split-heading">${t('impact.modalSplitNow')}</span>` : ''}
-            <div class="widget-detail__modal-split-body">
-              <div class="widget-detail__donut" data-donut="${key}"></div>
-              ${modalSplitLegendHtml(value)}
-            </div>
-            ${target ? actualChip : ''}
-          </div>
-          ${target ? modalSplitTargetHtml(target, value) : ''}
-        </div>
-        ${context}
-        ${target ? '' : actualChip}
-      </div>`;
-  }
-  // Car density — a sparkline of the year series (latest value shown big).
-  if (Array.isArray(value)) {
-    const latest = value[value.length - 1];
-    return `
-      <div class="${cls}">
-        <span class="widget-detail__submetric-label">${label}</span>
-        <span class="widget-detail__submetric-value">${formatNumber(latest.value, getLocale(), unit)}</span>
-        <div class="widget-detail__submetric-chart" data-chart="${key}"></div>
-        ${context}
-        <span class="widget-detail__submetric-chip" data-chip="${key}"></span>
-      </div>`;
-  }
-  if (value == null) {
-    return `
-      <div class="${cls}">
-        <span class="widget-detail__submetric-label">${label}</span>
-        <div class="widget-detail__submetric-stub" aria-hidden="true"></div>
-      </div>`;
-  }
-  // Cycle network — a single sourced figure (with its unit + source chip).
-  return `
-    <div class="${cls}">
-      <span class="widget-detail__submetric-label">${label}</span>
-      <span class="widget-detail__submetric-value">${formatNumber(value, getLocale(), unit)}</span>
-      ${context}
-      <span class="widget-detail__submetric-chip" data-chip="${key}"></span>
-    </div>`;
-}
-
-/** What a figure should be read against, under the figure itself: the
- * benchmark ("a lot or a little?") and the SDG-11 target it serves ("why does
- * this matter?"). Both are pending seams — see selectors.js#benchmarkForIndicator
- * and #sdgTargetForIndicator — so they render as named placeholders rather than
- * silently missing, and only beside a figure that actually exists. */
-function contextHtml(benchmark, sdgTarget) {
-  const rows = [
-    benchmark == null ? t('widget.benchmarkPending') : null,
-    sdgTarget == null ? t('widget.sdgTargetPending') : null,
-  ].filter(Boolean);
-  if (rows.length === 0) return '';
-  return `<p class="widget-detail__submetric-pending">${rows.join(' · ')}</p>`;
-}
-
-/** Legend for the modal-split donut: a colour swatch, mode label and the
- * latest-year share for each mode, in the donut's segment order. */
-function modalSplitLegendHtml({ modes, rings }) {
-  const latest = rings[rings.length - 1]?.values ?? [];
-  const items = modes
-    .map(
-      (mode, i) => `
-      <li class="widget-detail__legend-item">
-        <span class="widget-detail__legend-swatch widget-detail__legend-swatch--${mode}"></span>
-        <span>${t(`impact.mode.${mode}`)}</span>
-        <b>${latest[i] ?? 0}%</b>
-      </li>`,
-    )
-    .join('');
-  return `<ul class="widget-detail__legend">${items}</ul>`;
-}
-
-/** The target donut's own heading, mini donut slot and two-row legend —
- * matching the actual donut's markup shape (donut + `.widget-detail__legend`)
- * so it inherits the same side-by-side donut/legend styling for free. */
-function modalSplitTargetHtml(target, value) {
-  const legendItems = target.segments
-    .map(
-      (segment) => `
-      <li class="widget-detail__legend-item">
-        <span class="widget-detail__legend-swatch widget-detail__legend-swatch--${segment.mode}"></span>
-        <span>${t(`impact.mode.${segment.mode}`)}</span>
-        <b>${segment.share}%</b>
-      </li>`,
-    )
-    .join('');
-  return `
-    <div class="widget-detail__modal-split-target">
-      <span class="widget-detail__modal-split-heading">${t('impact.modalSplitTarget').replace('{year}', String(target.year))}</span>
-      <div class="widget-detail__modal-split-body">
-        <div class="widget-detail__donut" data-donut="modalSplitTarget"></div>
-        <ul class="widget-detail__legend">${legendItems}</ul>
-      </div>
-      ${modalSplitProgressHtml(value, target)}
-      <span class="widget-detail__submetric-chip" data-chip="modalSplitTarget"></span>
-    </div>`;
-}
-
-/** How close the latest actual ring already is to the sourced target — pure
- * arithmetic on two sourced figures (never a guessed target, see
- * selectors.js#modalSplitTargetForCity), stated as "goal already met" or the
- * remaining points to close. When the target isn't measuring the same thing
- * as the actual data (`comparable: false`, e.g. Paris's different survey
- * population), states that instead of a percentage-point gap that would
- * imply a comparison that isn't actually valid. */
-function modalSplitProgressHtml({ modes, rings }, target) {
-  const latest = rings[rings.length - 1];
-  const [primary] = target.segments;
-  if (!latest || !primary.actualModes) return '';
-  const actual = primary.actualModes.reduce((sum, mode) => {
-    const i = modes.indexOf(mode);
-    return sum + (i === -1 ? 0 : latest.values[i]);
-  }, 0);
-  if (target.comparable === false) {
-    const text = t('impact.modalSplitProgress.notComparable').replace('{actual}', String(actual));
-    return `<p class="widget-detail__target-progress">${text}</p>`;
-  }
-  const gap = primary.share - actual;
-  const key = gap <= 0 ? 'impact.modalSplitProgress.met' : 'impact.modalSplitProgress.gap';
-  const text = t(key)
-    .replace('{actual}', String(actual))
-    .replace('{target}', String(primary.share))
-    .replace('{year}', String(target.year))
-    .replace('{gap}', String(Math.abs(gap)));
-  return `<p class="widget-detail__target-progress">${text}</p>`;
-}
-
 function applyWidget(widget, layout, contentHtml) {
   Object.assign(widget.node.style, {
     top: layout.top,
@@ -516,6 +334,10 @@ function applyWidget(widget, layout, contentHtml) {
     maxWidth: layout.maxWidth ?? 'none',
     padding: layout.padding,
     opacity: layout.opacity,
+    // Shrunk towards the corner it is pinned to, so it stays anchored there
+    // rather than drifting inwards as it scales.
+    transform: `scale(${layout.scale ?? '1'})`,
+    transformOrigin: layout.left ? 'top left' : 'top right',
     zIndex: layout.z,
   });
   widget.node.innerHTML = contentHtml;
