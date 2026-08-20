@@ -1,9 +1,14 @@
 import { defineConfig } from 'vite';
 
-// GitLab Pages serves the project under its own sub-path, exposed to CI as
-// CI_PAGES_URL. Outside CI (dev server, Playwright) there's no sub-path.
+// Pages hosts serve the site under a sub-path. GitLab exposes it as
+// CI_PAGES_URL; for GitHub Pages the deploy workflow passes BASE_PATH
+// (/<repo>/). Outside CI (dev server, Playwright) there's no sub-path.
 const pagesUrl = process.env.CI_PAGES_URL;
-const base = pagesUrl ? new URL(pagesUrl).pathname.replace(/\/?$/, '/') : '/';
+const base = process.env.BASE_PATH
+  ? process.env.BASE_PATH.replace(/\/?$/, '/')
+  : pagesUrl
+    ? new URL(pagesUrl).pathname.replace(/\/?$/, '/')
+    : '/';
 
 export default defineConfig({
   base,
