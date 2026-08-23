@@ -429,7 +429,23 @@ describe('destroying the stack', () => {
 describe('the adoption cards', () => {
   const source = { url: 'https://example.org/dvr', label: 'DVR', accessed: '2026-08-23' };
   const adoption = [
-    { key: 'cost', kind: null },
+    {
+      key: 'cost',
+      kind: 'cost',
+      labelKey: 'adoption.cost',
+      headline: { value: 2900000, year: 2023 },
+      scopeKey: 'adoption.koeln.costScope',
+      coversKey: 'adoption.koeln.costCovers',
+      length: { value: 9, unit: 'km' },
+      perKm: 322000,
+      items: [
+        { key: 'signals', labelKey: 'adoption.koeln.cost.signals', value: 1500000 },
+        { key: 'ebertplatz', labelKey: 'adoption.koeln.cost.ebertplatz', value: null },
+      ],
+      rateKey: 'adoption.koeln.costRate',
+      disclaimerKey: 'adoption.koeln.costNote',
+      sources: [source],
+    },
     {
       key: 'context',
       kind: 'facts',
@@ -502,11 +518,30 @@ describe('the adoption cards', () => {
 
   it('gives each adoption card the shape its kind calls for', () => {
     open();
-    expect(card(0).textContent.trim()).toBe('');
+    expect(card(0).querySelectorAll('.module__cost-item')).toHaveLength(2);
     expect(card(1).querySelectorAll('.module__fact')).toHaveLength(2);
     expect(card(2).querySelectorAll('.module__link')).toHaveLength(1);
     expect(card(4).querySelector('.module__prose')).not.toBeNull();
     expect(card(5).querySelectorAll('.module__link-group')).toHaveLength(2);
+  });
+
+  // A cost the city never published is the reason this card exists, so it keeps
+  // its line and shows the em dash a missing value always shows — never a 0,
+  // and never a row quietly dropped, which would read as a complete bill.
+  it('keeps a cost line the source states no figure for', () => {
+    open();
+    expect(card(0).querySelector('.module__value b').textContent).toContain('2.9M');
+    const values = [...card(0).querySelectorAll('.module__cost-value')].map(
+      (node) => node.textContent,
+    );
+    expect(values).toEqual(['€1.5M', '—']);
+  });
+
+  // The rate is arithmetic over the card's own two figures, so it is filled in
+  // at render — a translator should never be the one holding a number.
+  it('fills the derived rate into the cost disclaimer', () => {
+    open();
+    expect(card(0).querySelector('.module__note').textContent).toContain('322,000');
   });
 
   // A card built from several rows carries a chip per row: one document, one
@@ -542,7 +577,7 @@ describe('the adoption cards', () => {
     stack.update({ ...props, adoptionModules: adoption });
     const widget = container.querySelector('.widget--adoption');
     expect(widget.querySelector('.widget__bar--empty')).toBeNull();
-    expect(widget.querySelectorAll('.widget__topic')).toHaveLength(5);
+    expect(widget.querySelectorAll('.widget__topic')).toHaveLength(6);
   });
 
   it('keeps the empty bar for a city with no adoption content', () => {

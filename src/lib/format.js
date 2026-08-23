@@ -29,6 +29,27 @@ export function formatCurrency(value, locale, currency = 'EUR') {
 }
 
 /**
+ * Money at the magnitude rather than to the euro: "€2.9M" / "2,9 Mio. €".
+ * For a figure that has to sit inside a card next to its own label, where the
+ * exact number is one click away in the source anyway. Still Intl, so German
+ * gets its own abbreviation and symbol placement rather than a cut-down string.
+ * @param {number|null} value
+ * @param {'en'|'de'} locale
+ * @param {string} [currency]
+ * @returns {string}
+ */
+export function formatCurrencyCompact(value, locale, currency = 'EUR') {
+  if (value === null || value === undefined) return MISSING;
+  return new Intl.NumberFormat(tagFor(locale), {
+    style: 'currency',
+    currency,
+    notation: 'compact',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+/**
  * @param {number|null} value
  * @param {'en'|'de'} locale
  * @param {string} [unit]  Optional unit suffix, e.g. "km".

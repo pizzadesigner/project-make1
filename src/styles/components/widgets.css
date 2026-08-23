@@ -1012,6 +1012,47 @@
   line-height: var(--line-tight);
 }
 
+/* What the project cost, line by line: the label on the left, its figure hard
+   right, and an em dash on the lines the city publishes no figure for. Rows
+   rather than the context card's tiles — these are unlike quantities, read one
+   after another, not four comparable figures read against each other. */
+.module__cost-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* The line that says what the sum bought sits above the list inside the same
+   scroller, so the two move together and the disclaimer below them never does. */
+.module__lead + .module__cost-items {
+  margin-top: var(--space-2);
+}
+
+.module__cost-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+  color: var(--color-text-muted);
+}
+
+.module__cost-label {
+  min-width: 0;
+}
+
+/* The figures sit on the right edge whatever their label's length, so the
+   column reads down; tabular numerals put the dashes and the sums on one grid. */
+.module__cost-value {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
 /* The sentence that says what a list is, above the list. */
 .module__lead {
   margin: 0;

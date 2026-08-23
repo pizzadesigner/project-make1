@@ -807,6 +807,21 @@ const ADOPTION_CONTEXT_FACTS = [
 
 const ADOPTION = {
   koeln: {
+    // What the city itself published, and — just as much the point — what it
+    // did not. `indicatorKey` names the row in `cities.csv` carrying the
+    // figure; an item without one is a cost the source states no number for,
+    // and renders as the em dash a missing figure always renders as. Leaving
+    // those three lines out would make the €2.9M read as the whole bill.
+    cost: {
+      headlineKey: 'ringe_cost_build',
+      lengthKey: 'ringe_converted_km',
+      items: [
+        { key: 'signals', indicatorKey: 'ringe_cost_signals' },
+        { key: 'planning' },
+        { key: 'gapClosures' },
+        { key: 'ebertplatz' },
+      ],
+    },
     departments: [
       {
         key: 'verkehrsmanagement',
@@ -887,12 +902,6 @@ const ADOPTION_FUNDING = [
  * contract as impactModules: every card carries its own kind and its own
  * sources, and a topic this city has nothing researched for comes back as
  * `{ key, kind: null }` and renders an empty card.
- *
- * TODO(data): the cost card is null at every city. A budget for the Ringe
- * conversion has not been read off a source yet, and the design
- * (`newDes/ubernahmeVoraussetzung.png`) marks it as an estimate still to be
- * made — so it stays an empty box rather than a guess with a disclaimer under
- * it. See docs/DATA_TODO.md.
  * @param {import('./types.js').CityIndicator[]} [cityIndicators]
  * @param {string|null} [citySlug]
  * @returns {{ key: string, kind: string|null }[]}
@@ -900,7 +909,7 @@ const ADOPTION_FUNDING = [
 export function adoptionModules(cityIndicators = [], citySlug = null) {
   const entry = citySlug ? ADOPTION[citySlug] : null;
   const builders = {
-    cost: () => ({ key: 'cost', kind: null }),
+    cost: () => costModule(cityIndicators, citySlug, entry?.cost),
     context: () => contextModule(cityIndicators, citySlug),
     departments: () => linksModule('departments', citySlug, entry?.departments),
     partners: () =>
@@ -911,12 +920,66 @@ export function adoptionModules(cityIndicators = [], citySlug = null) {
   return ADOPTION_ORDER.map((key) => (entry ? builders[key]() : { key, kind: null }));
 }
 
+/** What it cost, and — the reason this card needs a disclaimer rather than a
+ * total — what the published figure leaves out. The headline is the one sum
+ * Stadt Köln actually states; every other line is either a second sourced
+ * figure or an em dash saying the source names no number for it. The per-km
+ * rate is arithmetic over two figures from the same document on the same day
+ * (spend ÷ converted length), which is the form another city can price its own
+ * corridor from; the sentence under the card says so, the way the context
+ * card's derived density does. */
+function costModule(cityIndicators, citySlug, cost) {
+  if (!cost) return { key: 'cost', kind: null };
+  const rows = cityIndicatorsForCity(cityIndicators, citySlug);
+  const rowFor = (key) => rows.find((row) => row.indicatorKey === key && row.value != null) ?? null;
+  const headline = rowFor(cost.headlineKey);
+  if (!headline) return { key: 'cost', kind: null };
+  const length = rowFor(cost.lengthKey);
+  const itemRows = cost.items.map((item) => (item.indicatorKey ? rowFor(item.indicatorKey) : null));
+  const items = cost.items.map((item, index) => ({
+    key: item.key,
+    labelKey: `adoption.${citySlug}.cost.${item.key}`,
+    value: itemRows[index]?.value ?? null,
+  }));
+  return {
+    key: 'cost',
+    kind: 'cost',
+    labelKey: 'adoption.cost',
+    headline: { value: headline.value, year: headline.year },
+    scopeKey: `adoption.${citySlug}.costScope`,
+    coversKey: `adoption.${citySlug}.costCovers`,
+    length: length ? { value: length.value, unit: length.unit } : null,
+    perKm: length ? roundToThousand(headline.value / length.value) : null,
+    items,
+    rateKey: `adoption.${citySlug}.costRate`,
+    disclaimerKey: `adoption.${citySlug}.costNote`,
+    sources: sourcesOfRows([headline, length, ...itemRows]),
+  };
+}
+
+/** A rate quoted to the nearest thousand euro. The inputs are a rounded "etwa
+ * 2,9 Millionen" and a rounded "neun Kilometer", so every digit past this one
+ * would be precision the source never had. */
+function roundToThousand(value) {
+  return Math.round(value / 1000) * 1000;
+}
+
+/** One chip per document, in the order the rows were read, skipping the rows
+ * that are not there and the second row that cites the same page as the first. */
+function sourcesOfRows(rows) {
+  const seen = new Set();
+  return rows.filter(Boolean).flatMap((row) => {
+    if (!row.sourceUrl || seen.has(row.sourceUrl)) return [];
+    seen.add(row.sourceUrl);
+    return [{ url: row.sourceUrl, label: row.sourceLabel, accessed: row.sourceAccessed }];
+  });
+}
+
 /** The city itself, as the figures another city compares itself against. Built
  * from whatever `cities.csv` actually has: a fact with no row is dropped rather
  * than shown empty, and a card left with no facts at all is an empty card. */
 function contextModule(cityIndicators, citySlug) {
-  const seen = new Set();
-  const sources = [];
+  const read = [];
   const facts = ADOPTION_CONTEXT_FACTS.map((fact) => {
     if (fact.derived === 'density') {
       const value = populationDensityForCity(cityIndicators, citySlug);
@@ -926,14 +989,17 @@ function contextModule(cityIndicators, citySlug) {
       (indicator) => indicator.indicatorKey === fact.indicatorKey,
     );
     if (!row || row.value == null) return null;
-    if (!seen.has(row.sourceUrl)) {
-      seen.add(row.sourceUrl);
-      sources.push({ url: row.sourceUrl, label: row.sourceLabel, accessed: row.sourceAccessed });
-    }
+    read.push(row);
     return { key: fact.key, value: row.value, unit: row.unit, year: row.year };
   }).filter(Boolean);
   if (facts.length === 0) return { key: 'context', kind: null };
-  return { key: 'context', kind: 'facts', labelKey: 'adoption.context', facts, sources };
+  return {
+    key: 'context',
+    kind: 'facts',
+    labelKey: 'adoption.context',
+    facts,
+    sources: sourcesOfRows(read),
+  };
 }
 
 /** A list of outbound links — the departments that own the project, or the

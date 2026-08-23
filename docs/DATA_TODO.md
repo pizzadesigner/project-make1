@@ -46,13 +46,9 @@ figure is and where it is sourced:
   **Its L2 landed on 2026-08-23** from `newDes/ubernahmeVoraussetzung.png`
   (`selectors.js#adoptionModules`): the city's own figures, the two departments
   that own the project, the organisations that were at the table, the planners'
-  recommendation, and the funding routes by level of government. Two things from
-  that design are deliberately still missing, and both are data rather than
-  build:
-  - **Cost.** The design's own note is "estimate of the whole project's cost,
-    with a disclaimer" — i.e. it has not been made. No budget for the Ringe
-    conversion has been read off a source, so the card stays empty rather than
-    carrying a guess. `projects.csv#budget_eur` is empty for `koeln-todo-2026`.
+  recommendation, and the funding routes by level of government. **Cost landed
+  on 2026-08-23** (see the section below). One thing from that design is still
+  missing, and it is data rather than build:
   - **Step-by-step implementation.** The design has a card for it carrying only
     the word "source". The stages are documented — the Verkehrsausschuss decided
     them in 2017, 2019 and 2021, and Stadt Köln describes three of them (lifting
@@ -62,6 +58,68 @@ figure is and where it is sourced:
     are full, so landing it means deciding which one it replaces.
 - District-level green-space bars (the Analysis-layer / Phase 5 drill-in detail)
   are not built yet — separate from the three top-level widget headlines above.
+
+### The cost card — what the city published, and what it does not
+
+`selectors.js#costModule`, added 2026-08-23 from `newDes/costs.png`. Everything
+on the card comes from **one** document, Stadt Köln's press release of
+**15 May 2023**, ["Neun Kilometer Fahrradinfrastruktur auf den Kölner
+Ringen"](https://www.stadt-koeln.de/politik-und-verwaltung/presseservice/neun-kilometer-fahrradinfrastruktur-auf-den-koelner-ringen),
+read in full rather than summarised. Three new `cities.csv` rows, all `koeln`,
+all citing it:
+
+| key | value | what the release says |
+| --- | --- | --- |
+| `ringe_cost_build` | 2 900 000 EUR (2023) | „Die Gesamtausgaben der umgesetzten und laufenden Maßnahmen … belaufen sich auf etwa 2,9 Millionen Euro einschließlich der Maßnahmen der Markierung, Beschilderung, punktuellen Fahrbahndeckensanierung und des Rückbaus der ehemaligen baulichen Radwege." |
+| `ringe_cost_signals` | 1 500 000 EUR (2023) | „Darüber hinaus wurden im Vorfeld weitere rund 1,5 Millionen Euro für die **ohnehin anstehende** Erneuerung der Lichtsignalanlagen zwischen Ritterstraße und Schaevenstraße ausgegeben." |
+| `ringe_converted_km` | 9 km (2023) | „Insgesamt hat die Stadt Köln in den letzten Jahren neun Kilometer Fahrradinfrastruktur durch Umwandlung von Auto- in Radspuren geschaffen." |
+
+`ringe_converted_km` (9 km, May 2023, converted car lane) is **not** a duplicate
+of `ring_cycle_lanes_km` (10 km, Dec 2024, cycle lane in both directions
+Hansaring–Ubierring). Different date, different definition, different source
+page. The cost card divides the spend by the first, never the second — they are
+not the same denominator.
+
+The **≈ €322,000/km** on the card is derived (`2 900 000 ÷ 9`), the same way the
+context card's density is, and quoted to the nearest thousand because both its
+inputs are rounded in the source („etwa 2,9 Millionen", „neun Kilometer").
+
+#### One correction to the board, and two figures left off it
+
+`newDes/costs.png` is the board this card was written from. Checked line by line
+against the release:
+
+- **The signal renewal is Ritterstraße–Schaevenstraße, not
+  Hansaring–Barbarossaplatz.** The board writes the €1.5 M row as „Sanierung der
+  Lichtsignalanlagen (Hansaring–Barbarossaplatz)"; the release says „zwischen
+  Ritterstraße und Schaevenstraße", a far shorter stretch around
+  Rudolfplatz/Hohenzollernring. The card carries the street pair the city
+  actually names. **This is the error the board has in it.**
+- **€35 M for the Ebertplatz redesign („Prognose 2020") is not on the card.**
+  No source for it could be found — not on Stadt Köln's own Ebertplatz pages,
+  not in the press coverage. As of the city's [June 2025
+  release](https://www.stadt-koeln.de/politik-und-verwaltung/presseservice/weiterfuehrung-der-planungen-am-ebertplatz)
+  a preferred variant had only just been chosen and „Entwicklung eines
+  nachhaltigen Finanzierungs- und Betriebskonzepts" is still a *next* step, so
+  there is no settled estimate to quote. It stays a named line with no figure.
+  If a sourced estimate turns up, it is one `cities.csv` row and an
+  `indicatorKey` on the item.
+- **€1.138 M for the Hohenzollernring/Kaiser-Wilhelm-Ring/Hansaring section is
+  not on the card either** — the board itself strikes it through, and it appears
+  in none of the four Stadt Köln releases about those sections.
+- **„Planungs- und Gutachtenkosten: nicht enthalten"** is softened to *not
+  published*. The release lists what the €2.9 M includes and never says what it
+  excludes; "the source names no figure" is what can be shown honestly, and
+  "excluded" is an inference on top of it.
+- The **December 2024 gap closures** genuinely have no separate cost: neither
+  the [Dec 2024
+  release](https://www.stadt-koeln.de/politik-und-verwaltung/presse/mitteilungen/27581/index.html)
+  nor the [project
+  page](https://www.stadt-koeln.de/artikel/67217/index.html) states one. The
+  board's „k. A." is right.
+
+The €2.9 M and the €1.5 M are deliberately **not** added together. The release
+keeps them apart, and €4.4 M is a total no source states.
 
 ### Adoption context — the figure that deviates from the design
 

@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { formatCurrency, formatNumber, formatYear, formatDate } from './format.js';
+import {
+  formatCurrency,
+  formatCurrencyCompact,
+  formatNumber,
+  formatYear,
+  formatDate,
+} from './format.js';
 
 // Currency/number output embeds locale-specific spaces (NBSP, narrow NBSP), so
 // compare on normalised whitespace rather than exact bytes.
@@ -17,6 +23,23 @@ describe('formatCurrency', () => {
   it('renders null as an em dash, never 0', () => {
     expect(formatCurrency(null, 'de')).toBe('—');
     expect(formatCurrency(null, 'en')).toBe('—');
+  });
+});
+
+describe('formatCurrencyCompact', () => {
+  it('abbreviates millions in each locale\u2019s own words', () => {
+    expect(normalize(formatCurrencyCompact(2900000, 'en'))).toBe('€2.9M');
+    expect(normalize(formatCurrencyCompact(2900000, 'de'))).toBe('2,9 Mio. €');
+  });
+
+  // German short notation has no abbreviation below a million, so it falls back
+  // to the full figure — and must not trail a ",0" on the way.
+  it('leaves a figure it cannot abbreviate whole', () => {
+    expect(normalize(formatCurrencyCompact(322000, 'de'))).toBe('322.000 €');
+  });
+
+  it('renders null as an em dash, never 0', () => {
+    expect(formatCurrencyCompact(null, 'en')).toBe('—');
   });
 });
 

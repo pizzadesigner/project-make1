@@ -656,6 +656,18 @@ describe('adoptionModules', () => {
       sourceLabel: 'Stadt Köln – Mobilitätswende auf den Ringen',
       sourceAccessed: '2026-08-23',
     },
+    // The cost card's three rows, all read off the one press release.
+    ...['ringe_cost_build', 'ringe_cost_signals', 'ringe_converted_km'].map((indicatorKey, i) => ({
+      citySlug: 'koeln',
+      indicatorKey,
+      value: [2900000, 1500000, 9][i],
+      unit: ['EUR', 'EUR', 'km'][i],
+      year: 2023,
+      sourceUrl:
+        'https://www.stadt-koeln.de/politik-und-verwaltung/presseservice/neun-kilometer-fahrradinfrastruktur-auf-den-koelner-ringen',
+      sourceLabel: 'Stadt Köln – Neun Kilometer Fahrradinfrastruktur auf den Kölner Ringen',
+      sourceAccessed: '2026-08-23',
+    })),
   ];
 
   it('lays the six adoption cards out in the order the design puts them in', () => {
@@ -669,7 +681,7 @@ describe('adoptionModules', () => {
       'funding',
     ]);
     expect(modules.map((module) => module.kind)).toEqual([
-      null,
+      'cost',
       'facts',
       'links',
       'links',
@@ -678,10 +690,43 @@ describe('adoptionModules', () => {
     ]);
   });
 
-  // The estimate has not been made against a source yet, so the card stays
-  // empty rather than carrying a number with a disclaimer under it.
-  it('leaves the cost card empty at every city', () => {
-    expect(adoptionModules(contextRows, 'koeln')[0]).toEqual({ key: 'cost', kind: null });
+  // The card's whole point is the one figure the city published set against the
+  // three it did not: an item with no row keeps its line and loses its number.
+  it('builds the cost card from the published sum and the lines that have none', () => {
+    const [cost] = adoptionModules(contextRows, 'koeln');
+    expect(cost.headline).toEqual({ value: 2900000, year: 2023 });
+    expect(cost.length).toEqual({ value: 9, unit: 'km' });
+    expect(cost.coversKey).toBe('adoption.koeln.costCovers');
+    expect(cost.items).toEqual([
+      {
+        key: 'signals',
+        labelKey: 'adoption.koeln.cost.signals',
+        value: 1500000,
+      },
+      { key: 'planning', labelKey: 'adoption.koeln.cost.planning', value: null },
+      { key: 'gapClosures', labelKey: 'adoption.koeln.cost.gapClosures', value: null },
+      { key: 'ebertplatz', labelKey: 'adoption.koeln.cost.ebertplatz', value: null },
+    ]);
+  });
+
+  // 2,900,000 / 9 = 322,222.2… — quoted to the nearest thousand, because the
+  // two figures it divides are themselves "etwa 2,9 Millionen" and "neun
+  // Kilometer" and the digits past that are precision the source never had.
+  it('derives the per-kilometre rate no finer than its inputs', () => {
+    expect(adoptionModules(contextRows, 'koeln')[0].perKm).toBe(322000);
+  });
+
+  // Three rows, one document: the card carries one chip, not three.
+  it('chips the cost card once per document behind it', () => {
+    const [cost] = adoptionModules(contextRows, 'koeln');
+    expect(cost.sources).toHaveLength(1);
+    expect(cost.sources[0].url).toContain('neun-kilometer-fahrradinfrastruktur');
+  });
+
+  // No sourced sum, no card — the same rule the other five follow.
+  it('leaves the cost card empty where the sum is not in the data', () => {
+    const withoutCost = contextRows.filter((row) => row.indicatorKey !== 'ringe_cost_build');
+    expect(adoptionModules(withoutCost, 'koeln')[0]).toEqual({ key: 'cost', kind: null });
   });
 
   it('builds the context card from the sourced rows, with density derived', () => {

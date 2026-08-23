@@ -9,14 +9,15 @@
 //
 // The shape of a module is decided in the data layer (selectors.js#impactModules
 // for Impact, #problemFitModules and #adoptionModules for the other two) and
-// arrives as `kind` — 'donut', 'lines', 'breakdown', 'trend', 'prose', 'facts',
-// 'links', 'linkGroups', or null for a topic this city has nothing sourced for.
+// arrives as `kind` — 'cost', 'donut', 'lines', 'breakdown', 'trend', 'prose',
+// 'facts', 'links', 'linkGroups', or null for a topic this city has nothing
+// sourced for.
 // A null module renders an empty card: the rule that no figure appears without
 // its source cuts both ways, and an empty box is the honest version of "we have
 // not researched this yet" (docs/DESIGN_RATIONALE.md, Neutrality/Honesty).
 
 import { t, getLocale } from '../lib/i18n.js';
-import { formatNumber } from '../lib/format.js';
+import { formatCurrency, formatCurrencyCompact, formatNumber } from '../lib/format.js';
 import * as lineChart from './lineChart.js';
 import * as modalSplitChart from './modalSplitChart.js';
 import * as sourceChip from './sourceChip.js';
@@ -26,6 +27,7 @@ import * as sourceChip from './sourceChip.js';
 export function moduleHtml(module, index) {
   if (!module || !module.kind) return '';
   const body = {
+    cost: costBody,
     donut: donutBody,
     lines: linesBody,
     breakdown: breakdownBody,
@@ -100,6 +102,61 @@ function donutAriaLabel({ labelKey, modes, rings, latestYear }) {
 }
 
 // --- bodies, one per kind --------------------------------------------------
+
+/** What the project cost: the one figure the city published, what that figure
+ * covers, and the lines it does not. A cost with no number is as much the point
+ * of the card as the headline is — it renders as the em dash any missing value
+ * renders as, so "not published" never reads as "nothing". The closing sentence
+ * carries the derived per-km rate, filled in here rather than written into the
+ * copy: a translator should never be the one holding a number. */
+function costBody(module) {
+  const locale = getLocale();
+  const rows = module.items
+    .map(
+      (item) => `
+      <li class="module__cost-item">
+        <span class="module__cost-label">${t(item.labelKey)}</span>
+        <b class="module__cost-value">${formatCurrencyCompact(item.value, locale)}</b>
+      </li>`,
+    )
+    .join('');
+  // The list is the part that gives, not the disclaimer: a card whose whole
+  // argument is "this is not the full bill" must never scroll that sentence out
+  // of sight. Same escape valve the funding card uses, one element lower.
+  return `
+    <p class="module__value">
+      <b>${formatCurrencyCompact(module.headline.value, locale)}</b>
+      ${costScope(module, locale)}
+      ${module.headline.year ? `<span class="module__year">${module.headline.year}</span>` : ''}
+    </p>
+    <div class="module__scroll">
+      <p class="module__lead">${t(module.coversKey)}</p>
+      <ul class="module__cost-items">${rows}</ul>
+    </div>
+    <p class="module__note">${costDisclaimer(module, locale)}</p>`;
+}
+
+/** What the headline sum was spent on, in the unit slot beside it — the length
+ * comes from the row next to it in the same document, and a card without that
+ * row states the sum alone rather than an unqualified scope. */
+function costScope(module, locale) {
+  if (!module.length) return '';
+  const text = t(module.scopeKey).replace(
+    '{length}',
+    formatNumber(module.length.value, locale, module.length.unit),
+  );
+  return `<span class="module__unit">${text}</span>`;
+}
+
+/** The disclaimer, led by the derived rate where there is one. The rate is its
+ * own sentence precisely so a card whose length row is missing drops it and
+ * still reads — "About — per km" would be worse than saying nothing. */
+function costDisclaimer(module, locale) {
+  const note = t(module.disclaimerKey);
+  if (module.perKm == null) return note;
+  const rate = t(module.rateKey).replace('{perKm}', formatCurrency(module.perKm, locale));
+  return `${rate} ${note}`;
+}
 
 /** Modal split: the donut with a legend under it, and — where the city has a
  * sourced strategic target — one line saying how far off it is. The target is a
