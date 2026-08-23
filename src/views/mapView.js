@@ -12,7 +12,8 @@ import { SDG11_TARGETS, SDG11_TARGET_CODES } from '../lib/sdg11.js';
 import {
   widgetMetricsForProject,
   impactSubMetrics,
-  modalSplitTargetForCity,
+  impactModules,
+  problemFitModules,
   problemFitForCity,
   cityHasResearchedContent,
 } from '../data/selectors.js';
@@ -150,26 +151,27 @@ export function render(container, props) {
 
   function mountOrUpdateMap(next) {
     const focusedProject = next.projects.find((p) => p.citySlug === next.focusedCity) ?? null;
-    // Built once and passed to both seams: the L2 panel shows every sub-metric,
-    // and the L1 Impact widget headlines with one of them.
+    // Which of the city's sub-metrics the L1 Impact widget headlines with.
     const subMetrics = impactSubMetrics(next.cityIndicators, focusedProject?.citySlug ?? null);
     // A focused city with no researched figures (Lisbon, Helsinki) is covered by
     // the "coming soon" overlay instead of empty widgets — see buildComingSoon
     // and .map-coming-soon. Derived, so it clears itself once their data lands.
     const comingSoon =
       Boolean(next.focusedCity) && !cityHasResearchedContent(next.focusedCity, next.cityIndicators);
+    const problemFit = problemFitForCity(focusedProject?.citySlug ?? null);
     const widgetProps = {
       project: focusedProject,
       activeCriterion: next.activeCriterion,
       metrics: widgetMetricsForProject(focusedProject, subMetrics),
-      impactSubMetrics: subMetrics,
-      // "How it should look" beside modal split's "how it looks now" — null
-      // for every city without a sourced target (see selectors.js), so the
-      // extra diagram simply doesn't render there.
-      modalSplitTarget: modalSplitTargetForCity(focusedProject?.citySlug ?? null),
-      // Problem Fit's SDG targets (L1) + the slug keying its prose (L2); null for
+      // Problem Fit's SDG targets (L1) + the slug keying its prose; null for
       // every city without researched content, so the widget stays empty there.
-      problemFit: problemFitForCity(focusedProject?.citySlug ?? null),
+      problemFit,
+      // What each criterion's L2 unpacks into — the city's six data topics for
+      // Impact, the same Problem Fit narrative one block per card. A city
+      // without rows for a topic gets an empty card there, never a filled-in
+      // one (see selectors.js#impactModules).
+      impactModules: impactModules(next.cityIndicators, focusedProject?.citySlug ?? null),
+      problemFitModules: problemFitModules(problemFit),
       // Under the coming-soon overlay the widgets are covered, so they go inert
       // (not click/focus targets) rather than offering an empty L2 to open.
       comingSoon,

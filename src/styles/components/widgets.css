@@ -369,15 +369,26 @@
   animation-delay: calc(var(--module-index, 0) * var(--module-stagger));
 }
 
-/* Empty for now: the boxes are being placed first and filled second
-   (widgetStack.js#moduleScaffold), and an empty shell is the honest stand-in
-   until real content is moved into it.
+/* The card is the surface and the column its content stacks in: label, figure
+   or chart, legend, at most one sentence, sources — in that order, whatever the
+   module holds (detailContent.js#moduleHtml). A card with nothing sourced to put
+   in it stays empty, which is the honest stand-in rather than a padded one.
+
+   Clipped, on purpose: the box is a fixed 4:3 and the arrangement's whole point
+   is that six of them are the same shape, so content that would not fit is cut
+   rather than allowed to grow the card past its neighbours. Only the chart can
+   shrink (see .module__chart), so in practice the clip never has anything to do.
 
    No backdrop blur while it is in flight — recomputing one behind six moving
    cards is what makes an otherwise smooth animation stutter, and at 88% opaque
    the surface barely shows what is behind it anyway. */
 .widget-detail__card {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  overflow: hidden;
   background-color: var(--color-surface-glass);
   border: 1px solid var(--color-border-glass);
   border-radius: var(--radius-md);
@@ -561,306 +572,371 @@
   font-size: var(--font-size-xl);
 }
 
-/* Placeholder until researched figures/diagrams exist — a hatched empty slot. */
-.widget-detail__diagram {
-  flex: 1;
-  min-height: 10rem;
-  border-radius: var(--radius-sm);
-  background: repeating-linear-gradient(
-    45deg,
-    var(--color-border-glass) 0,
-    var(--color-border-glass) 6px,
-    transparent 6px,
-    transparent 12px
-  );
+/* --- Inside a module ------------------------------------------------------
+   One card holds a label, the figure or chart it names, a legend, at most one
+   sentence, and its sources — stacked, in that order, for every kind of module
+   (detailContent.js#moduleHtml). The card's height is fixed by its 4:3 ratio,
+   so the chart is the part that gives: it takes whatever is left and fits
+   itself into it, and nothing below it can be pushed out of the card. */
+.module__label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  line-height: var(--line-tight);
 }
 
-/* Problem Fit's L2: narrative prose (see widgetStack.js#problemFitHtml) rather
-   than Impact's grid of figures — an intro, the two network components and the
-   goal, each a bold lead-in term followed by its description. Scrolls within the
-   panel if the copy runs past the viewport. */
-.widget-detail__problem-fit {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  color: var(--color-text);
-  font-size: var(--font-size-base);
-  line-height: 1.55;
-}
-
-.widget-detail__problem-fit p {
+/* The module's own figure: the number large, its unit and year alongside at
+   text weight — a unit is not data, and it must not compete with the value. */
+.module__value {
   margin: 0;
-}
-
-.widget-detail__problem-fit strong {
-  font-weight: 700;
-}
-
-.widget-detail__problem-fit-goal {
-  margin-top: var(--space-1);
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-border-glass);
-}
-
-/* Impact's sub-metrics: the modal-split donut spans the top; car density and
-   cycle network share the row below. */
-.widget-detail__submetrics {
-  flex: 1;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-3);
-}
-
-.widget-detail__submetric {
   display: flex;
-  flex-direction: column;
+  align-items: baseline;
   gap: var(--space-2);
-  padding: var(--space-3);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-raised);
+  min-width: 0;
 }
 
-.widget-detail__submetric--span {
-  grid-column: 1 / -1;
-  align-items: center;
+.module__value b {
+  font-size: var(--font-size-lg);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-tight);
 }
 
-/* The donut on top with its legend wrapped below, so the ring can grow to fill
-   the column's width instead of splitting the row with the legend (which capped
-   it small and, when the legend got tight, wrapped mode labels mid-word). */
-.widget-detail__modal-split-body {
+.module__unit,
+.module__year {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.module__year {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* The chart takes the space the rest of the card does not want, and the SVG
+   fits itself into that box rather than claiming its own height from its
+   aspect ratio. That is what keeps a module's footer inside the card at any
+   viewport: the chart is the only part that can shrink, so it is the only part
+   that does. */
+.module__chart {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.module__chart .line-chart {
+  width: 100%;
+  height: 100%;
+}
+
+/* Modal split: the rings beside the table that names them. The donut is square
+   and sized by the row's height, so it grows and shrinks with the card while
+   the table keeps the width it needs to stay on one line per mode. */
+.module__split {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   gap: var(--space-3);
-  width: 100%;
 }
 
-/* The donut itself (see modalSplitChart.js). The slot is positioned so the
-   hover tooltip can anchor within it. */
-.widget-detail__donut {
+.module__donut {
   position: relative;
+  flex: 0 0 auto;
+  height: 100%;
+  aspect-ratio: 1;
+  max-width: 45%;
+}
+
+/* Fixed layout so the year columns keep their width and the mode column takes
+   what is left — which is what lets a long label (“Motorized two-wheelers”)
+   end in an ellipsis instead of widening the table past its card. */
+.module__matrix {
+  flex: 1;
+  min-width: 0;
   width: 100%;
-  max-width: 12rem;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-tight);
 }
 
-.modal-split {
-  display: block;
-  width: 100%;
-  height: auto;
+.module__matrix th,
+.module__matrix td {
+  padding: 1px 0;
+  font-weight: 400;
+  text-align: right;
 }
 
-.modal-split__seg {
-  stroke: var(--color-surface-raised);
-  stroke-width: 1;
+.module__matrix thead td,
+.module__matrix tbody th {
+  text-align: left;
 }
 
-/* Year label pill sitting on the top of each ring — non-interactive so it never
-   blocks a segment's hover. */
-.modal-split__year-bg {
-  fill: var(--color-canvas);
-  opacity: 0.8;
+.module__matrix thead th {
+  width: 3.2rem;
+  padding-left: var(--space-2);
+  font-variant-numeric: tabular-nums;
 }
 
-.modal-split__year {
-  fill: var(--color-text);
-  font-size: 11px;
-  font-weight: 700;
-  text-anchor: middle;
+/* The newest ring is the one the card is about; the older column is context. */
+.module__matrix tbody td {
+  padding-left: var(--space-2);
+  color: var(--color-text-faint);
+  font-variant-numeric: tabular-nums;
 }
 
-.modal-split__year-bg,
-.modal-split__year {
-  pointer-events: none;
+.module__matrix tbody td:last-child {
+  color: var(--color-text);
 }
 
-.modal-split__seg--transit,
-.widget-detail__legend-swatch--transit {
-  fill: var(--color-mode-transit);
-  background: var(--color-mode-transit);
+/* Kept a real table cell — display: flex here would take it out of the table's
+   column model and the year columns would stop lining up. The swatch sits
+   inline instead. */
+.module__matrix tbody th {
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.modal-split__seg--bike,
-.widget-detail__legend-swatch--bike {
-  fill: var(--color-mode-bike);
-  background: var(--color-mode-bike);
+/* Parts of one whole. The 2px surface gap between segments is what keeps two
+   adjacent steps of the same green readable as two things. */
+.module__bar {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
-.modal-split__seg--walk,
-.widget-detail__legend-swatch--walk {
-  fill: var(--color-mode-walk);
-  background: var(--color-mode-walk);
+.module__bar-part {
+  min-width: 2px;
 }
 
-.modal-split__seg--car,
-.widget-detail__legend-swatch--car {
-  fill: var(--color-mode-car);
-  background: var(--color-mode-car);
+.module__bar-part--mixed {
+  background: var(--color-cycle-mixed);
 }
 
-.modal-split__seg--moto,
-.widget-detail__legend-swatch--moto {
-  fill: var(--color-mode-moto);
-  background: var(--color-mode-moto);
+.module__bar-part--separated {
+  background: var(--color-cycle-separated);
 }
 
-.widget-detail__legend {
+.module__bar-part--offstreet {
+  background: var(--color-cycle-offstreet);
+}
+
+/* Two or three sourced points, stated. No connecting line: the gaps between
+   them are five years wide and a line would draw a shape the data has not
+   measured. */
+.module__trend {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.module__trend-unit {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.module__trend-point {
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text-faint);
+}
+
+.module__trend-point b {
+  font-size: var(--font-size-lg);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-tight);
+}
+
+.module__trend-point span {
+  font-size: var(--font-size-sm);
+}
+
+.module__trend-point.is-latest {
+  color: var(--color-text);
+}
+
+/* The step between two figures, drawn rather than written so it carries no
+   claim about what happened in between. */
+.module__trend-step {
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.module__legend {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-2) var(--space-4);
-  font-size: var(--font-size-sm);
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-tight);
   color: var(--color-text-muted);
 }
 
-.widget-detail__legend-item {
+.module__legend-item {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  min-width: 0;
 }
 
-.widget-detail__legend-item b {
+.module__legend-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.module__legend-item b {
+  margin-left: auto;
+  flex-shrink: 0;
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
 }
 
-.widget-detail__legend-swatch {
-  width: 12px;
-  height: 12px;
-  border-radius: 3px;
+.module__swatch {
+  display: inline-block;
+  vertical-align: middle;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
   flex-shrink: 0;
 }
 
-/* Stacked above its legend, the donut fills the column's width; the legend
-   below keeps the base wrapped, centred row so its labels have the full width
-   and never wrap mid-word. */
-.widget-detail__modal-split-body .widget-detail__donut {
-  max-width: none;
+/* In the legend the flex row's gap sets this off; the matrix cell is a table
+   cell with the swatch inline in it, so the space is the swatch's own. */
+.module__matrix tbody th .module__swatch {
+  margin-right: var(--space-2);
 }
 
-/* --- Modal-split target comparison ---------------------------------------
-   "How it should look" (a sourced strategic target, Cologne and Paris —
-   selectors.js#modalSplitTargetForCity) beside "how it looks now" (the donut
-   above). When a city has no sourced target, .widget-detail__modal-split-compare
-   holds a single flex child that grows to fill the row, so it looks the same
-   as the donut-plus-legend row alone — the feature degrades to nothing
-   visible rather than an empty gap, even though the wrapper divs are always
-   in the markup. Self-contained: delete this whole block, the chip
-   bottom-alignment rule near .widget-detail__submetric-chip below (kept
-   separate so stylelint's specificity-order rule is happy), the
-   --color-target-umweltverbund / --color-target-other tokens in tokens.css,
-   and the matching JS (see selectors.js#modalSplitTargetForCity's doc
-   comment for the full removal list) to pull it back out. */
-.widget-detail__modal-split-compare {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  width: 100%;
+.module__swatch--transit {
+  background: var(--color-mode-transit);
 }
 
-.widget-detail__modal-split-actual,
-.widget-detail__modal-split-target {
-  flex: 1 1 17rem;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
+.module__swatch--bike {
+  background: var(--color-mode-bike);
 }
 
-.widget-detail__modal-split-heading {
-  display: block;
-  margin-bottom: var(--space-2);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-align: center;
+.module__swatch--walk {
+  background: var(--color-mode-walk);
 }
 
-/* Fills most of its column now the legend sits below it — capped so an
-   ultra-wide panel doesn't blow the ring up to an unreadable size. */
-.widget-detail__modal-split-compare .widget-detail__donut {
-  max-width: 16rem;
+.module__swatch--car {
+  background: var(--color-mode-car);
 }
 
-.modal-split__seg--umweltverbund,
-.widget-detail__legend-swatch--umweltverbund {
-  fill: var(--color-target-umweltverbund);
-  background: var(--color-target-umweltverbund);
+.module__swatch--moto {
+  background: var(--color-mode-moto);
 }
 
-.modal-split__seg--other,
-.widget-detail__legend-swatch--other {
-  fill: var(--color-target-other);
-  background: var(--color-target-other);
+.module__swatch--pm25 {
+  background: var(--color-air-pm25);
 }
 
-.widget-detail__target-progress {
-  margin: var(--space-2) 0 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-  text-align: center;
+.module__swatch--pm10 {
+  background: var(--color-air-pm10);
 }
 
-/* --- end modal-split target comparison ------------------------------------ */
+.module__swatch--no2 {
+  background: var(--color-air-no2);
+}
 
-.widget-detail__submetric-label {
-  font-size: var(--font-size-sm);
+.module__swatch--mixed {
+  background: var(--color-cycle-mixed);
+}
+
+.module__swatch--separated {
+  background: var(--color-cycle-separated);
+}
+
+.module__swatch--offstreet {
+  background: var(--color-cycle-offstreet);
+}
+
+/* The one sentence a module ends on, and — for modal split — how the newest
+   ring stands against the city's own sourced target. Both are about the
+   figures rather than being figures, so they sit a step back from them. */
+.module__note,
+.module__target {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
   color: var(--color-text-muted);
 }
 
-.widget-detail__submetric-value {
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+.module__target {
+  color: var(--color-text);
 }
 
-/* A sourced sub-metric's sparkline (see lineChart.js#compact) and its source
-   chip, replacing the stub below once a figure lands. */
-.widget-detail__submetric-chart {
+/* Problem Fit's blocks. Prose is the whole card here, so it takes the height
+   the charts take elsewhere and scrolls if a translation runs long — clipping
+   a sentence would change what it says. */
+.module__prose {
   flex: 1;
-  min-height: 4.5rem;
-}
-
-.widget-detail__submetric-chip {
-  align-self: flex-start;
-}
-
-/* Both modal-split columns are stretched to equal height by the compare
-   row's default flex align-items (stretch); pinning each column's chip to
-   its own bottom with margin-top: auto lands them at the same Y regardless
-   of the target column's extra progress/caveat line, instead of each chip
-   just following its own content's natural height. */
-.widget-detail__modal-split-actual .widget-detail__submetric-chip,
-.widget-detail__modal-split-target .widget-detail__submetric-chip {
-  margin-top: auto;
-  padding-top: var(--space-2);
-}
-
-/* Named gaps, not silence: the benchmark and SDG-11 target a figure still
- * needs (widgetStack.js#contextHtml). Recessive — it must never read as data. */
-.widget-detail__submetric-pending {
+  min-height: 0;
+  overflow-y: auto;
   margin: 0;
   font-size: var(--font-size-sm);
-  font-style: italic;
-  color: var(--color-text-faint);
+  line-height: 1.45;
+  color: var(--color-text);
 }
 
-/* Placeholder until each sub-metric is sourced — a smaller hatched slot. */
-.widget-detail__submetric-stub {
-  flex: 1;
-  min-height: 6rem;
-  border-radius: var(--radius-sm);
-  background: repeating-linear-gradient(
-    45deg,
-    var(--color-border-glass) 0,
-    var(--color-border-glass) 6px,
-    transparent 6px,
-    transparent 12px
-  );
+/* Every document the card's claims rest on, pushed to its foot so the chips sit
+   on one line at the same height in every module. */
+.module__sources {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* The donut's segments and the line chart's strokes take their colour from the
+   same tokens the swatches above do, so a legend row and the mark it names can
+   never drift apart. */
+
+/* Sized by its slot rather than by its own aspect ratio: .module__donut is the
+   square the card's height gives it, and the rings fit inside that. */
+.modal-split {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.modal-split__seg {
+  stroke: var(--color-surface-glass);
+  stroke-width: 1;
+}
+
+.modal-split__seg--transit {
+  fill: var(--color-mode-transit);
+}
+
+.modal-split__seg--bike {
+  fill: var(--color-mode-bike);
+}
+
+.modal-split__seg--walk {
+  fill: var(--color-mode-walk);
+}
+
+.modal-split__seg--car {
+  fill: var(--color-mode-car);
+}
+
+.modal-split__seg--moto {
+  fill: var(--color-mode-moto);
 }
 
 @media (prefers-reduced-motion: reduce) {

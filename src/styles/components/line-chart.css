@@ -63,3 +63,53 @@
 .line-chart--compact .line-chart__dot {
   stroke-width: 1.5;
 }
+
+/* Several series on one axis (see lineChart.js): the stroke names the line and
+   its legend row carries the same swatch, so identity is never colour alone. */
+.line-chart__line--pm25,
+.line-chart__dot--pm25 {
+  stroke: var(--color-air-pm25);
+}
+
+.line-chart__line--pm10,
+.line-chart__dot--pm10 {
+  stroke: var(--color-air-pm10);
+}
+
+.line-chart__line--no2,
+.line-chart__dot--no2 {
+  stroke: var(--color-air-no2);
+}
+
+/* Single-series modules. The car line is the car's own colour from the modal
+   split, and the cyclist line the bike's — the same subject in two modules
+   should not change colour between them. */
+.line-chart__line--car {
+  stroke: var(--color-mode-car);
+}
+
+.line-chart__line--cyclists {
+  stroke: var(--color-mode-bike);
+}
+
+/* A dot sits on its line, so it takes the line's colour as its fill and keeps
+   the canvas ring that separates it from whatever it crosses. */
+.line-chart__dot--pm25 {
+  fill: var(--color-air-pm25);
+}
+
+.line-chart__dot--pm10 {
+  fill: var(--color-air-pm10);
+}
+
+.line-chart__dot--no2 {
+  fill: var(--color-air-no2);
+}
+
+.line-chart__dot--car {
+  fill: var(--color-mode-car);
+}
+
+.line-chart__dot--cyclists {
+  fill: var(--color-mode-bike);
+}

@@ -21,12 +21,26 @@ function stubReducedMotion(reduce) {
   window.matchMedia = () => ({ matches: reduce });
 }
 
+/** Two more things jsdom does not implement: SVG path geometry and the Web
+ * Animations API. lineChart.js draws each line on with a dash offset, which
+ * needs both. Same shape as the matchMedia stub above — a gap in the test
+ * environment, not a branch the component should carry. */
+function stubSvgGeometry() {
+  const proto = window.SVGElement.prototype;
+  proto.getTotalLength = () => 100;
+  proto.animate = () => ({ cancel() {}, finish() {} });
+  return () => {
+    delete proto.getTotalLength;
+    delete proto.animate;
+  };
+}
+
 const props = {
   project: { id: 'koeln-test', citySlug: 'koeln' },
   activeCriterion: null,
   metrics: { problemFit: null, impact: null, adoption: null },
-  impactSubMetrics: [],
-  modalSplitTarget: null,
+  impactModules: [],
+  problemFitModules: [],
   problemFit: null,
   comingSoon: false,
   onSelectCriterion: () => {},
@@ -159,11 +173,156 @@ describe('entering L2', () => {
     expect(covered.style.opacity).toBe('0');
   });
 
-  it('keeps the empty scaffold out of the accessibility tree', () => {
+  // Adoption has no researched content at any city yet, so its six cards come
+  // back empty — which is the honest stand-in, and must stay distinguishable
+  // from a card whose content simply failed to render.
+  it('leaves a criterion with no content standing in six empty cards', () => {
     stack.update({ ...props, activeCriterion: 'adoption' });
-    expect(region().querySelector('.widget-detail__modules').getAttribute('aria-hidden')).toBe(
-      'true',
+    const cards = [...region().querySelectorAll('.widget-detail__card')];
+    expect(cards).toHaveLength(6);
+    expect(cards.every((card) => card.textContent.trim() === '')).toBe(true);
+  });
+});
+
+// The content half. What a module is (`kind`) is decided in the data layer, and
+// each kind has one shape it must come out as — so these check the shape, not
+// the copy: a donut module that rendered a line chart, or a card that lost its
+// source chip, is a figure standing on the canvas with nothing behind it.
+describe('filling the modules', () => {
+  let undoGeometry = null;
+  beforeEach(() => {
+    undoGeometry = stubSvgGeometry();
+  });
+  afterEach(() => {
+    undoGeometry?.();
+    undoGeometry = null;
+  });
+
+  const source = { url: 'https://example.org/a', label: 'A', accessed: '2026-08-23' };
+  const noteSource = { url: 'https://example.org/b', label: 'B', accessed: '2026-08-23' };
+  const filled = [
+    {
+      key: 'modalSplit',
+      kind: 'donut',
+      labelKey: 'impact.modalSplit',
+      modes: ['transit', 'bike'],
+      rings: [
+        { year: 2017, values: [21, 18] },
+        { year: 2022, values: [17, 25] },
+      ],
+      latestYear: 2022,
+      source,
+      target: null,
+    },
+    {
+      key: 'car',
+      kind: 'lines',
+      labelKey: 'impact.carDensity',
+      lines: [
+        {
+          key: 'car',
+          points: [
+            { year: 2015, value: 356 },
+            { year: 2025, value: 373 },
+          ],
+        },
+      ],
+      unit: 'per 1000 residents',
+      latest: { year: 2025, value: 373 },
+      source,
+      note: { key: 'koeln.car', source: noteSource },
+    },
+    {
+      key: 'cycleNetwork',
+      kind: 'breakdown',
+      labelKey: 'impact.cycleNetwork',
+      headline: { value: 2.48, unit: 'km per 1000 residents' },
+      parts: [
+        { key: 'mixed', value: 780.31 },
+        { key: 'separated', value: 1248.67 },
+        { key: 'offstreet', value: 699.8 },
+      ],
+      total: 2728.78,
+      planned: 198.59,
+      source,
+      note: { key: 'koeln.cycleNetwork', source: null },
+    },
+    {
+      key: 'roadSafety',
+      kind: 'trend',
+      labelKey: 'impact.roadSafety',
+      points: [
+        { year: 2015, value: 5.5 },
+        { year: 2020, value: 4.8 },
+      ],
+      unit: 'per 1000 residents',
+      latest: { year: 2020, value: 4.8 },
+      source,
+      note: null,
+    },
+  ];
+
+  const open = () => stack.update({ ...props, activeCriterion: 'impact', impactModules: filled });
+  const card = (index) => region().querySelectorAll('.widget-detail__card')[index];
+
+  it('gives each module the shape its kind calls for', () => {
+    open();
+    expect(card(0).querySelector('svg.modal-split')).not.toBeNull();
+    expect(card(1).querySelector('svg.line-chart')).not.toBeNull();
+    expect(card(2).querySelectorAll('.module__bar-part')).toHaveLength(3);
+    // A trend states its points rather than drawing a line through two
+    // measurements five years apart.
+    expect(card(3).querySelector('svg')).toBeNull();
+    expect(card(3).querySelectorAll('.module__trend-point')).toHaveLength(2);
+  });
+
+  // Two rings, two modes: the ring stack and the table beside it are the same
+  // data twice, and the table is what carries the years now that the pills are
+  // too small to read at this size.
+  it('names every ring and mode in the table beside the donut', () => {
+    open();
+    expect(card(0).querySelectorAll('svg.modal-split path.modal-split__seg')).toHaveLength(4);
+    expect(card(0).querySelectorAll('svg.modal-split .modal-split__year')).toHaveLength(0);
+    const years = [...card(0).querySelectorAll('.module__matrix thead th')].map(
+      (cell) => cell.textContent,
     );
+    expect(years).toEqual(['2017', '2022']);
+    expect(card(0).querySelectorAll('.module__matrix tbody tr')).toHaveLength(2);
+  });
+
+  // The bar's segments are sized by the parts themselves, so a reader can take
+  // the widths at face value — no rounding, no minimum share.
+  it('sizes the breakdown bar from the parts', () => {
+    open();
+    const grows = [...card(2).querySelectorAll('.module__bar-part')].map(
+      (part) => part.style.flexGrow,
+    );
+    expect(grows).toEqual(['780.31', '1248.67', '699.8']);
+  });
+
+  // Every claim on a card carries the document behind it: the figures' source,
+  // and the note's own when the sentence came from somewhere else.
+  it('chips every source a card rests on, and no more', () => {
+    open();
+    expect(card(0).querySelectorAll('.source-chip')).toHaveLength(1);
+    expect(card(1).querySelectorAll('.source-chip')).toHaveLength(2);
+    expect(card(2).querySelectorAll('.source-chip')).toHaveLength(1);
+  });
+
+  // A figure inside a sentence comes from the module, not from the copy.
+  it('fills a figure into the note that names it', () => {
+    open();
+    expect(card(2).querySelector('.module__note').textContent).toContain('198.59');
+  });
+
+  // The region is rebuilt from innerHTML on every sync, so a chart or chip left
+  // mounted is a leaked tooltip node and a set of listeners on a detached tree.
+  it('tears the mounted content down when the region closes', () => {
+    open();
+    expect(region().querySelectorAll('.tooltip').length).toBeGreaterThan(0);
+    stack.update({ ...props, activeCriterion: null });
+    expect(region().querySelectorAll('.tooltip')).toHaveLength(0);
+    expect(region().querySelectorAll('.widget-detail__card')).toHaveLength(0);
   });
 });
 

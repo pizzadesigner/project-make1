@@ -1,6 +1,26 @@
 // Pure lookups over the loaded dataset. Views use these to pull the slice they
 // need; nothing here touches the store or the DOM.
 
+// The first year the L2 modules show. `cities.csv` keeps every sourced year it
+// ever had — Cologne's modal split reaches back to 1982 — but a module is a
+// ~310x230px card, and a chart that spans forty years spends most of its width
+// on a period no reader is deciding anything about. 2015 is where the decade
+// this project is being judged over starts (project decision 2026-08-23,
+// `newDes/txtModel.odt`), and it is the same cut for every series so two
+// modules side by side always cover the same span. One constant rather than a
+// filter written into each selector: moving the window is one edit, and no
+// sourced row is ever deleted to make it happen.
+const SERIES_START_YEAR = 2015;
+
+/** Rows inside the display window, oldest year first. A row with no year (a
+ * standing figure like the cycle network's length) is kept — the window is
+ * about series, not about dropping undated facts. */
+function withinWindow(rows) {
+  return rows
+    .filter((row) => row.year == null || row.year >= SERIES_START_YEAR)
+    .sort((a, b) => (a.year ?? 0) - (b.year ?? 0));
+}
+
 /**
  * @param {import('./types.js').Project[]} projects
  * @param {string} citySlug
@@ -208,9 +228,11 @@ const MODAL_SPLIT_MODES = ['transit', 'bike', 'walk', 'car', 'moto'];
  * @returns {{ series: {year: number, value: number}[], unit: string|null, source: {url: string, label: string, accessed: string|null}|null }}
  */
 export function carDensitySeriesForCity(cityIndicators, citySlug, indicatorKey = 'car_density') {
-  const rows = cityIndicatorsForCity(cityIndicators, citySlug)
-    .filter((indicator) => indicator.indicatorKey === indicatorKey)
-    .sort((a, b) => (a.year ?? 0) - (b.year ?? 0));
+  const rows = withinWindow(
+    cityIndicatorsForCity(cityIndicators, citySlug).filter(
+      (indicator) => indicator.indicatorKey === indicatorKey,
+    ),
+  );
   const [first] = rows;
   return {
     series: rows.map((row) => ({ year: row.year, value: row.value })),
@@ -253,8 +275,10 @@ function carSlotForCity(cityIndicators, citySlug) {
  * @returns {{ modes: string[], rings: {year: number, values: number[]}[], latestYear: number|null, source: {url: string, label: string, accessed: string|null} } | null}
  */
 export function modalSplitForCity(cityIndicators, citySlug) {
-  const rows = cityIndicatorsForCity(cityIndicators, citySlug).filter((indicator) =>
-    indicator.indicatorKey.startsWith('modal_split_'),
+  const rows = withinWindow(
+    cityIndicatorsForCity(cityIndicators, citySlug).filter((indicator) =>
+      indicator.indicatorKey.startsWith('modal_split_'),
+    ),
   );
   if (rows.length === 0) return null;
   const years = [...new Set(rows.map((row) => row.year).filter((year) => year != null))].sort(
@@ -333,16 +357,15 @@ const MODAL_SPLIT_TARGETS = {
  * sourced, city-official target; widgetStack.js renders nothing extra in
  * that case — the same graceful-null pattern as every other sub-metric here.
  *
- * To remove this feature: delete this constant + function, the
- * `modalSplitTarget` prop in mapView.js, the matching parameter threaded
- * through widgetStack.js, its `.widget-detail__modal-split-compare` block in
- * widgets.css *and* the chip bottom-alignment rule near
- * `.widget-detail__submetric-chip` further down that same file (kept apart
- * from the block above for stylelint's specificity-order rule), the
- * `--color-target-umweltverbund` / `--color-target-other` tokens, and the
- * `impact.modalSplitTarget` / `impact.modalSplitNow` /
- * `impact.modalSplitProgress.*` / `impact.mode.umweltverbund` /
- * `impact.mode.other` i18n keys. Nothing else depends on any of it.
+ * Rendered as a sentence rather than a second donut (detailContent.js#targetHtml):
+ * an L2 module is ~310px wide, which fits one ring stack, and "3 points short of
+ * the 2025 target" is a comparison — it reads better stated than as two shapes to
+ * eyeball against each other.
+ *
+ * To remove this feature: delete this constant + function, the `target` field
+ * impactModules puts on the modal-split module, `targetHtml` and its
+ * `.module__target` rule in widgets.css, and the `impact.modalSplitProgress.*`
+ * i18n keys. Nothing else depends on any of it.
  * @param {string|null} citySlug
  * @returns {{ year: number, comparable: boolean, segments: { mode: string, share: number, actualModes?: string[] }[], source: { url: string, label: string, accessed: string } } | null}
  */
@@ -468,4 +491,270 @@ function subMetric(key, value, unit, source) {
     benchmark: benchmarkForIndicator(),
     sdgTarget: sdgTargetForIndicator(),
   };
+}
+
+// --- The six L2 modules ---------------------------------------------------
+//
+// The Impact L2 stands six modules on the canvas (widgetStack.js#moduleScaffold)
+// and this is what goes in them, in the order they fly out. The six topics and
+// their order come from `newDes/txtModel.odt` + `newDes/picModel.png`, whose six
+// columns map one-to-one onto the six boxes.
+//
+// A module is a ~310x230px card, which is the whole reason this is a selector
+// and not a component decision: what fits is one figure, one chart of the
+// series behind it, a legend, one sentence, and the source. So each module is
+// built as exactly that shape and nothing larger, and a topic a city has no
+// sourced rows for comes back as an empty shell rather than a padded one.
+//
+// `kind` is what the module *is*, and it is what detailContent.js renders from:
+//   'donut'     concentric rings, one per year (modal split)
+//   'lines'     one to three year series on one axis, same unit (see the
+//               one-axis rule — three pollutants in µg/m³ is one axis, a count
+//               and a share would be two charts)
+//   'breakdown' parts of one whole, as a stacked bar
+//   'trend'     two or three sourced points, shown as figures rather than a
+//               chart that would draw a line through almost nothing
+//   null        no sourced rows for this city — an empty card
+const MODULE_ORDER = ['modalSplit', 'car', 'airQuality', 'cycleNetwork', 'cyclists', 'roadSafety'];
+
+/** A city's year series for one indicator, inside the display window. */
+function indicatorSeries(cityIndicators, citySlug, indicatorKey) {
+  const rows = withinWindow(
+    cityIndicatorsForCity(cityIndicators, citySlug).filter(
+      (indicator) => indicator.indicatorKey === indicatorKey,
+    ),
+  );
+  const [first] = rows;
+  return {
+    points: rows.map((row) => ({ year: row.year, value: row.value })),
+    unit: first?.unit ?? null,
+    source: first
+      ? { url: first.sourceUrl, label: first.sourceLabel, accessed: first.sourceAccessed }
+      : null,
+  };
+}
+
+// A module's note is a sentence about the figures, not a figure — so it cannot
+// live in cities.csv, and the sentence itself is translated copy
+// (`impact.note.<slug>.<key>` in i18n). What lives here is which modules of
+// which city have a note at all, and the document each one comes from. Same
+// hand-picked, sourced-or-absent shape as MODAL_SPLIT_TARGETS above: a city
+// with no entry gets no note rather than an unattributed claim — and, since a
+// missing i18n key renders as the key itself, no half-written sentence either.
+//
+// OWN_SOURCE marks a note the module's own data source already covers (it is
+// read off the same document as the figures), so it gets a sentence but no
+// second chip.
+const OWN_SOURCE = 'own-source';
+const NOTE_SOURCES = {
+  koeln: {
+    cycleNetwork: OWN_SOURCE,
+    roadSafety: OWN_SOURCE,
+    car: {
+      url: 'https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf',
+      label: 'Stadt Köln – Verkehrsentwicklung (VLR 2023)',
+      accessed: '2026-08-23',
+    },
+    airQuality: {
+      url: 'https://www.lanuk.nrw.de/article/bilanz-zur-luftqualitaet-2025-in-nordrhein-westfalen',
+      label: 'LANUV NRW – Bilanz zur Luftqualität 2025',
+      accessed: '2026-08-23',
+    },
+    cyclists: {
+      url: 'https://www.stadt-koeln.de/politik-und-verwaltung/presseservice/mobilitaetswende-auf-den-ringen',
+      label: 'Stadt Köln – Mobilitätswende auf den Ringen',
+      accessed: '2026-08-23',
+    },
+  },
+};
+
+/** The note for one module of one city: the i18n suffix naming the sentence,
+ * plus the source it needs its own chip for (null when the module's own chip
+ * already points at the right document). No entry in NOTE_SOURCES → no note. */
+function noteFor(citySlug, key) {
+  const source = citySlug ? NOTE_SOURCES[citySlug]?.[key] : null;
+  if (!source) return null;
+  return { key: `${citySlug}.${key}`, source: source === OWN_SOURCE ? null : source };
+}
+
+/**
+ * The six L2 modules for a city, in display order. Every entry carries its own
+ * `kind`, its own source and — where the topic has something to say beyond the
+ * numbers — one note with the document that note comes from. An unsourced topic
+ * comes back as `{ key, kind: null }`, which renders an empty card.
+ * @param {import('./types.js').CityIndicator[]} [cityIndicators]
+ * @param {string|null} [citySlug]
+ * @returns {{ key: string, kind: string|null }[]}
+ */
+export function impactModules(cityIndicators = [], citySlug = null) {
+  const builders = {
+    modalSplit: modalSplitModule,
+    car: carModule,
+    airQuality: airQualityModule,
+    cycleNetwork: cycleNetworkModule,
+    cyclists: cyclistsModule,
+    roadSafety: roadSafetyModule,
+  };
+  return MODULE_ORDER.map((key) =>
+    citySlug ? builders[key](cityIndicators, citySlug) : { key, kind: null },
+  );
+}
+
+/** Modal split as concentric rings. Modes that are zero in every ring are
+ * dropped from both the ring and the legend — Cologne has no motorized
+ * two-wheeler rows, and a legend entry for a wedge that isn't drawn is a
+ * question the card can't answer at this size. */
+function modalSplitModule(cityIndicators, citySlug) {
+  const split = modalSplitForCity(cityIndicators, citySlug);
+  if (!split) return { key: 'modalSplit', kind: null };
+  const shown = split.modes
+    .map((mode, index) => index)
+    .filter((index) => split.rings.some((ring) => ring.values[index] > 0));
+  return {
+    key: 'modalSplit',
+    kind: 'donut',
+    labelKey: 'impact.modalSplit',
+    modes: shown.map((index) => split.modes[index]),
+    rings: split.rings.map((ring) => ({
+      year: ring.year,
+      values: shown.map((index) => ring.values[index]),
+    })),
+    latestYear: split.latestYear,
+    source: split.source,
+    target: modalSplitTargetForCity(citySlug),
+  };
+}
+
+/** The car slot — density or ownership, whichever this city has (see
+ * CAR_SLOT_INDICATORS). One line: the second definition of "car" the sources
+ * offer (all registered vehicles, not just private ones) tells the same story
+ * at half the legibility on a card this size. */
+function carModule(cityIndicators, citySlug) {
+  const car = carSlotForCity(cityIndicators, citySlug);
+  if (!car || car.series.length === 0) return { key: 'car', kind: null };
+  return {
+    key: 'car',
+    kind: 'lines',
+    labelKey: `impact.${car.metric}`,
+    lines: [{ key: 'car', points: car.series }],
+    unit: car.unit,
+    latest: car.series[car.series.length - 1],
+    source: car.source,
+    note: noteFor(citySlug, 'car'),
+  };
+}
+
+// The three pollutants the air module draws, in legend order — fine particles
+// first because they are the ones the WHO counts deaths from. All three are
+// annual means in µg/m³, which is what lets them share one axis.
+const AIR_POLLUTANTS = ['pm25', 'pm10', 'no2'];
+
+function airQualityModule(cityIndicators, citySlug) {
+  const series = AIR_POLLUTANTS.map((key) => ({
+    key,
+    ...indicatorSeries(cityIndicators, citySlug, `air_${key}`),
+  }));
+  const drawn = series.filter((entry) => entry.points.length > 0);
+  if (drawn.length === 0) return { key: 'airQuality', kind: null };
+  return {
+    key: 'airQuality',
+    kind: 'lines',
+    labelKey: 'impact.airQuality',
+    lines: drawn.map(({ key, points }) => ({ key, points })),
+    unit: drawn[0].unit,
+    source: drawn[0].source,
+    note: noteFor(citySlug, 'airQuality'),
+  };
+}
+
+// The cycle network's parts, from least protected to most — the order the
+// stacked bar is drawn in, and the order its green ramp steps through.
+const CYCLE_NETWORK_PARTS = ['mixed', 'separated', 'offstreet'];
+
+/** The cycle network: the per-resident figure the L1 widget headlines with,
+ * broken into the three kinds of route behind it. */
+function cycleNetworkModule(cityIndicators, citySlug) {
+  const headline = cycleNetworkForCity(cityIndicators, citySlug);
+  if (!headline) return { key: 'cycleNetwork', kind: null };
+  const parts = CYCLE_NETWORK_PARTS.map((key) => ({
+    key,
+    value: cityIndicatorValue(cityIndicators, citySlug, `cycle_network_${key}`),
+  })).filter((part) => part.value != null);
+  return {
+    key: 'cycleNetwork',
+    kind: 'breakdown',
+    labelKey: 'impact.cycleNetwork',
+    headline,
+    parts,
+    total: parts.reduce((sum, part) => sum + part.value, 0),
+    planned: cityIndicatorValue(cityIndicators, citySlug, 'cycle_network_planned'),
+    source: headline.source,
+    note: parts.length > 0 ? noteFor(citySlug, 'cycleNetwork') : null,
+  };
+}
+
+function cyclistsModule(cityIndicators, citySlug) {
+  const { points, unit, source } = indicatorSeries(cityIndicators, citySlug, 'cyclists_daily');
+  if (points.length === 0) return { key: 'cyclists', kind: null };
+  return {
+    key: 'cyclists',
+    kind: 'lines',
+    labelKey: 'impact.cyclists',
+    lines: [{ key: 'cyclists', points }],
+    unit,
+    latest: points[points.length - 1],
+    source,
+    note: noteFor(citySlug, 'cyclists'),
+  };
+}
+
+/** Road safety. Three sourced points at five-year steps, two of them inside the
+ * display window — too few to draw a line through without implying a shape the
+ * data doesn't have, so the module states them as figures instead. */
+function roadSafetyModule(cityIndicators, citySlug) {
+  const { points, unit, source } = indicatorSeries(cityIndicators, citySlug, 'traffic_casualties');
+  if (points.length === 0) return { key: 'roadSafety', kind: null };
+  return {
+    key: 'roadSafety',
+    kind: 'trend',
+    labelKey: 'impact.roadSafety',
+    points,
+    unit,
+    latest: points[points.length - 1],
+    source,
+    note: noteFor(citySlug, 'roadSafety'),
+  };
+}
+
+/**
+ * Problem Fit's L2 modules — the same narrative `PROBLEM_FIT` already holds,
+ * one block per card: first the SDG 11 targets the project addresses (the two
+ * the L1 widget headlines with), then the body blocks describing how.
+ *
+ * The copy is untouched i18n (`problemFit.<slug>.*`); this only decides which
+ * block goes in which box, so the cards a city gets follow that city's own
+ * shape — Cologne breaks into two named network components plus a goal, Paris
+ * is a single overview paragraph, and the boxes it does not fill stay empty.
+ * @param {{ slug: string, targets: string[], body: { term?: string, text: string }[] } | null} problemFit
+ * @returns {{ key: string, kind: string|null }[]}
+ */
+export function problemFitModules(problemFit) {
+  if (!problemFit) return MODULE_ORDER.map((key) => ({ key, kind: null }));
+  const { slug, targets, body } = problemFit;
+  const blocks = [
+    ...targets.map((code) => ({
+      key: `target-${code}`,
+      labelKey: 'problemFit.targetHeading',
+      labelCode: code,
+      text: `problemFit.${slug}.target.${code}`,
+    })),
+    ...body.map((block) => ({
+      key: block.text,
+      labelKey: block.term ? `problemFit.${slug}.${block.term}` : null,
+      text: `problemFit.${slug}.${block.text}`,
+    })),
+  ];
+  return MODULE_ORDER.map((key, index) =>
+    blocks[index] ? { kind: 'prose', ...blocks[index] } : { key, kind: null },
+  );
 }

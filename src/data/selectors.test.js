@@ -11,6 +11,8 @@ import {
   cityHasResearchedContent,
   cycleNetworkForCity,
   impactSubMetrics,
+  impactModules,
+  problemFitModules,
 } from './selectors.js';
 
 // Real Cologne figures (population / area = 2539, matching the research table)
@@ -298,6 +300,15 @@ const modalRows = [
   {
     citySlug: 'koeln',
     indicatorKey: 'modal_split_bike',
+    value: 18,
+    year: 2017,
+    sourceUrl: MODAL_SOURCE.url,
+    sourceLabel: MODAL_SOURCE.label,
+    sourceAccessed: MODAL_SOURCE.accessed,
+  },
+  {
+    citySlug: 'koeln',
+    indicatorKey: 'modal_split_bike',
     value: 25,
     year: 2022,
     sourceUrl: MODAL_SOURCE.url,
@@ -309,11 +320,13 @@ const modalRows = [
 describe('modalSplitForCity', () => {
   it('pivots long-format rows into per-year rings, oldest first, in mode order', () => {
     // Missing modes (transit/walk here, and moto for every Cologne row) fill as
-    // 0 so ring segments always align.
+    // 0 so ring segments always align. 1982 is in the fixture and not in the
+    // result: the modules show 2015 onwards, and the rows behind the older
+    // rings stay in cities.csv rather than being deleted to make that true.
     expect(modalSplitForCity(modalRows, 'koeln')).toEqual({
       modes: ['transit', 'bike', 'walk', 'car', 'moto'],
       rings: [
-        { year: 1982, values: [0, 9, 0, 48, 0] },
+        { year: 2017, values: [0, 18, 0, 0, 0] },
         { year: 2022, values: [0, 25, 0, 25, 0] },
       ],
       latestYear: 2022,
@@ -437,5 +450,168 @@ describe('cycleNetworkForCity', () => {
 
   it('is null for a city with no cycle-network row', () => {
     expect(cycleNetworkForCity([cycleRow], 'lisboa')).toBeNull();
+  });
+});
+
+// The six L2 modules. What is worth pinning here is the seam, not the copy: a
+// module's `kind` is what decides which shape detailContent.js renders, a
+// topic without sourced rows has to come back empty rather than half-built, and
+// the display window has to cut the same year off every series — two modules
+// standing side by side covering different spans is a comparison nobody made.
+describe('impactModules', () => {
+  const src = (url) => ({
+    sourceUrl: url,
+    sourceLabel: 'Stadt Köln',
+    sourceAccessed: '2026-08-23',
+  });
+  const rows = [
+    // One row on either side of the window, in the same series.
+    {
+      citySlug: 'koeln',
+      indicatorKey: 'air_pm25',
+      value: 20,
+      unit: 'µg/m³',
+      year: 2011,
+      ...src('https://example.test/air'),
+    },
+    {
+      citySlug: 'koeln',
+      indicatorKey: 'air_pm25',
+      value: 16,
+      unit: 'µg/m³',
+      year: 2015,
+      ...src('https://example.test/air'),
+    },
+    {
+      citySlug: 'koeln',
+      indicatorKey: 'air_no2',
+      value: 27,
+      unit: 'µg/m³',
+      year: 2025,
+      ...src('https://example.test/air'),
+    },
+    {
+      citySlug: 'koeln',
+      indicatorKey: 'cycle_network',
+      value: 2.48,
+      unit: 'km per 1000 residents',
+      year: 2025,
+      ...src('https://example.test/net'),
+    },
+    {
+      citySlug: 'koeln',
+      indicatorKey: 'cycle_network_mixed',
+      value: 780.31,
+      unit: 'km',
+      year: 2025,
+      ...src('https://example.test/net'),
+    },
+    {
+      citySlug: 'koeln',
+      indicatorKey: 'cycle_network_planned',
+      value: 198.59,
+      unit: 'km',
+      year: 2025,
+      ...src('https://example.test/net'),
+    },
+    {
+      citySlug: 'koeln',
+      indicatorKey: 'traffic_casualties',
+      value: 4.8,
+      unit: 'per 1000 residents',
+      year: 2020,
+      ...src('https://example.test/vlr'),
+    },
+  ];
+
+  it('always returns the six slots, in the order they fly out in', () => {
+    expect(impactModules(rows, 'koeln').map((module) => module.key)).toEqual([
+      'modalSplit',
+      'car',
+      'airQuality',
+      'cycleNetwork',
+      'cyclists',
+      'roadSafety',
+    ]);
+  });
+
+  it('gives each topic the kind its data has, and null where there is none', () => {
+    const kinds = Object.fromEntries(
+      impactModules(rows, 'koeln').map((module) => [module.key, module.kind]),
+    );
+    expect(kinds).toEqual({
+      modalSplit: null,
+      car: null,
+      airQuality: 'lines',
+      cycleNetwork: 'breakdown',
+      cyclists: null,
+      roadSafety: 'trend',
+    });
+  });
+
+  it('draws only the pollutants it has rows for, from 2015 on', () => {
+    const air = impactModules(rows, 'koeln')[2];
+    expect(air.lines).toEqual([
+      { key: 'pm25', points: [{ year: 2015, value: 16 }] },
+      { key: 'no2', points: [{ year: 2025, value: 27 }] },
+    ]);
+    expect(air.unit).toBe('µg/m³');
+  });
+
+  it('carries the planned length beside the parts it is planned on top of', () => {
+    const network = impactModules(rows, 'koeln')[3];
+    expect(network.parts).toEqual([{ key: 'mixed', value: 780.31 }]);
+    expect(network.total).toBe(780.31);
+    expect(network.planned).toBe(198.59);
+    expect(network.headline.value).toBe(2.48);
+  });
+
+  // A sentence about the figures needs a document as much as the figures do.
+  // Road safety reads its note off the same one; the air module's comes from
+  // somewhere else and so carries its own.
+  it('attaches a source to every note that needs its own', () => {
+    const modules = impactModules(rows, 'koeln');
+    expect(modules[3].note).toEqual({ key: 'koeln.cycleNetwork', source: null });
+    expect(modules[5].note).toEqual({ key: 'koeln.roadSafety', source: null });
+    expect(modules[2].note.source.url).toContain('lanuk.nrw.de');
+  });
+
+  it('is six empty slots with no city focused', () => {
+    expect(impactModules(rows, null).every((module) => module.kind === null)).toBe(true);
+  });
+});
+
+describe('problemFitModules', () => {
+  it("lays a city's targets and narrative out one block per card", () => {
+    const modules = problemFitModules(problemFitForCity('koeln'));
+    expect(modules.map((module) => module.kind)).toEqual(Array(6).fill('prose'));
+    expect(modules[0]).toMatchObject({
+      labelKey: 'problemFit.targetHeading',
+      labelCode: '11.2',
+      text: 'problemFit.koeln.target.11.2',
+    });
+    // A block with a lead-in term takes it as the card's heading; the intro
+    // paragraph has none and leads with its own text instead.
+    expect(modules[2].labelKey).toBeNull();
+    expect(modules[3]).toMatchObject({
+      labelKey: 'problemFit.koeln.ringsTerm',
+      text: 'problemFit.koeln.ringsBody',
+    });
+  });
+
+  it('leaves the cards a shorter city does not fill empty', () => {
+    const modules = problemFitModules(problemFitForCity('paris-marne-la-vallee'));
+    expect(modules.map((module) => module.kind)).toEqual([
+      'prose',
+      'prose',
+      'prose',
+      null,
+      null,
+      null,
+    ]);
+  });
+
+  it('is six empty slots for a city with no Problem Fit content', () => {
+    expect(problemFitModules(null).every((module) => module.kind === null)).toBe(true);
   });
 });

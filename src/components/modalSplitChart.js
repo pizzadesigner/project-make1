@@ -3,6 +3,12 @@
 // by that year's share. Colours come from the stylesheet (per-mode classes);
 // this component owns only its SVG. Data down as { modes, rings, ariaLabel };
 // static (no tweens), so nothing to reduce under prefers-reduced-motion.
+//
+// `compact` drops the year pills. In an L2 module the donut is ~110px across,
+// where an 11px-in-a-220-viewBox label renders at about five actual pixels —
+// unreadable, and unreadable text is worse than none. The module names the
+// years in the table beside it instead (detailContent.js#matrixHtml), which is
+// also where the per-year numbers already are.
 
 import { arc } from 'd3';
 import { renderTooltip } from './tooltip.js';
@@ -14,11 +20,11 @@ const RING_GAP = 2; // gap between rings and between segments
 
 /**
  * @param {HTMLElement} container  A positioned element (see .widget-detail__donut).
- * @param {{ modes: string[], labels: string[], rings: {year: number, values: number[]}[], ariaLabel: string }} props
+ * @param {{ modes: string[], labels: string[], rings: {year: number, values: number[]}[], ariaLabel: string, compact?: boolean }} props
  * @returns {{ update(): void, destroy(): void }}
  */
 export function render(container, props) {
-  const { modes, labels, rings, ariaLabel } = props;
+  const { modes, labels, rings, ariaLabel, compact } = props;
 
   const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('class', 'modal-split');
@@ -52,7 +58,7 @@ export function render(container, props) {
     });
     // Year label on the top centre-line of the ring, so each ring names the year
     // it represents. A pill background keeps it legible over the segments.
-    group.append(yearLabel(ring.year, (innerRadius + outerRadius) / 2));
+    if (!compact) group.append(yearLabel(ring.year, (innerRadius + outerRadius) / 2));
   });
 
   container.append(svg);

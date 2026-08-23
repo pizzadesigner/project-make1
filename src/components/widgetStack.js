@@ -9,10 +9,10 @@
 // stood on the deck at L1 is what is standing in the region afterwards. See
 // setFlightOrigin for the measurement that ties the two together.
 //
-// render(container, { project, activeCriterion, metrics, impactSubMetrics,
-// onSelectCriterion }) and the component never reads the store — data comes
-// down, the clicked widget goes up via
-// onSelectCriterion('problemFit'|'impact'|'adoption').
+// render(container, { project, activeCriterion, metrics, impactModules,
+// problemFitModules, problemFit, comingSoon, onSelectCriterion }) and the
+// component never reads the store — data comes down, the clicked widget goes up
+// via onSelectCriterion('problemFit'|'impact'|'adoption').
 //
 // `metrics` is keyed by widget (`selectors.js#widgetMetricsForProject`): each
 // value is `{ key, value, unit }` or null. This component decides nothing about
@@ -20,17 +20,17 @@
 // for null, so no fabricated number can appear for anything unsourced
 // (Neutrality/Honesty — see docs/DESIGN_RATIONALE.md).
 // Problem Fit carries its own content per city (selectors.js#problemFitForCity):
-// the SDG 11 targets at L1 and a narrative at L2 — Cologne is wired, other
-// cities stay empty. Impact's three sub-metrics (see
-// selectors.js#impactSubMetrics) are the sourced figures: Cologne and Paris
-// render real charts at L2 — modal split, car density, cycle network — while
-// Lisbon and Helsinki remain empty.
+// the SDG 11 targets at L1, and at L2 the same narrative one block per module
+// (selectors.js#problemFitModules). Impact's L2 modules are the city's sourced
+// data topics (selectors.js#impactModules) — Cologne fills all six, Paris the
+// three it has rows for, Lisbon and Helsinki none.
 // TODO(data): Adoption is null at every city (docs/research.md §5.4).
 
 import { t, getLocale } from '../lib/i18n.js';
 import { formatNumber } from '../lib/format.js';
 import { motionMs } from '../lib/a11y.js';
 import * as connector from './connector.js';
+import { moduleHtml, mountModuleExtras } from './detailContent.js';
 
 const WIDGETS = ['problemFit', 'impact', 'adoption'];
 
@@ -150,7 +150,7 @@ export function render(container, props) {
       widget.node.style.pointerEvents = inert ? 'none' : 'auto';
       widget.node.setAttribute('aria-hidden', String(inert));
     }
-    detail.sync(active);
+    detail.sync(active, modulesFor(active, next));
   }
 
   update(props);
@@ -193,13 +193,19 @@ function buildDetail(sourceNodeFor) {
   let leaveTimer = null;
   let openCriterion = null;
   let arrows = null;
+  let contents = [];
 
-  /** Empty the region: nothing left in the DOM, no pending timer. */
+  /** Empty the region: nothing left in the DOM, no pending timer, and every
+   * chart and chip the modules mounted destroyed rather than orphaned — the
+   * region is rebuilt from innerHTML, so anything not torn down here leaks its
+   * listeners and its tooltip node. */
   function teardown() {
     clearTimeout(leaveTimer);
     leaveTimer = null;
     arrows?.destroy();
     arrows = null;
+    for (const child of contents) child.destroy();
+    contents = [];
     node.classList.remove('is-leaving');
     node.hidden = true;
     node.replaceChildren();
@@ -217,7 +223,7 @@ function buildDetail(sourceNodeFor) {
     else leaveTimer = setTimeout(teardown, hold);
   }
 
-  function sync(activeCriterion) {
+  function sync(activeCriterion, modules) {
     if (!activeCriterion) {
       openCriterion = null;
       return leave();
@@ -229,8 +235,9 @@ function buildDetail(sourceNodeFor) {
     teardown();
     node.className = detailClass(activeCriterion, settled);
     node.setAttribute('aria-label', t(`criteria.${activeCriterion}`));
-    node.innerHTML = detailHeader(activeCriterion) + moduleScaffold();
+    node.innerHTML = detailHeader(activeCriterion) + moduleScaffold(modules);
     node.hidden = false;
+    mountModuleExtras(node, modules, contents);
     setFlightOrigin(node, sourceNodeFor(activeCriterion));
     arrows = mountArrows(node);
     return undefined;
@@ -270,18 +277,31 @@ const MODULE_ARROWS = [
   [1, 4],
 ];
 
-/** Six empty modules. They are placed and animated first and filled second —
- * detailContent.js holds the content that goes into them, and until it does
- * these are honest empty shells rather than boxes of invented figures. */
-function moduleScaffold() {
+/** Which module payloads a criterion opens into. Impact unpacks into the city's
+ * six data topics, Problem Fit into its narrative blocks; both come from the
+ * data layer already shaped, so this only picks the list.
+ *
+ * TODO(data): Adoption has no researched content at any city yet — its six
+ * cards are the ones `newDes/newDesFill.png` describes (cost, context,
+ * politics, funding) and they stay empty until that is researched. */
+function modulesFor(activeCriterion, props) {
+  if (activeCriterion === 'impact') return props.impactModules ?? [];
+  if (activeCriterion === 'problemFit') return props.problemFitModules ?? [];
+  return [];
+}
+
+/** The six modules. A module with content gets it; one without stays an empty
+ * shell, which is the honest stand-in for a topic this city has no sourced
+ * rows for — never a box of invented figures. */
+function moduleScaffold(modules = []) {
   const boxes = Array.from(
     { length: MODULE_SLOTS },
     (unused, index) =>
       `<div class="widget-detail__module widget-detail__module--${index + 1}">
-         <div class="widget-detail__card"></div>
+         <div class="widget-detail__card">${moduleHtml(modules[index], index)}</div>
        </div>`,
   ).join('');
-  return `<div class="widget-detail__modules" aria-hidden="true">${boxes}</div>`;
+  return `<div class="widget-detail__modules">${boxes}</div>`;
 }
 
 /** Point every module back at the widget it comes out of.

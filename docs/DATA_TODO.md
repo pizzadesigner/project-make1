@@ -107,8 +107,25 @@ code change, only new CSV rows.
 
 ## `cycle_network` (Cologne, Paris) — sourced and wired, single figure each
 
-Cologne: `1.75 km per 1000 residents`, citing Stadt Köln's
-["Radverkehrshauptnetz für alle Stadtbezirke"](https://www.stadt-koeln.de/politik-und-verwaltung/presseservice/radverkehrshauptnetz-fuer-alle-stadtbezirke).
+Cologne: **`2.48 km per 1000 residents` (2025)**, from the city's own network
+geodata — [Offene Daten Köln, Radverkehrsnetz](https://www.offenedaten-koeln.de/dataset/radverkehrsnetz)
+(Stand 27.11.2025): 780.31 km mixed traffic on side streets (*gelbes Netz*) +
+1,248.67 km separated lanes along main roads (*grünes Netz*) + 699.80 km away
+from the street altogether = 2,728.78 km, ÷ population × 1000.
+
+- **This replaced the earlier `1.75` press figure** (Stadt Köln,
+  ["Radverkehrshauptnetz für alle Stadtbezirke"](https://www.stadt-koeln.de/politik-und-verwaltung/presseservice/radverkehrshauptnetz-fuer-alle-stadtbezirke)),
+  which is struck through as superseded in `newDes/txtModel.odt` — the row was
+  rewritten rather than added to, since the two are the same claim measured
+  twice.
+- **It also answers the comparability objection recorded against 1.75** (that
+  the *Radverkehrshauptnetz* is a Zielkonzept — a planned target network — and
+  so is not the same kind of thing as Paris's built km): the geodata is the
+  built network, and the 198.59 km still in planning is a separate row
+  (`cycle_network_planned`) that never enters the headline. The remaining
+  caveat is unchanged and now *visible* rather than buried: 780.31 km of the
+  total is mixed traffic on ordinary side streets, which the L2 module shows
+  as its own segment and legend row instead of folding it into one number.
 
 Paris: `0.48 km per 1000 residents` (2021), **calculated** as 1000 km of
 `aménagements cyclables` ÷ the `paris-marne-la-vallee` population row
@@ -220,19 +237,15 @@ before this existed (see the layout comment in `widgets.css`).
      comparison and isn't. Decided with the user 2026-08-18 rather than
      silently picking a framing, given the stakes for this app's
      Neutrality/Honesty rule.
-- New colours in `tokens.css`: `--color-target-umweltverbund` (`#159895`,
-  teal, Cologne's aggregate segment) and `--color-target-other` (`#6c7684`,
-  slate grey, Paris's unnamed "everything else" segment — deliberately
-  desaturated since it isn't a tracked category, so the dataviz skill's
-  chroma-floor FAIL on it is expected, not an oversight). Both validated
-  with `validate_palette.js` against `--color-surface-raised` and against
-  their ring-neighbour (`--color-mode-car` for Cologne, `--color-mode-bike`
-  for Paris — the only ring-neighbour either target has, since each ring is
-  just two segments): Cologne CVD ΔE 9.1 / normal-vision ΔE 28.6; Paris CVD
-  ΔE 15.3 / normal-vision ΔE 21.2. Both target rings reuse an existing
-  `--color-mode-*` token for their named segment (car, bike) directly
-  rather than a new colour, so that wedge reads as the same colour in both
-  donuts.
+- **The target is now a sentence, not a second donut** (2026-08-23). It used
+  to render as its own two-segment ring beside the actual one, with
+  `--color-target-umweltverbund` (`#159895`) and `--color-target-other`
+  (`#6c7684`); both tokens and that ring are gone. An L2 module is ~310px
+  wide, which fits one ring stack — and "already at 75%, above the 67% target
+  for 2025" is a comparison, which reads better stated than as two shapes to
+  eyeball against each other. The data (`MODAL_SPLIT_TARGETS`), the
+  `comparable: false` handling and the `impact.modalSplitProgress.*` strings
+  are all unchanged; only the rendering changed.
 
 ## Paris / Helsinki — display name is narrower than the underlying project
 
@@ -253,3 +266,56 @@ the dot sits on the city it labels. Where the project really is stays in
 Marne-la-Vallée). `src/data/markerPlacement.test.js` holds this contract for any
 city added later. Revisit if the map ever needs to pin the true project site —
 that wants its own columns, not these.
+
+## The L2 modules' data (Cologne) — added 2026-08-23
+
+The six L2 modules are filled from `newDes/txtModel.odt` + `newDes/picModel.png`,
+whose six columns map one-to-one onto the six cards: modal split, car density,
+air quality, cycle network, cyclists counted, road safety. New `cities.csv`
+indicator families, all `koeln`:
+
+| key | what | source |
+| --- | --- | --- |
+| `air_pm25` / `air_pm10` / `air_no2` | annual means, µg/m³, 2015–2025 | [LANUV NRW Luftqualität](https://luftqualitaet.nrw.de/bilanzkarten.php), station VKTU Köln Turiner Straße |
+| `cyclists_daily` | bikes per permanent counting site per day, 2015–2026 | [Stadt Köln Eco-Counter](https://stadtkoeln.eco-counter.com/) |
+| `cycle_network_mixed` / `_separated` / `_offstreet` / `_planned` | km, 2025 | [Offene Daten Köln – Radverkehrsnetz](https://www.offenedaten-koeln.de/dataset/radverkehrsnetz) |
+| `traffic_casualties` | people injured or killed per 1000 residents, 2015 + 2020 | [Stadt Köln VLR 2023](https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf) |
+
+- **`car_density` now runs 2015–2025** rather than 2021–2025, and each year
+  carries the document it is actually printed in: 2015–2023 from the
+  [Statistisches Jahrbuch 2025, Kapitel 4](https://www.stadt-koeln.de/mediaasset/content/pdf15/statistik-jahrbuch/statistisches_jahrbuch_koeln__2025_kap_4_verkehr_.pdf),
+  2024–2025 from ["Kraftfahrzeuge in Köln im Überblick"](https://www.stadt-koeln.de/artikel/73904/index.html).
+  It is the *Privat-Pkw* series throughout (the odt's second list), not the
+  all-registered-vehicles one — mixing the two would have put a ~75-vehicle
+  step in the middle of the line.
+- **Every series is cut at 2015** (`SERIES_START_YEAR` in `selectors.js`). Not
+  a deletion: `cities.csv` keeps Cologne's 1982/2006 modal-split rows and they
+  are simply outside the window, so widening it again is a one-line change.
+
+### Still missing a source — not added
+
+`newDes/txtModel.odt` also lists four absolute road-safety series for
+2010–2023 (Verkehrsunfälle, Verunglückte Personen, Getötete, Schwerverletzte).
+**None of them carries a link in the odt**, and only the per-1000 indicator
+does, so none was added — a row without a source does not render (CLAUDE.md).
+They are almost certainly from the Statistisches Jahrbuch's Verkehr chapter,
+but "almost certainly" is not a citation. With a source they would give the
+road-safety module a real series instead of the two points it states today.
+
+### Note copy that quotes a figure the source line does not link
+
+`impact.note.koeln.airQuality` states the EU annual limits and that they drop
+to 10 / 20 / 20 µg/m³ from 2030. The odt states this without a link; the chip
+beside it points at [LANUV's Bilanz zur Luftqualität](https://www.lanuk.nrw.de/article/bilanz-zur-luftqualitaet-2025-in-nordrhein-westfalen),
+which is the document the odt's own source line names. **Worth one check
+against that page before this is treated as settled** — the 2030 values in
+particular.
+
+### A benchmark, at last
+
+`impact.note.koeln.roadSafety` carries Cologne's 4.8 against the NRW average of
+3.7 (2020) — both from the VLR 2023. That is the first real answer to the open
+`benchmarkForIndicator()` question above ("is this a lot or a little?"), even
+though it arrives as copy rather than as a sourced benchmark row. The stub is
+still the right long-term shape; this is one indicator getting its yardstick
+early.

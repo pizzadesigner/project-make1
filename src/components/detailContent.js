@@ -1,14 +1,18 @@
-// The L2 content builders: the markup for a criterion's detail (Impact's three
-// sub-metrics, Problem Fit's prose) and the live pieces mounted into it — the
-// modal-split donuts, the car-density sparkline, and a source chip for every
-// sourced figure.
+// What goes inside the six L2 modules: the markup for one module's card, and
+// the live pieces mounted into it once that markup is in the DOM — the
+// modal-split donut, the line charts, and a source chip for every sourced claim.
 //
-// Lifted out of widgetStack.js while the L2 layout is reworked: the modules are
-// being positioned first and filled second, so nothing here is called for the
-// moment. It is the content half of that rework rather than dead weight —
-// `detailContent` and `mountSubmetricExtras` are what the boxes get filled
-// from, and they still carry the rules that matter (no fabricated numbers, and
-// every figure with its own source).
+// widgetStack.js places and animates the boxes; this fills them. The split is
+// deliberate: the flight is measured geometry and the content is data, and
+// neither needs to know how the other works. Nothing here reads the store or
+// reaches outside the node it is handed.
+//
+// The shape of a module is decided in the data layer
+// (selectors.js#impactModules) and arrives as `kind` — 'donut', 'lines',
+// 'breakdown', 'trend', or null for a topic this city has no sourced rows for.
+// A null module renders an empty card: the rule that no figure appears without
+// its source cuts both ways, and an empty box is the honest version of "we have
+// not researched this yet" (docs/DESIGN_RATIONALE.md, Neutrality/Honesty).
 
 import { t, getLocale } from '../lib/i18n.js';
 import { formatNumber } from '../lib/format.js';
@@ -16,273 +20,262 @@ import * as lineChart from './lineChart.js';
 import * as modalSplitChart from './modalSplitChart.js';
 import * as sourceChip from './sourceChip.js';
 
-/** Mounts each Impact sub-metric's live pieces once its markup is in the DOM:
- * the modal-split donut(s), the car-density sparkline, and a source chip for
- * any sourced metric (including the single-figure cycle network). */
-export function mountSubmetricExtras(node, impactSubMetrics, children, modalSplitTarget) {
+/** One module's card. `index` names its slots (`data-chart="3"`), so the
+ * mounting pass below can find them without the module knowing where it sits. */
+export function moduleHtml(module, index) {
+  if (!module || !module.kind) return '';
+  const body = {
+    donut: donutBody,
+    lines: linesBody,
+    breakdown: breakdownBody,
+    trend: trendBody,
+    prose: proseBody,
+  }[module.kind];
+  if (!body) return '';
+  return `
+    ${labelHtml(module)}
+    ${body(module, index)}
+    ${noteHtml(module)}
+    ${sourcesHtml(module, index)}`;
+}
+
+/** The card's own heading. `labelCode` fills the `{code}` an SDG-target heading
+ * carries; a block that leads with its own text (an intro paragraph) has no
+ * label at all rather than a repeated one. */
+function labelHtml({ labelKey, labelCode }) {
+  if (!labelKey) return '';
+  return `<span class="module__label">${t(labelKey).replace('{code}', labelCode ?? '')}</span>`;
+}
+
+/** Mount every module's live pieces. Called once the scaffold's markup is in
+ * the DOM; pushes each child handle so the region can destroy them together. */
+export function mountModuleExtras(root, modules, children) {
   const locale = getLocale();
-  for (const submetric of impactSubMetrics) {
-    if (submetric.key === 'modalSplit' && submetric.value) {
-      const donutSlot = node.querySelector(`[data-donut="${submetric.key}"]`);
-      if (donutSlot) {
-        children.push(
-          modalSplitChart.render(donutSlot, {
-            modes: submetric.value.modes,
-            labels: submetric.value.modes.map((mode) => t(`impact.mode.${mode}`)),
-            rings: submetric.value.rings,
-            ariaLabel: modalSplitAriaLabel(submetric.value),
-          }),
-        );
-      }
-      // The target donut only exists in the DOM when submetricHtml decided
-      // there's a sourced target for this city (see there) — same slot
-      // pattern, one ring, two segments (whatever selectors.js's
-      // MODAL_SPLIT_TARGETS defines for this city).
-      const targetSlot = node.querySelector('[data-donut="modalSplitTarget"]');
-      if (targetSlot && modalSplitTarget) {
-        children.push(
-          modalSplitChart.render(targetSlot, {
-            modes: modalSplitTarget.segments.map((segment) => segment.mode),
-            labels: modalSplitTarget.segments.map((segment) => t(`impact.mode.${segment.mode}`)),
-            rings: [
-              {
-                year: modalSplitTarget.year,
-                values: modalSplitTarget.segments.map((segment) => segment.share),
-              },
-            ],
-            ariaLabel: modalSplitTargetAriaLabel(modalSplitTarget),
-          }),
-        );
-        // The target's own source — a different document from the actual
-        // donut's (submetric.source, chipped separately below) — so it gets
-        // its own chip rather than sharing one.
-        const targetChipSlot = node.querySelector('[data-chip="modalSplitTarget"]');
-        if (targetChipSlot) {
-          children.push(sourceChip.render(targetChipSlot, { ...modalSplitTarget.source, locale }));
-        }
-      }
-    } else if (Array.isArray(submetric.value)) {
-      const chartSlot = node.querySelector(`[data-chart="${submetric.key}"]`);
-      if (chartSlot) {
-        children.push(
-          lineChart.render(chartSlot, {
-            series: submetric.value,
-            unit: submetric.unit,
-            locale,
-            compact: true,
-          }),
-        );
-      }
+  modules.forEach((module, index) => {
+    if (!module || !module.kind) return;
+    mountChart(root, module, index, children);
+    for (const [slot, source] of sourcesOf(module).entries()) {
+      const node = root.querySelector(`[data-chip="${index}-${slot}"]`);
+      if (node) children.push(sourceChip.render(node, { ...source, locale }));
     }
-    const chipSlot = node.querySelector(`[data-chip="${submetric.key}"]`);
-    if (chipSlot && submetric.source) {
-      children.push(sourceChip.render(chipSlot, { ...submetric.source, locale }));
-    }
+  });
+}
+
+/** The one chart a module carries, if it carries one. */
+function mountChart(root, module, index, children) {
+  const slot = root.querySelector(`[data-chart="${index}"]`);
+  if (!slot) return;
+  if (module.kind === 'donut') {
+    children.push(
+      modalSplitChart.render(slot, {
+        modes: module.modes,
+        labels: module.modes.map((mode) => t(`impact.mode.${mode}`)),
+        rings: module.rings,
+        ariaLabel: donutAriaLabel(module),
+        compact: true,
+      }),
+    );
+    return;
   }
-}
-
-/** Spoken summary of the modal-split donut — the latest ring, per mode. */
-function modalSplitAriaLabel({ modes, rings, latestYear }) {
-  const latest = rings[rings.length - 1];
-  if (!latest) return t('impact.modalSplit');
-  const parts = modes.map((mode, i) => `${t(`impact.mode.${mode}`)} ${latest.values[i]}%`);
-  return `${t('impact.modalSplit')} ${latestYear}: ${parts.join(', ')}`;
-}
-
-/** Spoken summary of the target donut — a single ring, two segments. */
-function modalSplitTargetAriaLabel(target) {
-  const label = t('impact.modalSplitTarget').replace('{year}', String(target.year));
-  const parts = target.segments.map(
-    (segment) => `${t(`impact.mode.${segment.mode}`)} ${segment.share}%`,
+  children.push(
+    lineChart.render(slot, {
+      lines: module.lines,
+      unit: module.unit,
+      locale: getLocale(),
+      compact: true,
+    }),
   );
-  return `${label}: ${parts.join(', ')}`;
 }
 
-/** L2 content — a heading and a body (Impact's three sub-metric slots, or a
- * single empty diagram slot for the others). No fabricated numbers until
- * researched data lands (see widgetContent). */
-export function detailContent(criterion, impactSubMetrics, modalSplitTarget, problemFit) {
-  let body;
-  if (criterion === 'impact') {
-    body = submetricsHtml(impactSubMetrics, modalSplitTarget);
-  } else if (criterion === 'problemFit' && problemFit) {
-    body = problemFitHtml(problemFit);
-  } else {
-    body = `<div class="widget-detail__diagram" data-thread-block aria-hidden="true"></div>`;
-  }
-  return body;
+/** Spoken summary of the donut — the newest ring, per mode. */
+function donutAriaLabel({ labelKey, modes, rings, latestYear }) {
+  const latest = rings[rings.length - 1];
+  if (!latest) return t(labelKey);
+  const parts = modes.map((mode, i) => `${t(`impact.mode.${mode}`)} ${latest.values[i]}%`);
+  return `${t(labelKey)} ${latestYear}: ${parts.join(', ')}`;
 }
 
-/** Problem Fit's L2 prose for a city — the ordered `body` blocks from
- * selectors.js (a plain paragraph, or a bold lead-in term + description, with
- * the closing goal block set off by a divider). Every string lives in i18n keyed
- * by the city slug (`problemFit.<slug>.*`); this only lays the blocks out, so the
- * component stays free of any city-specific copy or shape. */
-function problemFitHtml({ slug, body }) {
-  const line = (suffix) => t(`problemFit.${slug}.${suffix}`);
-  const blocks = body
-    .map((block) => {
-      const cls = block.goal ? ' class="widget-detail__problem-fit-goal"' : '';
-      const content = block.term
-        ? `<strong>${line(block.term)}:</strong> ${line(block.text)}`
-        : line(block.text);
-      return `<p${cls} data-thread-block>${content}</p>`;
-    })
-    .join('');
-  return `<div class="widget-detail__problem-fit">${blocks}</div>`;
-}
+// --- bodies, one per kind --------------------------------------------------
 
-/** Impact's three sub-metrics (modal split, car density, cycle network — see
- * selectors.js#impactSubMetrics), side by side. Each is an honest placeholder
- * slot until its figure is sourced — car density and cycle network already
- * render real charts for Cologne and Paris (mounted by mountSubmetricExtras
- * once this markup is in the DOM). */
-function submetricsHtml(impactSubMetrics, modalSplitTarget) {
+/** Modal split: the donut with a legend under it, and — where the city has a
+ * sourced strategic target — one line saying how far off it is. The target is a
+ * sentence rather than the second donut it used to be: at ~310px wide a module
+ * fits one ring stack, and the target's content is a comparison, which reads
+ * better as the comparison than as a shape to eyeball against another shape. */
+function donutBody(module, index) {
   return `
-    <div class="widget-detail__submetrics">
-      ${impactSubMetrics.map((submetric) => submetricHtml(submetric, modalSplitTarget)).join('')}
-    </div>`;
+    <div class="module__split">
+      <div class="module__donut" data-chart="${index}"></div>
+      ${matrixHtml(module)}
+    </div>
+    ${targetHtml(module)}`;
 }
 
-function submetricHtml({ key, value, unit, benchmark, sdgTarget }, modalSplitTarget) {
-  const label = t(`impact.${key}`);
-  const cls = 'widget-detail__submetric';
-  const context = contextHtml(benchmark, sdgTarget);
-  // Modal split — a donut plus a per-mode legend (with the latest-year share).
-  // Cities with a sourced target (selectors.js#modalSplitTargetForCity) get a
-  // second, smaller donut beside it: "how it should look" next to "how it
-  // looks now". No target for this city → modalSplitTarget is null, the
-  // compare row's only child fills it, and it looks the same as before.
-  if (key === 'modalSplit' && value) {
-    const target = modalSplitTarget ?? null;
-    // With a target column beside it, the actual donut's own chip moves into
-    // its column too (mirroring the target's) so both chips share one flex
-    // column layout with `margin-top: auto` (widgets.css) and land at the
-    // same Y regardless of the target column's extra progress/caveat line.
-    // No target → single column, chip stays at the card's bottom as before.
-    const actualChip = `<span class="widget-detail__submetric-chip" data-chip="${key}"></span>`;
-    return `
-      <div class="${cls} widget-detail__submetric--span" data-thread-block>
-        <span class="widget-detail__submetric-label">${label}</span>
-        <div class="widget-detail__modal-split-compare">
-          <div class="widget-detail__modal-split-actual">
-            ${target ? `<span class="widget-detail__modal-split-heading">${t('impact.modalSplitNow')}</span>` : ''}
-            <div class="widget-detail__modal-split-body">
-              <div class="widget-detail__donut" data-donut="${key}"></div>
-              ${modalSplitLegendHtml(value)}
-            </div>
-            ${target ? actualChip : ''}
-          </div>
-          ${target ? modalSplitTargetHtml(target, value) : ''}
-        </div>
-        ${context}
-        ${target ? '' : actualChip}
-      </div>`;
-  }
-  // Car density — a sparkline of the year series (latest value shown big).
-  if (Array.isArray(value)) {
-    const latest = value[value.length - 1];
-    return `
-      <div class="${cls}" data-thread-block>
-        <span class="widget-detail__submetric-label">${label}</span>
-        <span class="widget-detail__submetric-value">${formatNumber(latest.value, getLocale(), unit)}</span>
-        <div class="widget-detail__submetric-chart" data-chart="${key}"></div>
-        ${context}
-        <span class="widget-detail__submetric-chip" data-chip="${key}"></span>
-      </div>`;
-  }
-  if (value == null) {
-    return `
-      <div class="${cls}" data-thread-block>
-        <span class="widget-detail__submetric-label">${label}</span>
-        <div class="widget-detail__submetric-stub" aria-hidden="true"></div>
-      </div>`;
-  }
-  // Cycle network — a single sourced figure (with its unit + source chip).
-  return `
-    <div class="${cls}" data-thread-block>
-      <span class="widget-detail__submetric-label">${label}</span>
-      <span class="widget-detail__submetric-value">${formatNumber(value, getLocale(), unit)}</span>
-      ${context}
-      <span class="widget-detail__submetric-chip" data-chip="${key}"></span>
-    </div>`;
-}
-
-/** What a figure should be read against, under the figure itself: the
- * benchmark ("a lot or a little?") and the SDG-11 target it serves ("why does
- * this matter?"). Both are pending seams — see selectors.js#benchmarkForIndicator
- * and #sdgTargetForIndicator — so they render as named placeholders rather than
- * silently missing, and only beside a figure that actually exists. */
-function contextHtml(benchmark, sdgTarget) {
-  const rows = [
-    benchmark == null ? t('widget.benchmarkPending') : null,
-    sdgTarget == null ? t('widget.sdgTargetPending') : null,
-  ].filter(Boolean);
-  if (rows.length === 0) return '';
-  return `<p class="widget-detail__submetric-pending">${rows.join(' · ')}</p>`;
-}
-
-/** Legend for the modal-split donut: a colour swatch, mode label and the
- * latest-year share for each mode, in the donut's segment order. */
-function modalSplitLegendHtml({ modes, rings }) {
-  const latest = rings[rings.length - 1]?.values ?? [];
-  const items = modes
+/** The donut's legend, as the table it wants to be: a row per mode, a column
+ * per ring. It does the legend's job — swatch and name beside every colour, so
+ * nothing is told by hue alone — and, because there are only two rings inside
+ * the display window, it also shows each mode's move between them, which is the
+ * thing the rings themselves are hardest to read off. */
+function matrixHtml({ modes, rings }) {
+  const head = rings.map((ring) => `<th scope="col">${ring.year}</th>`).join('');
+  const body = modes
     .map(
       (mode, i) => `
-      <li class="widget-detail__legend-item">
-        <span class="widget-detail__legend-swatch widget-detail__legend-swatch--${mode}"></span>
-        <span>${t(`impact.mode.${mode}`)}</span>
-        <b>${latest[i] ?? 0}%</b>
-      </li>`,
-    )
-    .join('');
-  return `<ul class="widget-detail__legend">${items}</ul>`;
-}
-
-/** The target donut's own heading, mini donut slot and two-row legend —
- * matching the actual donut's markup shape (donut + `.widget-detail__legend`)
- * so it inherits the same side-by-side donut/legend styling for free. */
-function modalSplitTargetHtml(target, value) {
-  const legendItems = target.segments
-    .map(
-      (segment) => `
-      <li class="widget-detail__legend-item">
-        <span class="widget-detail__legend-swatch widget-detail__legend-swatch--${segment.mode}"></span>
-        <span>${t(`impact.mode.${segment.mode}`)}</span>
-        <b>${segment.share}%</b>
-      </li>`,
+      <tr>
+        <th scope="row">
+          <span class="module__swatch module__swatch--${mode}"></span>
+          <span class="module__legend-label">${t(`impact.mode.${mode}`)}</span>
+        </th>
+        ${rings.map((ring) => `<td>${ring.values[i]}%</td>`).join('')}
+      </tr>`,
     )
     .join('');
   return `
-    <div class="widget-detail__modal-split-target">
-      <span class="widget-detail__modal-split-heading">${t('impact.modalSplitTarget').replace('{year}', String(target.year))}</span>
-      <div class="widget-detail__modal-split-body">
-        <div class="widget-detail__donut" data-donut="modalSplitTarget"></div>
-        <ul class="widget-detail__legend">${legendItems}</ul>
-      </div>
-      ${modalSplitProgressHtml(value, target)}
-      <span class="widget-detail__submetric-chip" data-chip="modalSplitTarget"></span>
-    </div>`;
+    <table class="module__matrix">
+      <thead><tr><td></td>${head}</tr></thead>
+      <tbody>${body}</tbody>
+    </table>`;
 }
 
-/** How close the latest actual ring already is to the sourced target — pure
- * arithmetic on two sourced figures (never a guessed target, see
- * selectors.js#modalSplitTargetForCity), stated as "goal already met" or the
- * remaining points to close. When the target isn't measuring the same thing
- * as the actual data (`comparable: false`, e.g. Paris's different survey
- * population), states that instead of a percentage-point gap that would
- * imply a comparison that isn't actually valid. */
-function modalSplitProgressHtml({ modes, rings }, target) {
+/** One to three year series on one axis, with the legend naming them. A single
+ * line needs no legend — the module's own label says what it is — and gets the
+ * latest value as a figure instead. */
+function linesBody(module, index) {
+  const single = module.lines.length === 1;
+  const items = module.lines.map((line) => ({
+    key: line.key,
+    label: t(`impact.series.${line.key}`),
+    value: formatNumber(line.points[line.points.length - 1].value, getLocale()),
+  }));
+  return `
+    ${single ? headlineHtml(module.latest.value, module.unit, module.latest.year) : ''}
+    <div class="module__chart" data-chart="${index}"></div>
+    ${single ? '' : legendHtml(items)}`;
+}
+
+/** Parts of one whole, as a stacked bar sized by the parts themselves. The
+ * figure above it is the per-resident one, because that is the number another
+ * city can compare itself against; the kilometres are what it is made of. */
+function breakdownBody(module) {
+  const locale = getLocale();
+  const figure = headlineHtml(module.headline.value, module.headline.unit, null);
+  // A city with the headline but no breakdown behind it (Paris) shows the
+  // figure alone rather than an empty bar — the same graceful-null rule the
+  // whole module list follows, one level down.
+  if (module.parts.length === 0) return figure;
+  const segments = module.parts
+    .map(
+      (part) =>
+        `<span class="module__bar-part module__bar-part--${part.key}" style="flex-grow: ${part.value}"></span>`,
+    )
+    .join('');
+  const items = module.parts.map((part) => ({
+    key: part.key,
+    label: t(`impact.cycleNetwork.${part.key}`),
+    value: formatNumber(part.value, locale, 'km'),
+  }));
+  return `
+    ${figure}
+    <div class="module__bar" role="presentation">${segments}</div>
+    ${legendHtml(items)}`;
+}
+
+/** Two or three sourced points, stated rather than drawn: a line through two
+ * measurements five years apart would describe a shape the data does not have. */
+function trendBody(module) {
+  const locale = getLocale();
+  const points = module.points
+    .map(
+      (point, i) => `
+      <div class="module__trend-point${i === module.points.length - 1 ? ' is-latest' : ''}">
+        <b>${formatNumber(point.value, locale)}</b>
+        <span>${point.year}</span>
+      </div>`,
+    )
+    .join('<span class="module__trend-step" aria-hidden="true"></span>');
+  return `
+    <p class="module__trend-unit">${module.unit}</p>
+    <div class="module__trend">${points}</div>`;
+}
+
+/** A Problem Fit block. The block's lead-in term — "The Rings", "Goal" — is the
+ * card's own label, so what is left here is the paragraph under it; the copy is
+ * the same i18n entries the L1 widget's targets already use. */
+function proseBody(module) {
+  return `<p class="module__prose">${t(module.text)}</p>`;
+}
+
+// --- shared pieces ---------------------------------------------------------
+
+/** The module's own figure: value, unit, and the year it was measured. */
+function headlineHtml(value, unit, year) {
+  const suffix = unit ? `<span class="module__unit">${unit}</span>` : '';
+  const when = year ? `<span class="module__year">${year}</span>` : '';
+  return `
+    <p class="module__value">
+      <b>${formatNumber(value, getLocale())}</b>${suffix}${when}
+    </p>`;
+}
+
+/** Colour is never the only thing telling two series apart: every legend row
+ * carries the swatch, the name and that row's own number. */
+function legendHtml(items) {
+  const rows = items
+    .map(
+      (item) => `
+      <li class="module__legend-item">
+        <span class="module__swatch module__swatch--${item.key}"></span>
+        <span class="module__legend-label">${item.label}</span>
+        <b>${item.value}</b>
+      </li>`,
+    )
+    .join('');
+  return `<ul class="module__legend">${rows}</ul>`;
+}
+
+/** The sentence a module ends on, when it has one (selectors.js#noteFor). A
+ * figure inside it comes from the module, not from the copy — a translator
+ * should never be the one holding a number. */
+function noteHtml(module) {
+  if (!module.note) return '';
+  const text = t(`impact.note.${module.note.key}`).replace(
+    '{planned}',
+    formatNumber(module.planned ?? null, getLocale()),
+  );
+  return `<p class="module__note">${text}</p>`;
+}
+
+/** Every document this module's claims rest on, as chips in one row: its data,
+ * and — when the note came from somewhere else — the note's own. */
+function sourcesOf(module) {
+  return [module.source, module.note?.source, module.target?.source].filter(Boolean);
+}
+
+function sourcesHtml(module, index) {
+  const chips = sourcesOf(module)
+    .map((source, slot) => `<span data-chip="${index}-${slot}"></span>`)
+    .join('');
+  return chips ? `<div class="module__sources">${chips}</div>` : '';
+}
+
+/** How close the newest ring already is to the city's sourced target — pure
+ * arithmetic over two sourced figures (never a guessed target, see
+ * selectors.js#modalSplitTargetForCity), stated as "already met" or the points
+ * still to close. When the target is not measuring the same thing as the actual
+ * data (`comparable: false`, e.g. Paris's different survey population), it says
+ * so instead of a gap that would imply a comparison the sources do not support. */
+function targetHtml(module) {
+  const { target, modes, rings } = module;
   const latest = rings[rings.length - 1];
-  const [primary] = target.segments;
-  if (!latest || !primary.actualModes) return '';
+  const primary = target?.segments[0];
+  if (!latest || !primary?.actualModes) return '';
   const actual = primary.actualModes.reduce((sum, mode) => {
     const i = modes.indexOf(mode);
     return sum + (i === -1 ? 0 : latest.values[i]);
   }, 0);
   if (target.comparable === false) {
     const text = t('impact.modalSplitProgress.notComparable').replace('{actual}', String(actual));
-    return `<p class="widget-detail__target-progress">${text}</p>`;
+    return `<p class="module__target">${text}</p>`;
   }
   const gap = primary.share - actual;
   const key = gap <= 0 ? 'impact.modalSplitProgress.met' : 'impact.modalSplitProgress.gap';
@@ -291,5 +284,5 @@ function modalSplitProgressHtml({ modes, rings }, target) {
     .replace('{target}', String(primary.share))
     .replace('{year}', String(target.year))
     .replace('{gap}', String(Math.abs(gap)));
-  return `<p class="widget-detail__target-progress">${text}</p>`;
+  return `<p class="module__target">${text}</p>`;
 }
