@@ -180,6 +180,11 @@
    * way rather than only where it stops. */
   --ease-arrow: cubic-bezier(0.4, 0, 0.2, 1);
 
+  /* The step between the cards stacked behind a widget that has an L2 to open
+   * (see .widget--problemFit). Small enough to read as a deck rather than as
+   * three separate cards. */
+  --deck-step: 7px;
+
   /* Layout. */
   --content-max: 72rem;
 

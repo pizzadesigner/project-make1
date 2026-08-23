@@ -50,6 +50,11 @@ const WIDGET_PADDING = '16px 18px';
 // instead of its text reflowing into a different shape.
 const L2_BYSTANDER_SCALE = '0.78';
 
+// Which widgets stand on a deck of cards at L1 (see .widget--deck): the ones
+// whose L2 the deck is a preview of. A set rather than a flag on each widget so
+// giving another one a deck is a word here and nothing else.
+const DECK_WIDGETS = new Set(['problemFit']);
+
 const BASE_LAYOUT = {
   problemFit: {
     top: `${STACK_TOP}px`,
@@ -151,7 +156,8 @@ export function render(container, props) {
 
 function buildWidget(kind, onSelectCriterion) {
   const node = document.createElement('div');
-  node.className = `widget widget--${kind}`;
+  const deck = DECK_WIDGETS.has(kind) ? ' widget--deck' : '';
+  node.className = `widget widget--${kind}${deck}`;
   node.setAttribute('role', 'button');
   node.setAttribute('tabindex', '0');
   node.addEventListener('click', () => onSelectCriterion(kind));

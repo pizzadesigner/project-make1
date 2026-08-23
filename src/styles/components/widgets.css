@@ -25,6 +25,27 @@
     opacity var(--motion-slow) var(--ease-glass);
 }
 
+/* A widget that carries a deck: two more cards showing behind it, so it reads
+   as holding the modules it opens into rather than merely leading to them (see
+   DECK_WIDGETS in widgetStack.js).
+
+   Drawn as offset shadows rather than as elements — the widget is a stacking
+   context (applyWidget sets its z-index), so a child behind it would paint over
+   its background instead of under it, and a sibling could not follow a widget
+   whose width is fit-content. Shadows sit behind the background by definition
+   and track whatever size the card ends up.
+
+   Each card is a filled rect one pixel inside a border-coloured one, and the
+   nearer card is listed first because earlier shadows paint on top. Opaque
+   fill, so the two do not double up where they overlap. */
+.widget--deck {
+  box-shadow:
+    var(--deck-step) var(--deck-step) 0 -1px var(--color-surface),
+    var(--deck-step) var(--deck-step) 0 0 var(--color-border-glass),
+    calc(var(--deck-step) * 2) calc(var(--deck-step) * 2) 0 -1px var(--color-surface),
+    calc(var(--deck-step) * 2) calc(var(--deck-step) * 2) 0 0 var(--color-border-glass);
+}
+
 .widget:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;

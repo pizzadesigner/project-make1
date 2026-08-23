@@ -43,6 +43,18 @@ afterEach(() => {
 const region = () => container.querySelector('.widget-detail');
 const modules = () => container.querySelectorAll('.widget-detail__module');
 
+// A widget that opens into the six modules stands on a deck of cards, so the
+// flight out starts from something the user has already seen rather than from
+// an empty corner. Which widgets carry one is a design decision (DECK_WIDGETS),
+// not a property of having an L2 — every widget has one of those.
+describe('the deck at L1', () => {
+  it('gives Problem Fit a deck and leaves the others flat', () => {
+    expect(container.querySelector('.widget--problemFit').classList).toContain('widget--deck');
+    expect(container.querySelector('.widget--impact').classList).not.toContain('widget--deck');
+    expect(container.querySelector('.widget--adoption').classList).not.toContain('widget--deck');
+  });
+});
+
 describe('entering L2', () => {
   it('opens the region with its full set of modules', () => {
     stack.update({ ...props, activeCriterion: 'adoption' });
