@@ -130,14 +130,28 @@
   --motion-entrance: 620ms; /* gentle content float-ins (e.g. the L0 overview text) */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
-  /* The L2 modules (widgets.css, widgetStack.js#moduleScaffold). --module-fly is
-   * how far a module travels on its way in; each one scales it differently so
-   * no two arrive along the same line. --module-leave-duration is also read in
-   * JS (widgetStack.js#leave) to know how long to hold the region on the way
-   * out. The boxes divide the height the region has; --module-box-min is the
-   * floor below which they stop shrinking and the region scrolls instead. */
-  --module-box-min: 10rem;
-  --module-fly: 40px;
+  /* The L2 modules (widgets.css, widgetStack.js#moduleScaffold).
+   *
+   * --module-box-ratio is the shape of one module, and it is a content
+   * measurement rather than a taste: a module holds a label, the figure it
+   * names, a compact chart of the series behind it, a legend for the two to
+   * four rows that chart carries, and a source chip — about 215px of stacked
+   * content at the ~308px the three columns give each module. 4:3 clears that
+   * with room to breathe. Fixing the shape is the point: the boxes used to
+   * divide whatever height the region had, so the same module was 4:3 on a tall
+   * screen and nearly 3:2 on a laptop, and the chart inside would have had a
+   * different amount of room on every screen.
+   *
+   * --module-fly is how much of that flight a module actually travels: the
+   * distance itself is measured at the click (widgetStack.js#setFlightOrigin —
+   * each module starts on the clicked widget and flies to its own place), so
+   * this is the multiplier that turns the whole entrance off for reduced
+   * motion without the component knowing anything about it.
+   *
+   * --module-leave-duration is also read in JS (widgetStack.js#leave) to know
+   * how long to hold the region on the way out. */
+  --module-box-ratio: 4 / 3;
+  --module-fly: 1;
 
   /* How far a module sits off the line the grid put it on, and how far it drifts
    * once it has landed. The drift is meant to be felt rather than seen — a few
@@ -210,7 +224,7 @@
      * frame in which a module is offset from where it belongs.
      * tokens.test.js fails if a --module-* or --thread-* token is added above
      * without a 0 here. */
-    --module-fly: 0px;
+    --module-fly: 0;
     --module-idle: 0px;
     --module-fly-duration: 0ms;
     --module-stagger: 0ms;

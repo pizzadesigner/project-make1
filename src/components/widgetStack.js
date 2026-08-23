@@ -4,6 +4,11 @@
 // opens on that widget's side (the map cuts to the opposite half — see mapView
 // and europeMap), and the widgets dim in place.
 //
+// The L2 does not replace the widget so much as unpack it: the modules start
+// stacked on the card that was clicked and fly out to their own places, so what
+// stood on the deck at L1 is what is standing in the region afterwards. See
+// setFlightOrigin for the measurement that ties the two together.
+//
 // render(container, { project, activeCriterion, metrics, impactSubMetrics,
 // onSelectCriterion }) and the component never reads the store — data comes
 // down, the clicked widget goes up via
@@ -115,7 +120,12 @@ export function render(container, props) {
   root.hidden = true;
 
   const widgets = WIDGETS.map((key) => buildWidget(key, props.onSelectCriterion));
-  const detail = buildDetail();
+  // The region needs the widget it was opened from, not just which one it was:
+  // the modules fly out of that card, so its position and width are the start
+  // of the entrance (see setFlightOrigin).
+  const detail = buildDetail(
+    (kind) => widgets.find((widget) => widget.kind === kind)?.node ?? null,
+  );
   root.append(...widgets.map((w) => w.node), detail.node);
   container.append(root);
 
@@ -174,7 +184,7 @@ function buildWidget(kind, onSelectCriterion) {
  * the map cuts to the other half. It carries no back control of its own — the
  * screen's Back button (and Escape) already step back one layer from anywhere,
  * and a second one inside the region was a duplicate of that. */
-function buildDetail() {
+function buildDetail(sourceNodeFor) {
   const node = document.createElement('section');
   node.className = 'widget-detail';
   node.hidden = true;
@@ -221,6 +231,7 @@ function buildDetail() {
     node.setAttribute('aria-label', t(`criteria.${activeCriterion}`));
     node.innerHTML = detailHeader(activeCriterion) + moduleScaffold();
     node.hidden = false;
+    setFlightOrigin(node, sourceNodeFor(activeCriterion));
     arrows = mountArrows(node);
     return undefined;
   }
@@ -271,6 +282,53 @@ function moduleScaffold() {
        </div>`,
   ).join('');
   return `<div class="widget-detail__modules" aria-hidden="true">${boxes}</div>`;
+}
+
+/** Point every module back at the widget it comes out of.
+ *
+ * The entrance is one movement from one place: each module starts stacked on
+ * the clicked widget, at that widget's width, and travels to its own cell while
+ * shrinking to its own size. That is the difference between a deck of cards
+ * being dealt out and a second screen sliding in, and it is why the distance is
+ * measured here rather than written in the stylesheet — where a module starts
+ * depends on where the widget it left is, which is a fact about the running
+ * page.
+ *
+ * Three values per module, read by .widget-detail__module: the offset to the
+ * widget's top-left corner, and the widget's width as a multiple of the
+ * module's. Uniform scale, from the width alone — a widget is a tall card and a
+ * module a wide one, so matching both axes would mean squashing the module and
+ * everything that will later sit inside it.
+ *
+ * Mixed coordinates on purpose, and they agree: the region has no border, so
+ * its border box and its padding box share an origin, and offsetLeft/offsetTop
+ * are measured from that same padding edge (see moduleRect). The offsets are
+ * also the resting places rather than wherever a module is mid-flight, which is
+ * what makes this safe to run before the animation starts.
+ */
+function setFlightOrigin(node, sourceNode) {
+  if (!sourceNode) return;
+  const source = sourceNode.getBoundingClientRect();
+  // Nothing laid out yet (jsdom, or a widget still hidden): leave the fallbacks
+  // in place, which put the module on its own cell at its own size.
+  if (source.width === 0) return;
+  const region = node.getBoundingClientRect();
+  for (const module of node.querySelectorAll('.widget-detail__module')) {
+    if (module.offsetWidth === 0) continue;
+    module.style.setProperty(
+      '--from-x',
+      `${round(source.left - region.left - module.offsetLeft)}px`,
+    );
+    module.style.setProperty('--from-y', `${round(source.top - region.top - module.offsetTop)}px`);
+    module.style.setProperty('--from-scale', String(round(source.width / module.offsetWidth, 3)));
+  }
+}
+
+/** Sub-pixel precision buys nothing in a travelling card and makes the inline
+ * styles (and any test reading them) unreadable. */
+function round(value, places = 0) {
+  const factor = 10 ** places;
+  return Math.round(value * factor) / factor;
 }
 
 /** Mount the arrows between modules: a layer inside the region carrying one

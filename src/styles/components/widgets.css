@@ -278,16 +278,10 @@
 
 .widget-detail--left {
   left: var(--l2-region-margin);
-
-  /* Which way the modules come in from: the widget they flew out of sits at the
-     top of this side, so on the left region they arrive from the left. The
-     placement itself reads left to right on both sides. */
-  --fly-dir: -1;
 }
 
 .widget-detail--right {
   right: var(--l2-region-margin);
-  --fly-dir: 1;
 }
 
 /* Three columns, staggered: three modules down the first, two down the second
@@ -302,15 +296,20 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
 
-  /* Six rows share the height the region has, so the arrangement fits whatever
-     it is given instead of running off the foot of a short screen — down to
-     --module-box-min, below which it scrolls rather than squashing. */
-  grid-template-rows: repeat(6, minmax(calc((var(--module-box-min) - var(--space-4)) / 2), 1fr));
+  /* Six rows, each sized by the modules standing in it rather than by dividing
+     up the region: a module's shape is fixed (--module-box-ratio, see
+     .widget-detail__module) so that the chart it will hold has the same room on
+     every screen. Packed to the top — with auto rows, stretch would hand the
+     modules the leftover height back and undo exactly that. A region too short
+     for the arrangement scrolls, which is what it did below the old floor. */
+  grid-template-rows: repeat(6, auto);
+  align-content: start;
 
-  /* Rows tight, columns wide: the row gap is half the stagger step and the
-     grid-template-rows calc above depends on it, while the column gap is what
-     separates the three columns as columns — and the columns have the width to
-     stand apart now that the map has been pushed clear of them. */
+  /* Rows tight, columns wide: the row gap is half the stagger step, and it sits
+     inside a module (which spans two rows and the gap between them) rather than
+     between two of them, while the column gap is what separates the three
+     columns as columns — and the columns have the width to stand apart now that
+     the map has been pushed clear of them. */
   gap: var(--space-4) var(--space-8);
 }
 
@@ -336,8 +335,22 @@
    transforms rather than one transform and a layout box. --module-index is set
    on the module and inherits, so both halves start together. */
 .widget-detail__module {
-  --fly-x: calc(var(--module-fly) * var(--fly-x-step, 0) * var(--fly-dir, -1));
-  --fly-y: calc(var(--module-fly) * var(--fly-y-step, 1) * -1);
+  /* Where this module flies from, and how big it is when it sets off.
+     --from-x/--from-y/--from-scale are measured at the click and set on the
+     element (widgetStack.js#setFlightOrigin): they put every module on top of
+     the widget that was clicked, at that widget's width. --module-fly is the
+     token that scales the whole flight, so reduced motion (0) lands each module
+     on its own place at its own size with no frame in between. */
+  --fly-x: calc(var(--from-x, 0px) * var(--module-fly));
+  --fly-y: calc(var(--from-y, 0px) * var(--module-fly));
+  --fly-scale: calc(1 + (var(--from-scale, 1) - 1) * var(--module-fly));
+
+  /* The module's shape, not the grid's leftover space (--module-box-ratio is
+     measured against what a module holds — see tokens.css). Width comes from
+     the column, height from the ratio, and the rows are sized from that; start
+     rather than stretch, or the grid would give the height back. */
+  aspect-ratio: var(--module-box-ratio);
+  align-self: start;
 
   /* Off the ruled line. The grid places the boxes; each one then sits a few px
      off where it was put, so the arrangement reads as placed rather than
@@ -347,6 +360,11 @@
   top: calc(var(--module-nudge) * var(--nudge-y-step, 0));
   left: calc(var(--module-nudge) * var(--nudge-x-step, 0));
   min-height: 0;
+
+  /* Both halves shrink towards the same corner, which is the corner that starts
+     on the widget — so the module is pinned to it for the whole flight instead
+     of sliding under itself as it grows. */
+  transform-origin: top left;
   animation: module-fly-x var(--module-fly-duration) var(--ease-module-x) both;
   animation-delay: calc(var(--module-index, 0) * var(--module-stagger));
 }
@@ -363,6 +381,7 @@
   background-color: var(--color-surface-glass);
   border: 1px solid var(--color-border-glass);
   border-radius: var(--radius-md);
+  transform-origin: top left;
 
   /* Two animations at once, which works because they drive different
      properties: the flight in uses `transform`, the idle drift the standalone
@@ -381,16 +400,15 @@
     calc(var(--module-fly-duration) + var(--module-index, 0) * var(--module-stagger));
 }
 
-/* Placement, entrance order, and each module's own path in. The steps differ
-   per module so no two travel the same line — the point of them arriving
-   separately rather than as one block. */
+/* Placement and entrance order. Every module leaves the same point — the widget
+   that was clicked — so the line each one takes is simply the one to its own
+   place; what differs here is when it sets off, and how far off the ruled line
+   it settles. */
 .widget-detail__module--1 {
   grid-column: 1;
   grid-row: 1 / span 2;
 
   --module-index: 0;
-  --fly-x-step: 0.5;
-  --fly-y-step: 1;
   --nudge-x-step: 0.6;
   --nudge-y-step: -0.45;
   --idle-x: calc(var(--module-idle) * 0.8);
@@ -403,8 +421,6 @@
   grid-row: 3 / span 2;
 
   --module-index: 1;
-  --fly-x-step: 0.9;
-  --fly-y-step: 0.5;
   --nudge-x-step: -0.8;
   --nudge-y-step: 0.5;
   --idle-x: calc(var(--module-idle) * -1);
@@ -417,8 +433,6 @@
   grid-row: 5 / span 2;
 
   --module-index: 2;
-  --fly-x-step: 1;
-  --fly-y-step: 0.15;
   --nudge-x-step: 0.35;
   --nudge-y-step: 0.7;
   --idle-x: calc(var(--module-idle) * 0.6);
@@ -431,8 +445,6 @@
   grid-row: 2 / span 2;
 
   --module-index: 3;
-  --fly-x-step: 0.2;
-  --fly-y-step: 1.1;
   --nudge-x-step: -0.5;
   --nudge-y-step: -0.7;
   --idle-x: calc(var(--module-idle) * -0.7);
@@ -445,8 +457,6 @@
   grid-row: 4 / span 2;
 
   --module-index: 4;
-  --fly-x-step: 0.6;
-  --fly-y-step: 0.8;
   --nudge-x-step: 0.9;
   --nudge-y-step: 0.3;
   --idle-x: calc(var(--module-idle) * 1);
@@ -459,8 +469,6 @@
   grid-row: 5 / span 2;
 
   --module-index: 5;
-  --fly-x-step: -0.4;
-  --fly-y-step: 1.2;
   --nudge-x-step: -0.6;
   --nudge-y-step: -0.5;
   --idle-x: calc(var(--module-idle) * -0.5);
@@ -470,7 +478,17 @@
 
 /* Sideways first and settling early (--ease-module-x), downward later and more
    evenly (--ease-module-y): the module is still descending after it has stopped
-   travelling across, which is the bend in its path. */
+   travelling across, which is the bend in its path.
+
+   The shrink rides the vertical half rather than getting an element of its own,
+   so a module reaches its own size on the same clock it reaches its own place —
+   one movement, not a slide followed by a resize.
+
+   The 25% stop sets opacity and nothing else. It cannot bend the path: the
+   transform is declared at 0% and 100% only, so it stays a single interpolation
+   across the whole flight. What it buys is a module that is solid almost as soon
+   as it appears — it has come out from under a card the user is looking at, so
+   fading the whole way would read as arriving from somewhere else. */
 @keyframes module-fly-x {
   0% {
     transform: translateX(var(--fly-x));
@@ -484,12 +502,16 @@
 @keyframes module-fly-y {
   0% {
     opacity: 0;
-    transform: translateY(var(--fly-y));
+    transform: translateY(var(--fly-y)) scale(var(--fly-scale));
+  }
+
+  25% {
+    opacity: 1;
   }
 
   100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
