@@ -14,6 +14,7 @@ import {
   impactSubMetrics,
   impactModules,
   problemFitModules,
+  adoptionModules,
   problemFitForCity,
   cityHasResearchedContent,
 } from '../data/selectors.js';
@@ -167,11 +168,13 @@ export function render(container, props) {
       // every city without researched content, so the widget stays empty there.
       problemFit,
       // What each criterion's L2 unpacks into — the city's six data topics for
-      // Impact, the same Problem Fit narrative one block per card. A city
-      // without rows for a topic gets an empty card there, never a filled-in
-      // one (see selectors.js#impactModules).
+      // Impact, the same Problem Fit narrative one block per card, and what it
+      // takes to adopt the project for the third. A city without rows for a
+      // topic gets an empty card there, never a filled-in one (see
+      // selectors.js#impactModules).
       impactModules: impactModules(next.cityIndicators, focusedProject?.citySlug ?? null),
       problemFitModules: problemFitModules(problemFit),
+      adoptionModules: adoptionModules(next.cityIndicators, focusedProject?.citySlug ?? null),
       // Under the coming-soon overlay the widgets are covered, so they go inert
       // (not click/focus targets) rather than offering an empty L2 to open.
       comingSoon,

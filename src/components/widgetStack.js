@@ -10,9 +10,10 @@
 // setFlightOrigin for the measurement that ties the two together.
 //
 // render(container, { project, activeCriterion, metrics, impactModules,
-// problemFitModules, problemFit, comingSoon, onSelectCriterion }) and the
-// component never reads the store — data comes down, the clicked widget goes up
-// via onSelectCriterion('problemFit'|'impact'|'adoption').
+// problemFitModules, adoptionModules, problemFit, comingSoon,
+// onSelectCriterion }) and the component never reads the store — data comes
+// down, the clicked widget goes up via
+// onSelectCriterion('problemFit'|'impact'|'adoption').
 //
 // `metrics` is keyed by widget (`selectors.js#widgetMetricsForProject`): each
 // value is `{ key, value, unit }` or null. This component decides nothing about
@@ -23,8 +24,14 @@
 // the SDG 11 targets at L1, and at L2 the same narrative one block per module
 // (selectors.js#problemFitModules). Impact's L2 modules are the city's sourced
 // data topics (selectors.js#impactModules) — Cologne fills all six, Paris the
-// three it has rows for, Lisbon and Helsinki none.
-// TODO(data): Adoption is null at every city (docs/research.md §5.4).
+// three it has rows for, Lisbon and Helsinki none. Adoption's are what another
+// city needs in order to run the project itself (selectors.js#adoptionModules).
+//
+// Neither Problem Fit nor Adoption has a headline *figure*, so at L1 both list
+// what their L2 holds instead of showing a bar: for Problem Fit the SDG targets
+// it addresses, for Adoption the cards that are filled. That is the honest
+// stand-in — it names real content rather than inventing a number for it — and
+// it is why an empty bar now means "nothing here", not "no figure here".
 
 import { t, getLocale } from '../lib/i18n.js';
 import { formatNumber } from '../lib/format.js';
@@ -144,7 +151,12 @@ export function render(container, props) {
       applyWidget(
         widget,
         layout[widget.kind],
-        widgetContent(widget.kind, next.metrics[widget.kind], next.problemFit ?? null),
+        widgetContent(
+          widget.kind,
+          next.metrics[widget.kind],
+          next.problemFit ?? null,
+          modulesFor(widget.kind, next),
+        ),
       );
       widget.node.tabIndex = inert ? -1 : 0;
       widget.node.style.pointerEvents = inert ? 'none' : 'auto';
@@ -278,15 +290,13 @@ const MODULE_ARROWS = [
 ];
 
 /** Which module payloads a criterion opens into. Impact unpacks into the city's
- * six data topics, Problem Fit into its narrative blocks; both come from the
- * data layer already shaped, so this only picks the list.
- *
- * TODO(data): Adoption has no researched content at any city yet — its six
- * cards are the ones `newDes/newDesFill.png` describes (cost, context,
- * politics, funding) and they stay empty until that is researched. */
+ * six data topics, Problem Fit into its narrative blocks, Adoption into what it
+ * takes to run the project somewhere else; all three come from the data layer
+ * already shaped, so this only picks the list. */
 function modulesFor(activeCriterion, props) {
   if (activeCriterion === 'impact') return props.impactModules ?? [];
   if (activeCriterion === 'problemFit') return props.problemFitModules ?? [];
+  if (activeCriterion === 'adoption') return props.adoptionModules ?? [];
   return [];
 }
 
@@ -406,6 +416,16 @@ function problemFitTargetsHtml({ slug, targets }) {
   return `<ul class="widget__problem-fit-targets">${items}</ul>`;
 }
 
+/** Adoption's L1 body: the cards its L2 opens into, named. Driven by the module
+ * list itself rather than a second list here, so a card that gains content
+ * appears in the widget and one that has none never does. */
+function adoptionTopicsHtml(modules) {
+  const items = modules
+    .map((module) => `<li class="widget__topic">${t(module.labelKey)}</li>`)
+    .join('');
+  return `<ul class="widget__topics">${items}</ul>`;
+}
+
 function applyWidget(widget, layout, contentHtml) {
   Object.assign(widget.node.style, {
     top: layout.top,
@@ -440,14 +460,22 @@ function widgetHeader(label, chip) {
  * `selectors.js#widgetMetricsForProject` handed down for this widget:
  * `{ key, value, unit }` or null. `key` names the figure (Impact's sub-metrics
  * resolve via `impact.<key>`) and is null when the widget's own title says it;
- * `unit` is null for a bare count. */
-function widgetContent(criterion, metric, problemFit) {
+ * `unit` is null for a bare count. `modules` is this widget's own L2 payload,
+ * which is what Adoption lists in place of a figure. */
+function widgetContent(criterion, metric, problemFit, modules) {
   const label = t(`criteria.${criterion}`);
   // Problem Fit headlines with the SDG 11 targets it addresses, each with a
   // one-line explanation of how — not a figure, so it renders text where the
   // other widgets show a bar.
   if (criterion === 'problemFit' && problemFit) {
     return widgetHeader(label, null) + problemFitTargetsHtml(problemFit);
+  }
+  // Adoption has no single figure either — what it has is a set of topics — so
+  // it names the ones this city has content for. An unresearched city has none
+  // and falls through to the empty shell below.
+  if (criterion === 'adoption') {
+    const filled = modules.filter((module) => module?.kind);
+    if (filled.length > 0) return widgetHeader(label, null) + adoptionTopicsHtml(filled);
   }
   if (!metric) {
     return widgetHeader(label, null) + `<div class="widget__bar widget__bar--empty"></div>`;

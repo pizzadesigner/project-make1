@@ -22,23 +22,30 @@
    * walk, car, moto — a closed ring, so the transit/moto wrap-around pair
    * matters as much as the four in-order pairs).
    *
-   * Transit and cycling are two shades of green (2026-08-23): they are the two
-   * modes this project moves trips *onto*, and reading them as one family —
-   * with the car red opposite — is the point the donut is making. The two are
-   * ring-neighbours, so the shades are separated by lightness *and* hue (deep
-   * sea green L 0.54 h170 / grass green L 0.66 h132) rather than by lightness
-   * alone; walking stays its own hue, because a third green cannot clear the
-   * separation floor inside the dark mode's lightness band.
+   * All three sustainable modes are green (2026-08-23): transit, cycling and
+   * walking are what this project moves trips *onto*, so they read as one
+   * family with the car red opposite them. Green is the dashboard's word for
+   * "the sustainable choice" everywhere else — the cycle network, the routes on
+   * the map — and the donut now says the same thing.
+   *
+   * Three greens inside dark mode's lightness band (L 0.48–0.67) is a tight
+   * fit, and the ring order is what makes it work: transit and walking are the
+   * two closest of the three (ΔE 9.4) and the ring puts cycling between them,
+   * so they are never neighbours. The pairs that *are* neighbours are the ones
+   * with room — deep sea green ↔ grass green at 17.0, grass green ↔ forest
+   * green at 16.3.
    *
    * Validated with the dataviz skill's `validate_palette.js` against
-   * --surface #1f293e (--color-surface-raised, what the donut and legend
-   * swatches sit on) --mode dark: every ring-adjacent pair (incl. the
-   * moto↔transit wrap) clears the CVD target (ΔE >= 8, worst pair car↔moto at
-   * 10.0) and the normal-vision floor (>= 15, worst pair 17.0 — the two greens
-   * themselves at 17.0). */
+   * --surface #0d1117 (the L2 module card: --color-surface-glass over
+   * --color-canvas, which is the same colour at 88% — the donut and its legend
+   * swatches sit on that, not on --color-surface-raised) --mode dark: every
+   * ring-adjacent pair (incl. the moto↔transit wrap) clears the CVD target
+   * (ΔE >= 8, worst pair car↔moto at 10.0) and the normal-vision floor
+   * (>= 15, worst pair walk↔bike at 16.3), and all five clear 3:1 against the
+   * card. */
   --color-mode-transit: #0d8266;
   --color-mode-bike: #5cab1a;
-  --color-mode-walk: #9569d9;
+  --color-mode-walk: #0f7a10;
   --color-mode-car: #d9455f;
   --color-mode-moto: #c98500;
 

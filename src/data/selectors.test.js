@@ -13,6 +13,7 @@ import {
   impactSubMetrics,
   impactModules,
   problemFitModules,
+  adoptionModules,
 } from './selectors.js';
 
 // Real Cologne figures (population / area = 2539, matching the research table)
@@ -345,7 +346,12 @@ describe('modalSplitTargetForCity', () => {
       year: 2025,
       comparable: true,
       segments: [
-        { mode: 'umweltverbund', share: 67, actualModes: ['transit', 'bike', 'walk'] },
+        {
+          mode: 'umweltverbund',
+          share: 67,
+          shareKey: 'twoThirds',
+          actualModes: ['transit', 'bike', 'walk'],
+        },
         { mode: 'car', share: 33 },
       ],
       source: {
@@ -613,5 +619,130 @@ describe('problemFitModules', () => {
 
   it('is six empty slots for a city with no Problem Fit content', () => {
     expect(problemFitModules(null).every((module) => module.kind === null)).toBe(true);
+  });
+});
+
+describe('adoptionModules', () => {
+  // The three context rows the card is built from, as they sit in cities.csv.
+  const contextRows = [
+    {
+      citySlug: 'koeln',
+      indicatorKey: 'population',
+      value: 1028273,
+      unit: 'people',
+      year: 2025,
+      sourceUrl: 'https://worldpopulationreview.com/cities',
+      sourceLabel: 'World Population Review',
+      sourceAccessed: null,
+    },
+    {
+      citySlug: 'koeln',
+      indicatorKey: 'area_km2',
+      value: 405,
+      unit: 'km²',
+      year: null,
+      sourceUrl: 'https://citypopulation.de/en/',
+      sourceLabel: 'citypopulation.de',
+      sourceAccessed: null,
+    },
+    {
+      citySlug: 'koeln',
+      indicatorKey: 'ring_cycle_lanes_km',
+      value: 10,
+      unit: 'km',
+      year: 2024,
+      sourceUrl:
+        'https://www.stadt-koeln.de/politik-und-verwaltung/presseservice/mobilitaetswende-auf-den-ringen',
+      sourceLabel: 'Stadt Köln – Mobilitätswende auf den Ringen',
+      sourceAccessed: '2026-08-23',
+    },
+  ];
+
+  it('lays the six adoption cards out in the order the design puts them in', () => {
+    const modules = adoptionModules(contextRows, 'koeln');
+    expect(modules.map((module) => module.key)).toEqual([
+      'cost',
+      'context',
+      'departments',
+      'partners',
+      'recommendation',
+      'funding',
+    ]);
+    expect(modules.map((module) => module.kind)).toEqual([
+      null,
+      'facts',
+      'links',
+      'links',
+      'prose',
+      'linkGroups',
+    ]);
+  });
+
+  // The estimate has not been made against a source yet, so the card stays
+  // empty rather than carrying a number with a disclaimer under it.
+  it('leaves the cost card empty at every city', () => {
+    expect(adoptionModules(contextRows, 'koeln')[0]).toEqual({ key: 'cost', kind: null });
+  });
+
+  it('builds the context card from the sourced rows, with density derived', () => {
+    const [, context] = adoptionModules(contextRows, 'koeln');
+    expect(context.facts).toEqual([
+      { key: 'population', value: 1028273, unit: 'people', year: 2025 },
+      { key: 'ringCorridor', value: 10, unit: 'km', year: 2024 },
+      { key: 'area', value: 405, unit: 'km²', year: null },
+      { key: 'density', value: 2539, unit: 'per km²' },
+    ]);
+    // One chip per document behind the card — three rows, three sources, and
+    // the derived figure adds none because it is computed from two of them.
+    expect(context.sources).toHaveLength(3);
+    expect(context.sources.map((source) => source.label)).toContain('citypopulation.de');
+  });
+
+  it('drops a context fact the city has no row for', () => {
+    const [, context] = adoptionModules(contextRows.slice(0, 1), 'koeln');
+    expect(context.facts.map((fact) => fact.key)).toEqual(['population']);
+  });
+
+  it('keeps the link text in i18n and the URL out of it', () => {
+    const [, , departments, partners] = adoptionModules(contextRows, 'koeln');
+    expect(departments.links).toEqual([
+      {
+        key: 'verkehrsmanagement',
+        url: 'https://www.stadt-koeln.de/service/adressen/amt-fuer-verkehrsmanagement',
+        textKey: 'adoption.koeln.departments.verkehrsmanagement',
+      },
+      {
+        key: 'mobilitaet',
+        url: 'https://www.stadt-koeln.de/service/adressen/10704/index.html',
+        textKey: 'adoption.koeln.departments.mobilitaet',
+      },
+    ]);
+    expect(partners.lead).toBe('adoption.koeln.partnersLead');
+    expect(partners.links.map((link) => link.key)).toEqual(['ringfrei', 'adfc', 'vcd', 'dvr']);
+  });
+
+  // Quoted, not paraphrased — so the card has to be able to say where from.
+  it('gives the recommendation the document it is quoted from', () => {
+    const recommendation = adoptionModules(contextRows, 'koeln')[4];
+    expect(recommendation.text).toBe('adoption.koeln.recommendation');
+    expect(recommendation.source.url).toContain('dvr.de');
+  });
+
+  it('groups the funding routes by level, and names the ones with no page to open', () => {
+    const funding = adoptionModules(contextRows, 'koeln')[5];
+    expect(funding.groups.map((group) => group.key)).toEqual(['eu', 'federal', 'civic', 'private']);
+    expect(funding.groups[0].links).toHaveLength(5);
+    expect(funding.groups[3].links).toEqual([]);
+    expect(funding.groups[3].plain).toEqual([
+      'adoption.funding.sponsorship',
+      'adoption.funding.transitAuthorities',
+    ]);
+  });
+
+  it('is six empty slots for a city with no researched adoption content', () => {
+    expect(adoptionModules(contextRows, 'lisboa').every((module) => module.kind === null)).toBe(
+      true,
+    );
+    expect(adoptionModules(contextRows, null).every((module) => module.kind === null)).toBe(true);
   });
 });

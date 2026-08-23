@@ -45,6 +45,21 @@ describe('endpoints', () => {
     expect(first.start.y + second.start.y).toBeCloseTo(middle * 2);
   });
 
+  // A region that opens on the right fans its modules right to left, so the
+  // arrow has to leave the source's left edge and arrive at the target's right
+  // one. Read off the two rects rather than passed in — the failure it guards
+  // against is an arrow setting off away from where it is going and doubling
+  // back across the cards it was meant to run between.
+  it('leaves the other edge when the target is to the left', () => {
+    const mirrored = { ...target, x: -300 };
+    const { start, end } = endpoints(source, mirrored);
+    expect(start.x).toBeGreaterThan(source.x);
+    expect(start.x).toBeLessThan(source.x + source.width / 2);
+    expect(end.x).toBeGreaterThan(mirrored.x + mirrored.width);
+    // Still travelling one way the whole time: tail right of head.
+    expect(start.x).toBeGreaterThan(end.x);
+  });
+
   it('aims at the middle of the target whichever way it is going', () => {
     const middle = target.y + target.height / 2;
     expect(endpoints(source, target, 0, 2).end.y).toBe(middle);

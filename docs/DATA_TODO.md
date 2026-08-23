@@ -43,8 +43,45 @@ figure is and where it is sourced:
   CO₂ avoided). Each figure needs its own `source_url`.
 - **Adoption Requirements:** what another city needs to replicate it. The closest
   existing field is `transferability_score`, but confirm it fits before reusing.
+  **Its L2 landed on 2026-08-23** from `newDes/ubernahmeVoraussetzung.png`
+  (`selectors.js#adoptionModules`): the city's own figures, the two departments
+  that own the project, the organisations that were at the table, the planners'
+  recommendation, and the funding routes by level of government. Two things from
+  that design are deliberately still missing, and both are data rather than
+  build:
+  - **Cost.** The design's own note is "estimate of the whole project's cost,
+    with a disclaimer" — i.e. it has not been made. No budget for the Ringe
+    conversion has been read off a source, so the card stays empty rather than
+    carrying a guess. `projects.csv#budget_eur` is empty for `koeln-todo-2026`.
+  - **Step-by-step implementation.** The design has a card for it carrying only
+    the word "source". The stages are documented — the Verkehrsausschuss decided
+    them in 2017, 2019 and 2021, and Stadt Köln describes three of them (lifting
+    the Radwegbenutzungspflicht → Tempo 30 and the first lanes → continuous
+    2.50 m lanes) at
+    <https://www.stadt-koeln.de/artikel/67217/index.html> — but the six cards
+    are full, so landing it means deciding which one it replaces.
 - District-level green-space bars (the Analysis-layer / Phase 5 drill-in detail)
   are not built yet — separate from the three top-level widget headlines above.
+
+### Adoption context — the figure that deviates from the design
+
+`newDes/ubernahmeVoraussetzung.png` writes the context card as Population
+1 100 076 (2025) · Länge der Ringe 5,8 km · Area 105 km² · Dichte 2 539/km².
+Three of those four are not what shipped, and each for a reason:
+
+- **Population and density** come from the rows already in `cities.csv`
+  (1 028 273 / 2 539 per km²). The board's 1 100 076 is the pending correction in
+  `research.md` §7.1.4, which is explicitly *unverified* — and note the board's
+  own density, 2 539, is 1 028 273 ÷ 405, so it contradicts its own population.
+  Changing the population row is that task, not this one; it moves every
+  per-1000 figure on the Impact cards too.
+- **Area 105 km²** is Paris's figure. Cologne is 405 km², which is what the
+  board's own density divides by. Shipped as 405.
+- **Länge der Ringe 5,8 km** has no city-official source behind it that could be
+  found (it appears in press coverage). Shipped instead as the figure Stadt Köln
+  does publish and the one another city actually needs — **10 km of cycle lane,
+  five per direction between Hansaring and Ubierring** — as the new
+  `ring_cycle_lanes_km` row. If 5,8 km is wanted, it needs a source first.
 
 ## `data/cities.csv` — researched indicators, provenance to confirm
 

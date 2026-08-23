@@ -161,6 +161,32 @@
   color: var(--color-text-muted);
 }
 
+/* Adoption's L1 body: the cards its L2 opens into, named — the same
+   figure-less treatment Problem Fit gets above, for the same reason (see
+   widgetStack.js#adoptionTopicsHtml). Bulleted, because unlike Problem Fit's
+   targets these are a set of equals with nothing to say about each other. */
+.widget__topics {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.widget__topic {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.widget__topic::before {
+  content: '·';
+  color: var(--color-accent);
+}
+
 .widget__no-data {
   font-size: 0.625rem;
   color: var(--color-danger);
@@ -276,12 +302,23 @@
   overflow-y: auto;
 }
 
+/* Which way the arrangement fans out from the widget that was clicked, as the
+   sign every horizontal offset inside the region is multiplied by. The modules
+   already *fly* out of that widget (widgetStack.js#setFlightOrigin measures it),
+   so a right-hand widget whose columns still ran left-to-right had its cards
+   cross over each other on the way out. Now the whole arrangement mirrors: the
+   column the first three modules stand in is the one nearest the widget they
+   came from, and every nudge leans the same way the flight did. */
 .widget-detail--left {
   left: var(--l2-region-margin);
+
+  --fan-x: 1;
 }
 
 .widget-detail--right {
   right: var(--l2-region-margin);
+
+  --fan-x: -1;
 }
 
 /* Three columns, staggered: three modules down the first, two down the second
@@ -358,7 +395,7 @@
      measured — the stagger stays exactly what the rows say it is. */
   position: relative;
   top: calc(var(--module-nudge) * var(--nudge-y-step, 0));
-  left: calc(var(--module-nudge) * var(--nudge-x-step, 0));
+  left: calc(var(--module-nudge) * var(--nudge-x-step, 0) * var(--fan-x, 1));
   min-height: 0;
 
   /* Both halves shrink towards the same corner, which is the corner that starts
@@ -414,7 +451,14 @@
 /* Placement and entrance order. Every module leaves the same point — the widget
    that was clicked — so the line each one takes is simply the one to its own
    place; what differs here is when it sets off, and how far off the ruled line
-   it settles. */
+   it settles.
+
+   Every --nudge-x-step in the first column is positive, and that is the one
+   rule the nudges follow rather than a taste: multiplied by --fan-x it always
+   points *into* the region, so the arrangement's outer edge is the column line
+   and nothing reaches past it towards the edge of the screen. The columns the
+   region has room around — the middle one, and the last one, which faces the
+   map across --l2-region-gap — still stray both ways. */
 .widget-detail__module--1 {
   grid-column: 1;
   grid-row: 1 / span 2;
@@ -432,7 +476,7 @@
   grid-row: 3 / span 2;
 
   --module-index: 1;
-  --nudge-x-step: -0.8;
+  --nudge-x-step: 0.25;
   --nudge-y-step: 0.5;
   --idle-x: calc(var(--module-idle) * -1);
   --idle-y: calc(var(--module-idle) * 0.7);
@@ -485,6 +529,22 @@
   --idle-x: calc(var(--module-idle) * -0.5);
   --idle-y: calc(var(--module-idle) * 1);
   --idle-speed: 0.95;
+}
+
+/* The mirror. Only the two outer columns swap — the middle one is its own
+   mirror image — so this is the whole of it: on a right-hand region the deck of
+   three stands in the rightmost column, beside the widget it came out of, and
+   the arrangement reads right to left. The rows, the stagger and the arrows are
+   untouched; the arrows are drawn from the modules' measured places
+   (widgetStack.js#moduleRect), so they follow this by themselves. */
+.widget-detail--right .widget-detail__module--1,
+.widget-detail--right .widget-detail__module--2,
+.widget-detail--right .widget-detail__module--3 {
+  grid-column: 3;
+}
+
+.widget-detail--right .widget-detail__module--6 {
+  grid-column: 1;
 }
 
 /* Sideways first and settling early (--ease-module-x), downward later and more
@@ -565,6 +625,13 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+
+/* The title sits on the edge the arrangement starts from, which on a mirrored
+   region is the right one — otherwise it would stand alone at the far end of a
+   half-screen with nothing under it. */
+.widget-detail--right .widget-detail__header {
+  justify-content: flex-end;
 }
 
 .widget-detail__title {
@@ -891,6 +958,110 @@
   font-size: var(--font-size-sm);
   line-height: 1.45;
   color: var(--color-text);
+}
+
+/* A card whose body is a list rather than a chart. The chart is the part that
+   gives everywhere else (see .module__chart); here it is this, for the same
+   reason — the card's 4:3 is fixed, so something has to be able to shrink, and
+   a list can scroll where a sentence cannot be cut. */
+.module__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* The city's own figures, two by two: what another city reads first to work out
+   whether its situation is close enough for any of this to transfer. Each tile
+   is a label over a number, and the grid is what keeps the four comparable
+   rather than a paragraph of statistics. */
+.module__facts {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  align-content: start;
+}
+
+.module__fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--space-2);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+}
+
+.module__fact-label {
+  font-size: var(--font-size-xs);
+  line-height: var(--line-tight);
+  color: var(--color-text-muted);
+}
+
+.module__fact-value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.module__fact-value b {
+  font-size: var(--font-size-base);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-tight);
+}
+
+/* The sentence that says what a list is, above the list. */
+.module__lead {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+  color: var(--color-text-muted);
+}
+
+.module__links,
+.module__link-groups {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.module__link-groups {
+  gap: var(--space-2);
+}
+
+.module__link-heading {
+  margin: 0 0 2px;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  line-height: var(--line-tight);
+  color: var(--color-text-muted);
+}
+
+.module__link-item {
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+  color: var(--color-text-faint);
+}
+
+/* Wrapping rather than truncating: these are the names of departments and
+   funding programmes, and half of "Junge Generation Fahrrad – aktiv mobil" is
+   not something anyone can look up. */
+.module__link {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-decoration-color: var(--color-border);
+  text-underline-offset: 2px;
+}
+
+.module__link:hover,
+.module__link:focus-visible {
+  color: var(--color-accent-hover);
+  text-decoration-color: currentcolor;
 }
 
 /* Every document the card's claims rest on, pushed to its foot so the chips sit

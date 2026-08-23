@@ -7,9 +7,10 @@
 // neither needs to know how the other works. Nothing here reads the store or
 // reaches outside the node it is handed.
 //
-// The shape of a module is decided in the data layer
-// (selectors.js#impactModules) and arrives as `kind` — 'donut', 'lines',
-// 'breakdown', 'trend', or null for a topic this city has no sourced rows for.
+// The shape of a module is decided in the data layer (selectors.js#impactModules
+// for Impact, #problemFitModules and #adoptionModules for the other two) and
+// arrives as `kind` — 'donut', 'lines', 'breakdown', 'trend', 'prose', 'facts',
+// 'links', 'linkGroups', or null for a topic this city has nothing sourced for.
 // A null module renders an empty card: the rule that no figure appears without
 // its source cuts both ways, and an empty box is the honest version of "we have
 // not researched this yet" (docs/DESIGN_RATIONALE.md, Neutrality/Honesty).
@@ -30,6 +31,9 @@ export function moduleHtml(module, index) {
     breakdown: breakdownBody,
     trend: trendBody,
     prose: proseBody,
+    facts: factsBody,
+    links: linksBody,
+    linkGroups: linkGroupsBody,
   }[module.kind];
   if (!body) return '';
   return `
@@ -205,6 +209,68 @@ function proseBody(module) {
   return `<p class="module__prose">${t(module.text)}</p>`;
 }
 
+/** A small grid of the figures that describe the city itself — what another
+ * city reads to judge whether its own situation is close enough for this
+ * project to transfer. A fact with no sourced row behind it never reaches
+ * here (selectors.js#contextModule drops it), so every tile has a number. */
+function factsBody(module) {
+  const locale = getLocale();
+  const tiles = module.facts
+    .map(
+      (fact) => `
+      <div class="module__fact">
+        <span class="module__fact-label">${t(`adoption.context.${fact.key}`)}</span>
+        <span class="module__fact-value">
+          <b>${formatNumber(fact.value, locale)}</b>${fact.unit ? `<span class="module__unit">${fact.unit}</span>` : ''}
+        </span>
+      </div>`,
+    )
+    .join('');
+  return `<div class="module__facts">${tiles}</div>`;
+}
+
+/** A list of places to go next: the departments that own the project, or the
+ * organisations that were at the table. Each row is an outbound link, and the
+ * lead sentence above them — when the card has one — says what the list is. */
+function linksBody(module) {
+  return `
+    ${module.lead ? `<p class="module__lead">${t(module.lead)}</p>` : ''}
+    <div class="module__scroll"><ul class="module__links">${linkItems(module.links)}</ul></div>`;
+}
+
+/** The funding routes, grouped by the level of government that offers them. A
+ * group's `plain` entries are routes rather than programmes — "sponsorship" has
+ * no page to open — so they are named without a link rather than given one that
+ * points nowhere in particular. */
+function linkGroupsBody(module) {
+  const groups = module.groups
+    .map(
+      (group) => `
+      <li class="module__link-group">
+        <h3 class="module__link-heading">${t(group.headingKey)}</h3>
+        <ul class="module__links">
+          ${linkItems(group.links)}
+          ${group.plain.map((key) => `<li class="module__link-item">${t(key)}</li>`).join('')}
+        </ul>
+      </li>`,
+    )
+    .join('');
+  return `<div class="module__scroll"><ul class="module__link-groups">${groups}</ul></div>`;
+}
+
+/** One row per link. The text is translated copy and the URL is not, so the two
+ * travel separately all the way down to here. */
+function linkItems(links) {
+  return links
+    .map(
+      (link) => `
+      <li class="module__link-item">
+        <a class="module__link" href="${encodeURI(link.url)}" target="_blank" rel="noopener noreferrer">${t(link.textKey)}</a>
+      </li>`,
+    )
+    .join('');
+}
+
 // --- shared pieces ---------------------------------------------------------
 
 /** The module's own figure: value, unit, and the year it was measured. */
@@ -246,9 +312,16 @@ function noteHtml(module) {
 }
 
 /** Every document this module's claims rest on, as chips in one row: its data,
- * and — when the note came from somewhere else — the note's own. */
+ * and — when the note came from somewhere else — the note's own. `sources` is
+ * for a card built from several rows at once (the Adoption context grid), where
+ * one chip per row is the only honest count. */
 function sourcesOf(module) {
-  return [module.source, module.note?.source, module.target?.source].filter(Boolean);
+  return [
+    module.source,
+    ...(module.sources ?? []),
+    module.note?.source,
+    module.target?.source,
+  ].filter(Boolean);
 }
 
 function sourcesHtml(module, index) {
@@ -281,8 +354,17 @@ function targetHtml(module) {
   const key = gap <= 0 ? 'impact.modalSplitProgress.met' : 'impact.modalSplitProgress.gap';
   const text = t(key)
     .replace('{actual}', String(actual))
-    .replace('{target}', String(primary.share))
+    .replace('{target}', targetShare(primary))
     .replace('{year}', String(target.year))
     .replace('{gap}', String(Math.abs(gap)));
   return `<p class="module__target">${text}</p>`;
+}
+
+/** How the target's own source words it. Cologne's strategy paper sets the goal
+ * as a fraction — two-thirds of all trips — so that is what the card says; the
+ * rounded 67 behind it is what the gap is worked out from, not what is quoted.
+ * A target with no wording of its own is stated as its percentage. */
+function targetShare(segment) {
+  if (segment.shareKey) return t(`impact.modalSplitTarget.${segment.shareKey}`);
+  return t('impact.modalSplitTarget.share').replace('{share}', String(segment.share));
 }

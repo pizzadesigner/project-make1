@@ -41,6 +41,7 @@ const props = {
   metrics: { problemFit: null, impact: null, adoption: null },
   impactModules: [],
   problemFitModules: [],
+  adoptionModules: [],
   problemFit: null,
   comingSoon: false,
   onSelectCriterion: () => {},
@@ -173,9 +174,9 @@ describe('entering L2', () => {
     expect(covered.style.opacity).toBe('0');
   });
 
-  // Adoption has no researched content at any city yet, so its six cards come
-  // back empty — which is the honest stand-in, and must stay distinguishable
-  // from a card whose content simply failed to render.
+  // A city with nothing researched for a criterion gets six empty cards — the
+  // honest stand-in, and it must stay distinguishable from a card whose content
+  // simply failed to render.
   it('leaves a criterion with no content standing in six empty cards', () => {
     stack.update({ ...props, activeCriterion: 'adoption' });
     const cards = [...region().querySelectorAll('.widget-detail__card')];
@@ -418,5 +419,136 @@ describe('destroying the stack', () => {
     expect(container.querySelector('.widget-stack')).toBeNull();
     expect(container.querySelector('.widget-detail')).toBeNull();
     // afterEach destroys again — a second teardown must be harmless.
+  });
+});
+
+// Adoption Requirements: the same six-card contract as Impact, filled with what
+// another city needs in order to run the project rather than with figures. Each
+// kind has one shape it has to come out as, and two of them are new here — a
+// grid of the city's own numbers, and lists of links that have to stay links.
+describe('the adoption cards', () => {
+  const source = { url: 'https://example.org/dvr', label: 'DVR', accessed: '2026-08-23' };
+  const adoption = [
+    { key: 'cost', kind: null },
+    {
+      key: 'context',
+      kind: 'facts',
+      labelKey: 'adoption.context',
+      facts: [
+        { key: 'population', value: 1028273, unit: 'people', year: 2025 },
+        { key: 'density', value: 2539, unit: 'per km²' },
+      ],
+      sources: [source, { ...source, url: 'https://example.org/area', label: 'Area' }],
+    },
+    {
+      key: 'departments',
+      kind: 'links',
+      labelKey: 'adoption.departments',
+      lead: null,
+      links: [
+        {
+          key: 'mobilitaet',
+          url: 'https://example.org/amt-68',
+          textKey: 'adoption.koeln.departments.mobilitaet',
+        },
+      ],
+    },
+    {
+      key: 'partners',
+      kind: 'links',
+      labelKey: 'adoption.partners',
+      lead: 'adoption.koeln.partnersLead',
+      links: [
+        {
+          key: 'ringfrei',
+          url: 'https://example.org/ringfrei',
+          textKey: 'adoption.koeln.partners.ringfrei',
+        },
+      ],
+    },
+    {
+      key: 'recommendation',
+      kind: 'prose',
+      labelKey: 'adoption.recommendation',
+      text: 'adoption.koeln.recommendation',
+      source,
+    },
+    {
+      key: 'funding',
+      kind: 'linkGroups',
+      labelKey: 'adoption.funding',
+      groups: [
+        {
+          key: 'eu',
+          headingKey: 'adoption.funding.eu',
+          links: [
+            { key: 'life', url: 'https://example.org/life', textKey: 'adoption.funding.life' },
+          ],
+          plain: [],
+        },
+        {
+          key: 'private',
+          headingKey: 'adoption.funding.private',
+          links: [],
+          plain: ['adoption.funding.sponsorship'],
+        },
+      ],
+    },
+  ];
+
+  const open = () =>
+    stack.update({ ...props, activeCriterion: 'adoption', adoptionModules: adoption });
+  const card = (index) => region().querySelectorAll('.widget-detail__card')[index];
+
+  it('gives each adoption card the shape its kind calls for', () => {
+    open();
+    expect(card(0).textContent.trim()).toBe('');
+    expect(card(1).querySelectorAll('.module__fact')).toHaveLength(2);
+    expect(card(2).querySelectorAll('.module__link')).toHaveLength(1);
+    expect(card(4).querySelector('.module__prose')).not.toBeNull();
+    expect(card(5).querySelectorAll('.module__link-group')).toHaveLength(2);
+  });
+
+  // A card built from several rows carries a chip per row: one document, one
+  // chip, and the derived figure adds none of its own.
+  it('chips every row the context card was built from', () => {
+    open();
+    expect(card(1).querySelectorAll('.source-chip')).toHaveLength(2);
+    expect(card(4).querySelectorAll('.source-chip')).toHaveLength(1);
+  });
+
+  // The whole point of these cards is that they lead somewhere: a link that
+  // rendered as text is a dead end wearing the right clothes.
+  it('keeps every link an outbound link', () => {
+    open();
+    const links = [...region().querySelectorAll('.module__link')];
+    expect(links).toHaveLength(3);
+    expect(links.every((link) => link.getAttribute('rel') === 'noopener noreferrer')).toBe(true);
+    expect(links.map((link) => link.getAttribute('href'))).toContain('https://example.org/life');
+  });
+
+  // "Sponsorship" is a route, not a programme with a page — so it is named
+  // rather than given a link that points at nothing in particular.
+  it('names a funding route that has nowhere to point without linking it', () => {
+    open();
+    const [, privateGroup] = card(5).querySelectorAll('.module__link-group');
+    expect(privateGroup.querySelectorAll('.module__link-item')).toHaveLength(1);
+    expect(privateGroup.querySelector('.module__link')).toBeNull();
+  });
+
+  // Adoption has no headline figure, so the L1 widget names what its L2 holds.
+  // The hatched empty bar has to stay reserved for a widget with nothing at all.
+  it('lists the filled cards on the L1 widget instead of an empty bar', () => {
+    stack.update({ ...props, adoptionModules: adoption });
+    const widget = container.querySelector('.widget--adoption');
+    expect(widget.querySelector('.widget__bar--empty')).toBeNull();
+    expect(widget.querySelectorAll('.widget__topic')).toHaveLength(5);
+  });
+
+  it('keeps the empty bar for a city with no adoption content', () => {
+    stack.update({ ...props, adoptionModules: [] });
+    const widget = container.querySelector('.widget--adoption');
+    expect(widget.querySelector('.widget__bar--empty')).not.toBeNull();
+    expect(widget.querySelectorAll('.widget__topic')).toHaveLength(0);
   });
 });

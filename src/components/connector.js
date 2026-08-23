@@ -157,16 +157,27 @@ function arrowheadMarker() {
  * Where an arrow starts and ends: out of the source's trailing edge, in to the
  * target's leading one. `index` fans the tails apart so two arrows leaving the
  * same module do not sit on top of each other.
+ *
+ * Which edge is "trailing" is read off the two rects rather than passed in: a
+ * region that opens on the right fans its modules right to left (see
+ * .widget-detail--right in widgets.css), and there the arrow has to leave the
+ * source's left edge and arrive at the target's right one, or it would set off
+ * away from where it is going and double back. One comparison, and the caller
+ * never has to know which side of the screen it is on.
  * @returns {{ start: {x: number, y: number}, end: {x: number, y: number} }}
  */
 export function endpoints(source, target, index = 0, count = 1) {
   const offset = (index - (count - 1) / 2) * TAIL_SPREAD;
+  const rightwards = target.x >= source.x;
   return {
     start: {
-      x: source.x + source.width - TAIL_INSET,
+      x: rightwards ? source.x + source.width - TAIL_INSET : source.x + TAIL_INSET,
       y: source.y + source.height / 2 + offset,
     },
-    end: { x: target.x - HEAD_GAP, y: target.y + target.height / 2 },
+    end: {
+      x: rightwards ? target.x - HEAD_GAP : target.x + target.width + HEAD_GAP,
+      y: target.y + target.height / 2,
+    },
   };
 }
 

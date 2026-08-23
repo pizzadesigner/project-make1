@@ -312,12 +312,25 @@ export function modalSplitForCity(cityIndicators, citySlug) {
 // progress line. `comparable: false` means that sum isn't measuring the same
 // thing as the target (different survey/population) — widgetStack.js then
 // shows a methodology caveat instead of a percentage comparison.
+//
+// `shareKey` is how the source itself words the target, as an i18n suffix
+// (`impact.modalSplitTarget.<key>`). Cologne's strategy paper sets the goal as
+// a fraction — „ein Anteil des Umweltverbunds von 2/3" — and a card that
+// answered it with "67 %" would be quoting a number the document never wrote.
+// `share` stays the rounded percentage because the gap arithmetic needs one;
+// only the wording comes from here, and a target without a `shareKey` is
+// stated as its percentage.
 const MODAL_SPLIT_TARGETS = {
   koeln: {
     year: 2025,
     comparable: true,
     segments: [
-      { mode: 'umweltverbund', share: 67, actualModes: ['transit', 'bike', 'walk'] },
+      {
+        mode: 'umweltverbund',
+        share: 67,
+        shareKey: 'twoThirds',
+        actualModes: ['transit', 'bike', 'walk'],
+      },
       { mode: 'car', share: 33 },
     ],
     source: {
@@ -367,7 +380,7 @@ const MODAL_SPLIT_TARGETS = {
  * `.module__target` rule in widgets.css, and the `impact.modalSplitProgress.*`
  * i18n keys. Nothing else depends on any of it.
  * @param {string|null} citySlug
- * @returns {{ year: number, comparable: boolean, segments: { mode: string, share: number, actualModes?: string[] }[], source: { url: string, label: string, accessed: string } } | null}
+ * @returns {{ year: number, comparable: boolean, segments: { mode: string, share: number, shareKey?: string, actualModes?: string[] }[], source: { url: string, label: string, accessed: string } } | null}
  */
 export function modalSplitTargetForCity(citySlug) {
   return (citySlug && MODAL_SPLIT_TARGETS[citySlug]) ?? null;
@@ -757,4 +770,213 @@ export function problemFitModules(problemFit) {
   return MODULE_ORDER.map((key, index) =>
     blocks[index] ? { kind: 'prose', ...blocks[index] } : { key, kind: null },
   );
+}
+
+// --- Adoption Requirements ------------------------------------------------
+//
+// What another city needs to know to run this project itself, as the six cards
+// `newDes/ubernahmeVoraussetzung.png` lays out: what it costs, the city it was
+// built in, who in the administration owns it, who else was at the table, what
+// the planners would tell the next city, and where the money can come from.
+//
+// The same split this file already keeps everywhere else: structure here,
+// prose in i18n (`adoption.*`), figures in `cities.csv`. What is genuinely
+// per-city — which department, which funding programme, which document a
+// recommendation is quoted from — is a hand-picked, sourced lookup like
+// MODAL_SPLIT_TARGETS, because none of it is a repeated measurement. A city
+// with no entry gets six empty cards rather than another city's answers.
+//
+// `kind` again says what a card *is* (detailContent.js renders from it):
+//   'facts'      a small grid of sourced figures about the city itself
+//   'links'      an optional lead sentence and a list of outbound links
+//   'linkGroups' the same, grouped under headings (the funding levels)
+//   'prose'      one quoted paragraph, with the document it is quoted from
+//   null         not researched for this city — an empty card
+const ADOPTION_ORDER = ['cost', 'context', 'departments', 'partners', 'recommendation', 'funding'];
+
+// The context card's four figures. The first three are sourced rows in
+// `cities.csv`; density is derived from two of them the way the research source
+// derives it (see populationDensityForCity), so it carries no chip of its own —
+// the two it is computed from are already in the card's footer.
+const ADOPTION_CONTEXT_FACTS = [
+  { key: 'population', indicatorKey: 'population' },
+  { key: 'ringCorridor', indicatorKey: 'ring_cycle_lanes_km' },
+  { key: 'area', indicatorKey: 'area_km2' },
+  { key: 'density', derived: 'density' },
+];
+
+const ADOPTION = {
+  koeln: {
+    departments: [
+      {
+        key: 'verkehrsmanagement',
+        url: 'https://www.stadt-koeln.de/service/adressen/amt-fuer-verkehrsmanagement',
+      },
+      { key: 'mobilitaet', url: 'https://www.stadt-koeln.de/service/adressen/10704/index.html' },
+    ],
+    partners: [
+      { key: 'ringfrei', url: 'https://nationaler-radverkehrsplan.de/de/praxis/ringfrei' },
+      { key: 'adfc', url: 'https://koeln.adfc.de/artikel/uebersicht-zum-projekt-ringfrei' },
+      { key: 'vcd', url: 'https://nrw.vcd.org/der-vcd-in-nrw/koeln/' },
+      {
+        key: 'dvr',
+        url: 'https://www.dvr.de/pakt-fuer-verkehrssicherheit/projekte/umgestaltung-der-koelner-ringe/',
+      },
+    ],
+    recommendation: {
+      url: 'https://www.dvr.de/pakt-fuer-verkehrssicherheit/projekte/umgestaltung-der-koelner-ringe/',
+      label: 'Deutscher Verkehrssicherheitsrat – Umgestaltung der Kölner Ringe',
+      accessed: '2026-08-23',
+    },
+  },
+};
+
+// Where the money can come from, by level of government. Not per-city: every
+// German city can apply to all of these, which is exactly why they belong on a
+// card headed "what you need to adopt this" rather than in `cities.csv`. The
+// last group carries no links because "sponsorship" and "an agreement with the
+// transit authority" are routes, not programmes with a page to open.
+const ADOPTION_FUNDING = [
+  {
+    key: 'eu',
+    links: [
+      {
+        key: 'cef',
+        url: 'https://cinea.ec.europa.eu/programmes/connecting-europe-facility/transport-infrastructure_en',
+      },
+      { key: 'interreg', url: 'https://interreg.eu/' },
+      { key: 'erdf', url: 'https://ec.europa.eu/regional_policy/funding/erdf_en' },
+      { key: 'life', url: 'https://cinea.ec.europa.eu/programmes/life_en' },
+      {
+        key: 'horizon',
+        url: 'https://research-and-innovation.ec.europa.eu/funding/funding-opportunities/funding-programmes-and-open-calls/horizon-europe_en',
+      },
+    ],
+  },
+  {
+    key: 'federal',
+    links: [
+      {
+        key: 'ktf',
+        url: 'https://www.bundeshaushalt.de/DE/SVIK/KTF/klima-und-transformationsfonds.html',
+      },
+      {
+        key: 'kommunalrichtlinie',
+        url: 'https://www.klimaschutz.de/de/foerderung-der-nki/foerderprogramme/kommunalrichtlinie',
+      },
+      {
+        key: 'jungeGeneration',
+        url: 'https://www.mobilitaetsforum.bund.de/DE/Foerderungen/Foerderaufruf-Junge-Generation-Fahrrad/foerderaufruf-junge-generation-fahrrad_node.html',
+      },
+      {
+        key: 'bundesstrassen',
+        url: 'https://www.bmv.de/SharedDocs/DE/Artikel/StV/Radverkehr/finanzielle-foerderung-des-radverkehrs.html',
+      },
+    ],
+  },
+  {
+    key: 'civic',
+    links: [{ key: 'startnext', url: 'https://www.startnext.com/' }],
+    plain: ['crowdfunding'],
+  },
+  { key: 'private', links: [], plain: ['sponsorship', 'transitAuthorities'] },
+];
+
+/**
+ * The six Adoption Requirements modules for a city, in display order. Same
+ * contract as impactModules: every card carries its own kind and its own
+ * sources, and a topic this city has nothing researched for comes back as
+ * `{ key, kind: null }` and renders an empty card.
+ *
+ * TODO(data): the cost card is null at every city. A budget for the Ringe
+ * conversion has not been read off a source yet, and the design
+ * (`newDes/ubernahmeVoraussetzung.png`) marks it as an estimate still to be
+ * made — so it stays an empty box rather than a guess with a disclaimer under
+ * it. See docs/DATA_TODO.md.
+ * @param {import('./types.js').CityIndicator[]} [cityIndicators]
+ * @param {string|null} [citySlug]
+ * @returns {{ key: string, kind: string|null }[]}
+ */
+export function adoptionModules(cityIndicators = [], citySlug = null) {
+  const entry = citySlug ? ADOPTION[citySlug] : null;
+  const builders = {
+    cost: () => ({ key: 'cost', kind: null }),
+    context: () => contextModule(cityIndicators, citySlug),
+    departments: () => linksModule('departments', citySlug, entry?.departments),
+    partners: () =>
+      linksModule('partners', citySlug, entry?.partners, `adoption.${citySlug}.partnersLead`),
+    recommendation: () => recommendationModule(citySlug, entry?.recommendation),
+    funding: () => fundingModule(entry),
+  };
+  return ADOPTION_ORDER.map((key) => (entry ? builders[key]() : { key, kind: null }));
+}
+
+/** The city itself, as the figures another city compares itself against. Built
+ * from whatever `cities.csv` actually has: a fact with no row is dropped rather
+ * than shown empty, and a card left with no facts at all is an empty card. */
+function contextModule(cityIndicators, citySlug) {
+  const seen = new Set();
+  const sources = [];
+  const facts = ADOPTION_CONTEXT_FACTS.map((fact) => {
+    if (fact.derived === 'density') {
+      const value = populationDensityForCity(cityIndicators, citySlug);
+      return value == null ? null : { key: fact.key, value: Math.round(value), unit: 'per km²' };
+    }
+    const row = cityIndicatorsForCity(cityIndicators, citySlug).find(
+      (indicator) => indicator.indicatorKey === fact.indicatorKey,
+    );
+    if (!row || row.value == null) return null;
+    if (!seen.has(row.sourceUrl)) {
+      seen.add(row.sourceUrl);
+      sources.push({ url: row.sourceUrl, label: row.sourceLabel, accessed: row.sourceAccessed });
+    }
+    return { key: fact.key, value: row.value, unit: row.unit, year: row.year };
+  }).filter(Boolean);
+  if (facts.length === 0) return { key: 'context', kind: null };
+  return { key: 'context', kind: 'facts', labelKey: 'adoption.context', facts, sources };
+}
+
+/** A list of outbound links — the departments that own the project, or the
+ * organisations that were at the table — with an optional sentence above it.
+ * The link text is translated copy keyed by city, the URL is not. */
+function linksModule(key, citySlug, links, leadKey = null) {
+  if (!links || links.length === 0) return { key, kind: null };
+  return {
+    key,
+    kind: 'links',
+    labelKey: `adoption.${key}`,
+    lead: leadKey,
+    links: links.map((link) => ({ ...link, textKey: `adoption.${citySlug}.${key}.${link.key}` })),
+  };
+}
+
+/** What the planners would tell the next city, quoted rather than paraphrased —
+ * so it carries the document it is quoted from as its source. */
+function recommendationModule(citySlug, source) {
+  if (!source) return { key: 'recommendation', kind: null };
+  return {
+    key: 'recommendation',
+    kind: 'prose',
+    labelKey: 'adoption.recommendation',
+    text: `adoption.${citySlug}.recommendation`,
+    source,
+  };
+}
+
+/** The funding routes, grouped by level of government. The same list for every
+ * German city (see ADOPTION_FUNDING), so it is built once and gated only on the
+ * city having researched adoption content at all. */
+function fundingModule(entry) {
+  if (!entry) return { key: 'funding', kind: null };
+  return {
+    key: 'funding',
+    kind: 'linkGroups',
+    labelKey: 'adoption.funding',
+    groups: ADOPTION_FUNDING.map((group) => ({
+      key: group.key,
+      headingKey: `adoption.funding.${group.key}`,
+      links: group.links.map((link) => ({ ...link, textKey: `adoption.funding.${link.key}` })),
+      plain: (group.plain ?? []).map((key) => `adoption.funding.${key}`),
+    })),
+  };
 }
