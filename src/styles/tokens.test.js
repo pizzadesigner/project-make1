@@ -60,9 +60,17 @@ describe('the L2 entrance under prefers-reduced-motion', () => {
   // Only the motion is dropped, not the thing that moves: the modules are the
   // same size and in the same places, they simply do not travel to get there.
   it('leaves the modules themselves untouched', () => {
-    expect(base['--module-box-ratio']).toBeTruthy();
-    expect(reduced['--module-box-ratio']).toBeUndefined();
+    expect(base['--module-column-offset']).toBeTruthy();
+    expect(reduced['--module-column-offset']).toBeUndefined();
     expect(reduced['--module-nudge']).toBeUndefined();
+  });
+
+  // --module-column-offset is a distance, not a clock, and the `animated` filter
+  // above matches on name. It must not start being zeroed for reduced motion:
+  // the arrangement is staggered in space whether or not it travels to get
+  // there. (This is also why it is not called --module-stagger-*.)
+  it('does not mistake the column offset for a motion token', () => {
+    expect(animated).not.toContain('--module-column-offset');
   });
 
   it('switches the endless idle drift off rather than shortening it', () => {

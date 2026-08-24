@@ -325,29 +325,49 @@
    sitting between them, and one in the third level with the last of the first.
    The columns are an orientation grid, never drawn.
 
-   A row is half a module tall (less half the gap), so a module spans two of
-   them and column two can start half a step lower than column one — that half
-   step is the whole stagger, and it stays correct at any module height. */
+   Real boxes rather than grid tracks. A grid row is a band across all three
+   columns, so two modules sharing a row are forced to the same height — which
+   is exactly what has to stop, now that each module is as tall as its own
+   content. Three column elements give each stack its own vertical rhythm.
+
+   Height is the tallest column's, not the region's: `flex: 1` here would hand
+   the columns the whole region and leave the third column's single module
+   bottom-aligned to empty space far below the others. A region too short for
+   the arrangement scrolls (.widget-detail). */
 .widget-detail__modules {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-8);
+
+  /* This is a flex item too (of .widget-detail), so its own automatic minimum
+     is its min-content width — the widest thing any card holds, added up across
+     three columns. Left at `auto` it widened past the region and handed the
+     columns the surplus, putting the outer card out over the map. */
+  min-width: 0;
+}
+
+/* One column. `stretch` above gives all three the tallest one's height, which
+   is what the third column measures its bottom alignment against. */
+.widget-detail__column {
   flex: 1;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
 
-  /* Six rows, each sized by the modules standing in it rather than by dividing
-     up the region: a module's shape is fixed (--module-box-ratio, see
-     .widget-detail__module) so that the chart it will hold has the same room on
-     every screen. Packed to the top — with auto rows, stretch would hand the
-     modules the leftover height back and undo exactly that. A region too short
-     for the arrangement scrolls, which is what it did below the old floor. */
-  grid-template-rows: repeat(6, auto);
-  align-content: start;
+/* The half step. See --module-column-offset in tokens.css for why it is stated
+   here rather than emerging from the row bands it used to. */
+.widget-detail__column--2 {
+  margin-top: var(--module-column-offset);
+}
 
-  /* Rows tight, columns wide: the row gap is half the stagger step, and it sits
-     inside a module (which spans two rows and the gap between them) rather than
-     between two of them, while the column gap is what separates the three
-     columns as columns — and the columns have the width to stand apart now that
-     the map has been pushed clear of them. */
-  gap: var(--space-4) var(--space-8);
+/* "Level with the last of the first column", stated as an alignment rather than
+   as a second offset: the first column's height is the sum of three modules
+   whose heights are now all different, so there is no distance that would stay
+   correct. Bottom-aligning tracks it by itself. */
+.widget-detail__column--3 {
+  justify-content: flex-end;
 }
 
 /* The arrows layer: behind the modules, so an arrow runs out from under one
@@ -382,12 +402,18 @@
   --fly-y: calc(var(--from-y, 0px) * var(--module-fly));
   --fly-scale: calc(1 + (var(--from-scale, 1) - 1) * var(--module-fly));
 
-  /* The module's shape, not the grid's leftover space (--module-box-ratio is
-     measured against what a module holds — see tokens.css). Width comes from
-     the column, height from the ratio, and the rows are sized from that; start
-     rather than stretch, or the grid would give the height back. */
-  aspect-ratio: var(--module-box-ratio);
-  align-self: start;
+  /* Width comes from the column; height comes from what is inside. Nothing
+     derives one from the other any more — see tokens.css.
+
+     Neither needs stating. In a column-direction flex container the main axis
+     is the vertical one, so a module is already its content's height, and the
+     cross axis stretches it to the column's width. Note for anyone porting a
+     rule back from the grid this replaced: `align-self` has changed meaning
+     with the axes. It used to hold the height (grid rows run down the cross
+     axis); here it would set the *width*, and `start` shrank every module to
+     its own min-content — a card holding a nowrap "per 1000 residents" came out
+     269px wide in a 221px column and hung out over the map. */
+  min-width: 0;
 
   /* Off the ruled line. The grid places the boxes; each one then sits a few px
      off where it was put, so the arrangement reads as placed rather than
@@ -411,21 +437,20 @@
    module holds (detailContent.js#moduleHtml). A card with nothing sourced to put
    in it stays empty, which is the honest stand-in rather than a padded one.
 
-   Clipped, on purpose: the box is a fixed 4:3 and the arrangement's whole point
-   is that six of them are the same shape, so content that would not fit is cut
-   rather than allowed to grow the card past its neighbours. Only the chart can
-   shrink (see .module__chart), so in practice the clip never has anything to do.
+   It grows to whatever it holds. It used to be clipped on purpose — a fixed 4:3
+   box, with anything that would not fit cut off — on the reasoning that only
+   the chart could shrink and so the clip would never have anything to do. The
+   measurements said otherwise: the chart was not the only thing shrinking, and
+   a funding list was losing 155px of itself at the design width.
 
    No backdrop blur while it is in flight — recomputing one behind six moving
    cards is what makes an otherwise smooth animation stutter, and at 88% opaque
    the surface barely shows what is behind it anyway. */
 .widget-detail__card {
-  height: 100%;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-3);
-  overflow: hidden;
   background-color: var(--color-surface-glass);
   border: 1px solid var(--color-border-glass);
   border-radius: var(--radius-md);
@@ -460,9 +485,6 @@
    region has room around — the middle one, and the last one, which faces the
    map across --l2-region-gap — still stray both ways. */
 .widget-detail__module--1 {
-  grid-column: 1;
-  grid-row: 1 / span 2;
-
   --module-index: 0;
   --nudge-x-step: 0.6;
   --nudge-y-step: -0.45;
@@ -472,9 +494,6 @@
 }
 
 .widget-detail__module--2 {
-  grid-column: 1;
-  grid-row: 3 / span 2;
-
   --module-index: 1;
   --nudge-x-step: 0.25;
   --nudge-y-step: 0.5;
@@ -484,9 +503,6 @@
 }
 
 .widget-detail__module--3 {
-  grid-column: 1;
-  grid-row: 5 / span 2;
-
   --module-index: 2;
   --nudge-x-step: 0.35;
   --nudge-y-step: 0.7;
@@ -496,9 +512,6 @@
 }
 
 .widget-detail__module--4 {
-  grid-column: 2;
-  grid-row: 2 / span 2;
-
   --module-index: 3;
   --nudge-x-step: -0.5;
   --nudge-y-step: -0.7;
@@ -508,9 +521,6 @@
 }
 
 .widget-detail__module--5 {
-  grid-column: 2;
-  grid-row: 4 / span 2;
-
   --module-index: 4;
   --nudge-x-step: 0.9;
   --nudge-y-step: 0.3;
@@ -520,9 +530,6 @@
 }
 
 .widget-detail__module--6 {
-  grid-column: 3;
-  grid-row: 5 / span 2;
-
   --module-index: 5;
   --nudge-x-step: -0.6;
   --nudge-y-step: -0.5;
@@ -537,14 +544,8 @@
    the arrangement reads right to left. The rows, the stagger and the arrows are
    untouched; the arrows are drawn from the modules' measured places
    (widgetStack.js#moduleRect), so they follow this by themselves. */
-.widget-detail--right .widget-detail__module--1,
-.widget-detail--right .widget-detail__module--2,
-.widget-detail--right .widget-detail__module--3 {
-  grid-column: 3;
-}
-
-.widget-detail--right .widget-detail__module--6 {
-  grid-column: 1;
+.widget-detail--right .widget-detail__modules {
+  flex-direction: row-reverse;
 }
 
 /* Sideways first and settling early (--ease-module-x), downward later and more
@@ -642,9 +643,10 @@
 /* --- Inside a module ------------------------------------------------------
    One card holds a label, the figure or chart it names, a legend, at most one
    sentence, and its sources — stacked, in that order, for every kind of module
-   (detailContent.js#moduleHtml). The card's height is fixed by its 4:3 ratio,
-   so the chart is the part that gives: it takes whatever is left and fits
-   itself into it, and nothing below it can be pushed out of the card. */
+   (detailContent.js#moduleHtml). Every part of it claims the height it needs
+   and the card adds them up. Nothing here is a `flex: 1` that gives: that was
+   the old contract, when the card's height was fixed by its ratio and one part
+   had to absorb the difference. There is no difference to absorb now. */
 .module__label {
   font-size: var(--font-size-sm);
   font-weight: 600;
@@ -688,22 +690,31 @@
    viewport: the chart is the only part that can shrink, so it is the only part
    that does. */
 .module__chart {
-  flex: 1;
-  min-height: 0;
   position: relative;
 }
 
+/* Height from the viewBox, not from the card: line-chart.css already sizes the
+   SVG this way and the module used to override it to `100%` so the chart would
+   collapse into whatever the fixed box had left. */
 .module__chart .line-chart {
   width: 100%;
-  height: 100%;
+  height: auto;
 }
 
 /* Modal split: the rings beside the table that names them. The donut is square
-   and sized by the row's height, so it grows and shrinks with the card while
-   the table keeps the width it needs to stay on one line per mode. */
+   and sized by its width — the row has no height of its own to take one from
+   any more.
+   34% is measured, not chosen: under the old rule the donut was whatever square
+   the leftover card height allowed, which came to ~102px at the design width,
+   and `max-width: 45%` was a cap it never actually reached. Sizing it straight
+   off the width at 45% would have handed it 127px — a bigger donut, paid for
+   out of the one column that names the modes, which is how "Public transport"
+   became "P...". 34% (96px) gives the table back the width it had.
+   The table is still one label short of fitting: "Public transport" ellipsises
+   at every donut size down to 30%, because a 307px card cannot hold rings, two
+   year columns and that phrase at once. That is a width problem, untouched
+   here — this rule only makes sure the height fix did not make it worse. */
 .module__split {
-  flex: 1;
-  min-height: 0;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -712,9 +723,9 @@
 .module__donut {
   position: relative;
   flex: 0 0 auto;
-  height: 100%;
+  width: 34%;
+  height: auto;
   aspect-ratio: 1;
-  max-width: 45%;
 }
 
 /* Fixed layout so the year columns keep their width and the mode column takes
@@ -800,8 +811,6 @@
    them are five years wide and a line would draw a shape the data has not
    measured. */
 .module__trend {
-  flex: 1;
-  min-height: 0;
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -947,27 +956,23 @@
   color: var(--color-text);
 }
 
-/* Problem Fit's blocks. Prose is the whole card here, so it takes the height
-   the charts take elsewhere and scrolls if a translation runs long — clipping
-   a sentence would change what it says. */
+/* Problem Fit's blocks. Prose is the whole card here. It used to scroll when a
+   translation ran long, on the reasoning that clipping a sentence would change
+   what it says — true, and a scrollbar hid it just as well. The card grows
+   instead. */
 .module__prose {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
   margin: 0;
   font-size: var(--font-size-sm);
   line-height: 1.45;
   color: var(--color-text);
 }
 
-/* A card whose body is a list rather than a chart. The chart is the part that
-   gives everywhere else (see .module__chart); here it is this, for the same
-   reason — the card's 4:3 is fixed, so something has to be able to shrink, and
-   a list can scroll where a sentence cannot be cut. */
+/* A card whose body is a list rather than a chart. This was the worst of the
+   squeezes: the funding list wanted 387px inside a 232px card and put the
+   difference behind a scrollbar. The name is now a leftover — it is the class
+   detailContent.js writes, and it no longer scrolls. */
 .module__scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
+  display: block;
 }
 
 /* The city's own figures, two by two: what another city reads first to work out
@@ -975,8 +980,6 @@
    is a label over a number, and the grid is what keeps the four comparable
    rather than a paragraph of statistics. */
 .module__facts {
-  flex: 1;
-  min-height: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-2);
@@ -1118,12 +1121,12 @@
    same tokens the swatches above do, so a legend row and the mark it names can
    never drift apart. */
 
-/* Sized by its slot rather than by its own aspect ratio: .module__donut is the
-   square the card's height gives it, and the rings fit inside that. */
+/* Sized by its slot: .module__donut is a square measured off its own width, and
+   the rings fit inside that. */
 .modal-split {
   display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
 }
 
 .modal-split__seg {

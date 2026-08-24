@@ -300,18 +300,30 @@ function modulesFor(activeCriterion, props) {
   return [];
 }
 
+/** How the six modules divide into the three columns, in the order they are
+ * read: three down the first, two down the second, one in the third. The
+ * columns are elements rather than grid tracks because each module is now as
+ * tall as its own content, and a grid row would force the modules sharing it to
+ * one height (see .widget-detail__modules). Slot numbers stay 1..6 across the
+ * whole arrangement — they carry the entrance order and the nudges. */
+const MODULE_COLUMNS = [3, 2, 1];
+
 /** The six modules. A module with content gets it; one without stays an empty
  * shell, which is the honest stand-in for a topic this city has no sourced
  * rows for — never a box of invented figures. */
 function moduleScaffold(modules = []) {
-  const boxes = Array.from(
-    { length: MODULE_SLOTS },
-    (unused, index) =>
-      `<div class="widget-detail__module widget-detail__module--${index + 1}">
+  let slot = 0;
+  const columns = MODULE_COLUMNS.map((count, column) => {
+    const boxes = Array.from({ length: Math.min(count, MODULE_SLOTS - slot) }, () => {
+      const index = slot;
+      slot += 1;
+      return `<div class="widget-detail__module widget-detail__module--${index + 1}">
          <div class="widget-detail__card">${moduleHtml(modules[index], index)}</div>
-       </div>`,
-  ).join('');
-  return `<div class="widget-detail__modules">${boxes}</div>`;
+       </div>`;
+    }).join('');
+    return `<div class="widget-detail__column widget-detail__column--${column + 1}">${boxes}</div>`;
+  }).join('');
+  return `<div class="widget-detail__modules">${columns}</div>`;
 }
 
 /** Point every module back at the widget it comes out of.

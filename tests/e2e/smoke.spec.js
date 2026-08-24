@@ -103,11 +103,40 @@ test('opening a widget stands its modules in the freed half', async ({ page }) =
   // which is a design decision and not drift: the tolerance below is twice that
   // nudge, and anything past it means the grid placement itself has moved.
   const NUDGE_TOLERANCE = 24;
-  await expect(modules.nth(5)).toHaveCSS('opacity', '1', { timeout: 5000 });
+  // Wait for the arrangement to have landed, not merely to be visible. Opacity
+  // reaches 1 at the flight's 25% mark (see the module-fly keyframes), so
+  // waiting on that measured six modules still travelling and read their
+  // in-flight positions as their places. Asked of the animations themselves
+  // rather than by sleeping for the duration, and filtered by name: the idle
+  // drift on the same elements never finishes.
+  await page.waitForFunction(() => {
+    const parts = [...document.querySelectorAll('.widget-detail__module, .widget-detail__card')];
+    return (
+      parts.length > 0 &&
+      parts.every((part) =>
+        part
+          .getAnimations()
+          .filter((each) => String(each.animationName).startsWith('module-fly'))
+          .every((each) => each.playState === 'finished'),
+      )
+    );
+  });
   const box = async (n) => modules.nth(n).boundingBox();
   const [one, two, three, four, six] = await Promise.all([box(0), box(1), box(2), box(3), box(5)]);
-  expect(four.x).toBeGreaterThan(one.x);
-  expect(six.x).toBeGreaterThan(four.x);
+
+  // Which way "along the columns" runs depends on the side the region is on: a
+  // right-hand region mirrors, so its first column is the rightmost one and the
+  // arrangement reads right to left (see .widget-detail--right). Impact is a
+  // right-hand widget, so asserting a left-to-right order here was asserting
+  // the mirror away.
+  const rightHanded = await region.evaluate((node) =>
+    node.classList.contains('widget-detail--right'),
+  );
+  const along = (near, far) =>
+    rightHanded ? expect(far.x).toBeLessThan(near.x) : expect(far.x).toBeGreaterThan(near.x);
+  along(one, four);
+  along(four, six);
+
   expect(four.y).toBeGreaterThan(one.y);
   expect(four.y).toBeLessThan(two.y);
   expect(Math.abs(six.y - three.y)).toBeLessThanOrEqual(NUDGE_TOLERANCE);

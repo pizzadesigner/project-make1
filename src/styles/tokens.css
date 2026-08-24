@@ -154,15 +154,27 @@
 
   /* The L2 modules (widgets.css, widgetStack.js#moduleScaffold).
    *
-   * --module-box-ratio is the shape of one module, and it is a content
-   * measurement rather than a taste: a module holds a label, the figure it
-   * names, a compact chart of the series behind it, a legend for the two to
-   * four rows that chart carries, and a source chip — about 215px of stacked
-   * content at the ~308px the three columns give each module. 4:3 clears that
-   * with room to breathe. Fixing the shape is the point: the boxes used to
-   * divide whatever height the region had, so the same module was 4:3 on a tall
-   * screen and nearly 3:2 on a laptop, and the chart inside would have had a
-   * different amount of room on every screen.
+   * A module has no fixed shape. It used to: --module-box-ratio pinned it at
+   * 4:3, height derived from whatever width the three columns happened to give
+   * it, and the content inside was expected to fit whatever that came to. It
+   * did not. Measured across all three widgets at the design width, four of the
+   * eighteen modules were squeezed below the height their content wanted — the
+   * worst by 155px — and at 1440x900 fifteen of the eighteen were, the worst by
+   * 353px. No single ratio could have held them: their natural heights run from
+   * 67px (a two-line note) to 387px (the funding list), because a module holds
+   * whatever its subject needs and those are not the same size.
+   *
+   * So height comes from content now, and the columns are real boxes
+   * (.widget-detail__column) rather than grid tracks — three modules cannot
+   * share a row band and still each be their own height.
+   *
+   * --module-column-offset is what the row bands used to do for free. The
+   * middle column sits half a step below the outer ones so its cards read as
+   * between the others rather than beside them; that half step used to emerge
+   * from every module being the same height and spanning two rows of six. With
+   * heights no longer uniform there is nothing for it to emerge from, so it is
+   * stated. Not called "stagger": --module-stagger is already the delay between
+   * two modules setting off, and this is a distance, not a clock.
    *
    * --module-fly is how much of that flight a module actually travels: the
    * distance itself is measured at the click (widgetStack.js#setFlightOrigin —
@@ -172,7 +184,7 @@
    *
    * --module-leave-duration is also read in JS (widgetStack.js#leave) to know
    * how long to hold the region on the way out. */
-  --module-box-ratio: 4 / 3;
+  --module-column-offset: 112px;
   --module-fly: 1;
 
   /* How far a module sits off the line the grid put it on, and how far it drifts
