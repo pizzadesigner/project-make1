@@ -4,7 +4,7 @@
 // states so a card is never half-populated.
 
 import { t } from '../lib/i18n.js';
-import { formatCurrency, formatYear, formatNumber } from '../lib/format.js';
+import { formatCurrency, formatYear, formatNumber, formatHostname } from '../lib/format.js';
 import { SDG11_TARGETS } from '../lib/sdg11.js';
 import { projectByCitySlug, metricsForProject, peersForProject } from '../data/selectors.js';
 import { loadCityOutline } from '../data/load.js';
@@ -196,6 +196,7 @@ function peersCard(project, peers) {
     .map(
       (peer) => `
       <a class="peer" href="${encodeURI(peer.peerUrl)}" target="_blank" rel="noopener noreferrer">
+        <span class="link-hint" aria-hidden="true">${formatHostname(peer.peerUrl)}</span>
         <span class="peer__city">${escapeHtml(peer.peerCity)}</span>
         <span class="peer__country">${escapeHtml(peer.peerCountry)}</span>
         <span class="peer__rel">${escapeHtml(peer.relationship)}</span>

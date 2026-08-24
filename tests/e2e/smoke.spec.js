@@ -242,15 +242,24 @@ test('a shared deep link loads the city cold, silhouette and sourced budget', as
   await expect(page.locator('.city-silhouette__district').first()).toBeVisible();
 
   // A figure and the source behind it, together — the Honesty objective's whole
-  // claim. The chip is a <details>, so the link only exists once it is opened.
+  // claim. The chip is the link now rather than a control that reveals one, so
+  // the href is on it from the start and reaching the source is a single press.
   const budgetRow = page.locator('.facts__row', { hasText: 'Budget' }).first();
   await expect(budgetRow.locator('dd')).toContainText('€');
 
-  await budgetRow.locator('.source-chip__summary').click();
-  await expect(budgetRow.locator('.source-chip__link')).toHaveAttribute(
-    'href',
-    new RegExp(`^${sourced.source_url}`),
-  );
+  const chip = budgetRow.locator('.source-chip');
+  await expect(chip).toHaveAttribute('href', new RegExp(`^${sourced.source_url}`));
+  await expect(chip).toHaveAttribute('target', '_blank');
+  // It names its destination without being opened, hovered or clicked.
+  await expect(chip).toHaveAttribute('aria-label', new RegExp(sourced.source_label, 'i'));
+
+  // The citation is on the chip, hidden until it is wanted, and shown by a
+  // keyboard focus as readily as by a pointer.
+  const hint = chip.locator('.link-hint');
+  await expect(hint).toHaveText(new RegExp(sourced.source_label, 'i'));
+  await expect(hint).toBeHidden();
+  await chip.focus();
+  await expect(hint).toBeVisible();
 });
 
 test('the list view is a sortable equivalent of the map', async ({ page }) => {

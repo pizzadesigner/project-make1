@@ -106,6 +106,8 @@
 }
 
 .peer {
+  /* Positioning context for .link-hint (base.css). */
+  position: relative;
   display: grid;
   gap: 2px;
   padding: var(--space-3);

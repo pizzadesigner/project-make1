@@ -1,16 +1,16 @@
-/* Collapsible source affordance shown next to figures.
+/* The source link shown next to a figure.
  *
- * Collapsed it is one glyph: the outbound arrow, in a circle the size of a line
- * of body text. The word it stands for arrives on hover and on keyboard focus
- * (.source-chip__hint) and is always on the chip as its accessible name, so
- * nothing about it is mouse-only. */
+ * One glyph: the outbound arrow, in a circle the size of a line of body text.
+ * The citation it stands for arrives on hover and on keyboard focus (.link-hint
+ * in base.css) and is always on the chip as its accessible name, so nothing
+ * about it is mouse-only. Pressing it opens the source.
+ *
+ * It was a <details> until the citation moved into the hint: the chip is the
+ * link now, not a control that reveals one, which is why the summary rules and
+ * the panel they opened are gone rather than restyled. */
 
 .source-chip {
   position: relative;
-  display: inline-block;
-}
-
-.source-chip__summary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -22,76 +22,18 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   line-height: 1;
-  cursor: pointer;
-  list-style: none;
+  text-decoration: none;
 }
 
 /* The glyph is the chip's whole visible content, so it is drawn rather than
-   marked up — and the summary's aria-label is what actually names the control,
-   so nothing depends on it being read. */
-.source-chip__summary::before {
+   marked up — the chip's aria-label is what actually names the link, so nothing
+   depends on this being read. */
+.source-chip::before {
   content: '↗';
 }
 
-/* Safari draws its own disclosure triangle unless this is turned off too. */
-.source-chip__summary::-webkit-details-marker {
-  display: none;
-}
-
-.source-chip__summary:hover,
-.source-chip__summary:focus-visible {
+.source-chip:hover,
+.source-chip:focus-visible {
   color: var(--color-text);
   border-color: var(--color-accent);
-}
-
-.source-chip[open] .source-chip__summary {
-  color: var(--color-text);
-  border-color: var(--color-accent);
-}
-
-/* The word, above the chip and out of the layout so it cannot move the card's
-   footer when it appears. Not a hit target: the pointer is on the chip, and a
-   label that could be hovered would flicker as the cursor crossed it. */
-.source-chip__hint {
-  position: absolute;
-  bottom: calc(100% + var(--space-1));
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 2px var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-raised);
-  color: var(--color-text);
-  font-size: var(--font-size-xs);
-  line-height: var(--line-tight);
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity var(--motion-fast) var(--ease-standard);
-}
-
-.source-chip__summary:hover .source-chip__hint,
-.source-chip__summary:focus-visible .source-chip__hint {
-  opacity: 1;
-}
-
-/* Once the citation itself is on screen the word has nothing left to say. */
-.source-chip[open] .source-chip__hint {
-  display: none;
-}
-
-.source-chip__body {
-  margin-top: var(--space-2);
-  display: grid;
-  gap: 2px;
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  max-width: 28rem;
-}
-
-.source-chip__date {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
 }

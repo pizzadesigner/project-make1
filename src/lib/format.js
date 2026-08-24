@@ -81,3 +81,23 @@ export function formatDate(isoDate, locale) {
   if (Number.isNaN(date.getTime())) return MISSING;
   return new Intl.DateTimeFormat(tagFor(locale), { dateStyle: 'medium' }).format(date);
 }
+
+/**
+ * The host a URL points at, for showing next to a link whose visible text is a
+ * name rather than an address ("Connecting Europe Facility" → ec.europa.eu).
+ * `www.` is dropped: it is on some hosts and not others, and it never tells the
+ * reader anything about where they are being sent.
+ *
+ * Returns MISSING for anything unparseable rather than throwing — a bad URL in
+ * a CSV should cost a hint, not a render (CLAUDE.md: degrade, do not throw).
+ * @param {string|null} url
+ * @returns {string}
+ */
+export function formatHostname(url) {
+  if (!url) return MISSING;
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return MISSING;
+  }
+}

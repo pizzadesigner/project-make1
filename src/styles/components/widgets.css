@@ -37,13 +37,27 @@
 
    Each card is a filled rect one pixel inside a border-coloured one, and the
    nearer card is listed first because earlier shadows paint on top. Opaque
-   fill, so the two do not double up where they overlap. */
+   fill, so the two do not double up where they overlap.
+
+   --deck-x is which way it fans, the same trick --fan-x plays on the L2
+   modules: the deck always leans into the screen, never towards the edge the
+   widget is anchored to. Down is down either way — only the horizontal
+   mirrors. */
 .widget--deck {
+  --deck-x: 1;
+
   box-shadow:
-    var(--deck-step) var(--deck-step) 0 -1px var(--color-surface),
-    var(--deck-step) var(--deck-step) 0 0 var(--color-border-glass),
-    calc(var(--deck-step) * 2) calc(var(--deck-step) * 2) 0 -1px var(--color-surface),
-    calc(var(--deck-step) * 2) calc(var(--deck-step) * 2) 0 0 var(--color-border-glass);
+    calc(var(--deck-step) * var(--deck-x)) var(--deck-step) 0 -1px var(--color-surface),
+    calc(var(--deck-step) * var(--deck-x)) var(--deck-step) 0 0 var(--color-border-glass),
+    calc(var(--deck-step) * 2 * var(--deck-x)) calc(var(--deck-step) * 2) 0 -1px
+      var(--color-surface),
+    calc(var(--deck-step) * 2 * var(--deck-x)) calc(var(--deck-step) * 2) 0 0
+      var(--color-border-glass);
+}
+
+/* Anchored to the right edge, so the deck falls to the left of it. */
+.widget--deck-right {
+  --deck-x: -1;
 }
 
 .widget:focus-visible {
@@ -430,6 +444,37 @@
   transform-origin: top left;
   animation: module-fly-x var(--module-fly-duration) var(--ease-module-x) both;
   animation-delay: calc(var(--module-index, 0) * var(--module-stagger));
+}
+
+/* The one column that cannot open its hints rightwards: the one standing
+   against the region's outer edge. A hint is wider than a column is on a
+   smaller window (15rem against 192px at 1280), so it always reaches into its
+   neighbour — harmless between columns, but off the edge of a scrolling region
+   it is simply cut. Anchoring that column's hints to the right means they open
+   back across the arrangement instead, where there is always room.
+
+   Which column that is depends on the side, because the arrangement mirrors:
+   the deck of three stands nearest the widget it came from, so it is column one
+   on the right and column three on the left. */
+.widget-detail--right .widget-detail__column--1 .link-hint,
+.widget-detail--left .widget-detail__column--3 .link-hint {
+  left: auto;
+  right: 0;
+}
+
+/* A module carrying an open hint stands above its neighbours.
+
+   Both the module and its card are stacking contexts of their own — they are
+   transformed for the flight in and the drift afterwards — so a z-index on the
+   hint itself can only order it *within* its own card, and the next card along
+   painted straight over it. Raising the whole module is what actually lifts the
+   hint out: the six are siblings in the region's stacking context, so one of
+   them going up clears all five. Hover and focus alike, because a keyboard
+   reaches these too, and the arrows stay behind either way
+   (.widget-detail__connectors sits at z-index -1). */
+.widget-detail__module:hover,
+.widget-detail__module:focus-within {
+  z-index: 5;
 }
 
 /* The card is the surface and the column its content stacks in: label, figure
@@ -1096,6 +1141,10 @@
    funding programmes, and half of "Junge Generation Fahrrad – aktiv mobil" is
    not something anyone can look up. */
 .module__link {
+  /* The anchor is what .link-hint hangs off, so it has to be the positioning
+     context — otherwise the hint would find the region and appear somewhere
+     else entirely. */
+  position: relative;
   color: var(--color-text);
   text-decoration: underline;
   text-decoration-color: var(--color-border);

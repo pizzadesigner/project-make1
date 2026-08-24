@@ -116,13 +116,23 @@ const modules = () => container.querySelectorAll('.widget-detail__module');
 
 // A widget that opens into the six modules stands on a deck of cards, so the
 // flight out starts from something the user has already seen rather than from
-// an empty corner. Which widgets carry one is a design decision (DECK_WIDGETS),
-// not a property of having an L2 — every widget has one of those.
+// an empty corner. All three do, so all three carry one: the deck says "this
+// opens", and a flat card beside a deck said the two behaved differently.
 describe('the deck at L1', () => {
-  it('gives Problem Fit a deck and leaves the others flat', () => {
-    expect(container.querySelector('.widget--problemFit').classList).toContain('widget--deck');
-    expect(container.querySelector('.widget--impact').classList).not.toContain('widget--deck');
-    expect(container.querySelector('.widget--adoption').classList).not.toContain('widget--deck');
+  it('gives every widget that opens into modules a deck', () => {
+    for (const kind of ['problemFit', 'impact', 'adoption']) {
+      expect(container.querySelector(`.widget--${kind}`).classList).toContain('widget--deck');
+    }
+  });
+
+  // The deck leans into the screen rather than towards the edge its widget is
+  // anchored to — a right-hand widget sits closer to the edge than the deck is
+  // deep, so fanning right would hang it off the screen.
+  it('fans each deck away from the edge its widget is anchored to', () => {
+    expect(container.querySelector('.widget--problemFit').classList).toContain('widget--deck-left');
+    for (const kind of ['impact', 'adoption']) {
+      expect(container.querySelector(`.widget--${kind}`).classList).toContain('widget--deck-right');
+    }
   });
 });
 

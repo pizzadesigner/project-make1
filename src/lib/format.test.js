@@ -5,6 +5,7 @@ import {
   formatNumber,
   formatYear,
   formatDate,
+  formatHostname,
 } from './format.js';
 
 // Currency/number output embeds locale-specific spaces (NBSP, narrow NBSP), so
@@ -71,5 +72,28 @@ describe('formatDate', () => {
 
   it('formats a valid ISO date', () => {
     expect(formatDate('2026-05-14', 'en')).not.toBe('—');
+  });
+});
+
+// A link whose visible text is a name ("Connecting Europe Facility") says
+// nothing about where it goes, so the hover hint shows the host instead.
+describe('formatHostname', () => {
+  it('drops the scheme, the path and a www prefix', () => {
+    expect(formatHostname('https://www.ec.europa.eu/inea/en/connecting-europe')).toBe(
+      'ec.europa.eu',
+    );
+    expect(formatHostname('https://stadt-koeln.de/leben-in-koeln/verkehr')).toBe('stadt-koeln.de');
+  });
+
+  it('keeps a subdomain that is not www', () => {
+    expect(formatHostname('https://opendata.stadt-koeln.de/dataset')).toBe(
+      'opendata.stadt-koeln.de',
+    );
+  });
+
+  it('degrades rather than throwing on a URL it cannot parse', () => {
+    expect(formatHostname('not a url')).toBe('—');
+    expect(formatHostname('')).toBe('—');
+    expect(formatHostname(null)).toBe('—');
   });
 });

@@ -63,9 +63,10 @@ const WIDGET_PADDING = '16px 18px';
 const L2_BYSTANDER_SCALE = '0.78';
 
 // Which widgets stand on a deck of cards at L1 (see .widget--deck): the ones
-// whose L2 the deck is a preview of. A set rather than a flag on each widget so
-// giving another one a deck is a word here and nothing else.
-const DECK_WIDGETS = new Set(['problemFit']);
+// whose L2 the deck is a preview of. All three open into six modules, so all
+// three carry one — a widget that looked like a plain card while its neighbour
+// looked like a deck was saying the two behaved differently, and they do not.
+const DECK_WIDGETS = new Set(['problemFit', 'impact', 'adoption']);
 
 const BASE_LAYOUT = {
   problemFit: {
@@ -178,7 +179,11 @@ export function render(container, props) {
 
 function buildWidget(kind, onSelectCriterion) {
   const node = document.createElement('div');
-  const deck = DECK_WIDGETS.has(kind) ? ' widget--deck' : '';
+  // The deck leans the way its side does. A right-hand widget sits
+  // STACK_MARGIN from the edge of the screen, which is narrower than the deck
+  // is deep, so a deck fanning right would hang off the edge; it also wants to
+  // point the way the modules will travel, like --fan-x in the L2 arrangement.
+  const deck = DECK_WIDGETS.has(kind) ? ` widget--deck widget--deck-${widgetSide(kind)}` : '';
   node.className = `widget widget--${kind}${deck}`;
   node.setAttribute('role', 'button');
   node.setAttribute('tabindex', '0');

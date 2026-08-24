@@ -17,7 +17,12 @@
 // not researched this yet" (docs/DESIGN_RATIONALE.md, Neutrality/Honesty).
 
 import { t, getLocale } from '../lib/i18n.js';
-import { formatCurrency, formatCurrencyCompact, formatNumber } from '../lib/format.js';
+import {
+  formatCurrency,
+  formatCurrencyCompact,
+  formatNumber,
+  formatHostname,
+} from '../lib/format.js';
 import * as lineChart from './lineChart.js';
 import * as modalSplitChart from './modalSplitChart.js';
 import * as sourceChip from './sourceChip.js';
@@ -316,13 +321,19 @@ function linkGroupsBody(module) {
 }
 
 /** One row per link. The text is translated copy and the URL is not, so the two
- * travel separately all the way down to here. */
+ * travel separately all the way down to here.
+ *
+ * The hint carries the host rather than the name: the name is already the link's
+ * visible text, so repeating it would say nothing, while "which site does
+ * 'Connecting Europe Facility' actually send me to" is the question the reader
+ * has. Hidden from the accessibility tree — a screen reader gets the link text,
+ * and the host would only interrupt it. */
 function linkItems(links) {
   return links
     .map(
       (link) => `
       <li class="module__link-item">
-        <a class="module__link" href="${encodeURI(link.url)}" target="_blank" rel="noopener noreferrer">${t(link.textKey)}</a>
+        <a class="module__link" href="${encodeURI(link.url)}" target="_blank" rel="noopener noreferrer">${t(link.textKey)}<span class="link-hint" aria-hidden="true">${formatHostname(link.url)}</span></a>
       </li>`,
     )
     .join('');

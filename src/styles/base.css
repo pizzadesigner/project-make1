@@ -294,6 +294,70 @@ a:hover {
   color: var(--color-danger);
 }
 
+/* The label an outbound link shows on hover and on keyboard focus: what the
+   link is (a citation) or where it goes (a host). Shared by all three kinds of
+   outbound link — the source chip, a module's link list, a peer city — because
+   they want the same thing and one implementation cannot drift from itself.
+
+   Out of the layout, so it cannot move the card's footer or reflow a list when
+   it appears. Not a hit target either: the pointer is on the link, and a label
+   that could itself be hovered would flicker as the cursor crossed it. */
+.link-hint {
+  position: absolute;
+  bottom: calc(100% + var(--space-1));
+
+  /* Anchored to the link's left edge rather than centred on it, so it opens
+     *into* the layout instead of straddling the thing it belongs to. Centring
+     cost half the hint's width on either side, and the module region clips
+     (.widget-detail scrolls, so it has no choice): a chip in the leftmost
+     column lost 74px of its citation off the region's edge. Every anchor here
+     sits near the left of its card and the hint is no wider than a card, so
+     opening rightwards keeps it inside. */
+  left: 0;
+  z-index: 40;
+  display: grid;
+  gap: 1px;
+  width: max-content;
+
+  /* Long enough for a citation, short enough to stay on the stage. Past this it
+     wraps rather than running off the edge of a card near the screen's side. */
+  max-width: 15rem;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-tight);
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    visibility var(--motion-fast) var(--ease-standard);
+}
+
+.link-hint__note {
+  color: var(--color-text-muted);
+}
+
+/* Shown by whatever carries it, on hover and on focus alike — a keyboard must
+   reach everything a mouse does (CLAUDE.md: accessibility). */
+:hover > .link-hint,
+:focus-visible > .link-hint {
+  opacity: 1;
+  visibility: visible;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link-hint {
+    transition: none;
+  }
+}
+
 .project-table {
   width: 100%;
   border-collapse: collapse;
