@@ -674,10 +674,44 @@ describe('problemFitModules', () => {
       'placeholder',
       'placeholder',
     ]);
+    // What the project does about a target is this city's; the target's own
+    // wording is the UN's, so it is keyed globally rather than under the slug.
     expect(modules[1].targets).toEqual([
-      { code: '11.2', textKey: 'problemFit.koeln.target.11.2' },
-      { code: '11.6', textKey: 'problemFit.koeln.target.11.6' },
+      {
+        code: '11.2',
+        textKey: 'problemFit.koeln.target.11.2',
+        infoKey: 'problemFit.targetDefinition.11.2',
+      },
+      {
+        code: '11.6',
+        textKey: 'problemFit.koeln.target.11.6',
+        infoKey: 'problemFit.targetDefinition.11.6',
+      },
     ]);
+  });
+
+  // The card's two boxes each carry their own ⓘ naming the target, so a third
+  // on the card title would have nothing left to explain.
+  it('gives the SDGs card no info point of its own', () => {
+    const modules = problemFitModules(problemFitForCity('koeln'));
+    expect(modules[1].infoKey).toBeUndefined();
+    expect(modules[0].infoKey).toBe('problemFit.info.problemFit');
+  });
+
+  // The target wording is quoted, so it carries the document it is quoted from
+  // — one source for every city, since the targets are the UN's own.
+  it('cites the target wording once, for every city', () => {
+    const koeln = problemFitModules(problemFitForCity('koeln'))[1];
+    const paris = problemFitModules(problemFitForCity('paris-marne-la-vallee'))[1];
+    expect(koeln.sources).toEqual([
+      {
+        url: 'https://know-sdgs.jrc.ec.europa.eu/sdg/11',
+        label: 'European Commission, Joint Research Centre — Knowledge base on the SDGs: SDG 11',
+        accessed: '2026-08-25',
+      },
+    ]);
+    expect(paris.sources).toEqual(koeln.sources);
+    expect(paris.leadKey).toBe('problemFit.paris-marne-la-vallee.sdgsLead');
   });
 
   // The summary is block ids, not a paragraph count, so the keys say what they

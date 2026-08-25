@@ -161,10 +161,20 @@ function labelHtml(module, index) {
  * entry is added, with nothing here to change. */
 function infoHtml(module, index) {
   if (!module.infoKey) return '';
-  const id = `module-info-${index}`;
-  const text = hasString(module.infoKey) ? t(module.infoKey) : t('module.info.pending');
-  const label = t('module.info.about').replace('{label}', moduleLabel(module, index));
-  return `<button type="button" class="module__info" data-hint aria-label="${label}" aria-describedby="${id}">
+  return infoPoint(`module-info-${index}`, module.infoKey, moduleLabel(module, index));
+}
+
+/** One ⓘ. A card's title carries one, and so does each box on the SDGs card —
+ * same control, same floating hint, different thing being named, so the id and
+ * the accessible name are passed in rather than derived from a card.
+ * @param {string} id unique on the page; the hint's id, which aria-describedby points at
+ * @param {string} key i18n key of the text; unwritten keys show the pending line
+ * @param {string} label what the ⓘ is about, for the accessible name
+ */
+function infoPoint(id, key, label) {
+  const text = hasString(key) ? t(key) : t('module.info.pending');
+  const about = t('module.info.about').replace('{label}', label);
+  return `<button type="button" class="module__info" data-hint aria-label="${about}" aria-describedby="${id}">
       <span class="module__info-mark" aria-hidden="true">i</span>
       <span class="link-hint" role="tooltip" id="${id}">${text}</span>
     </button>`;
@@ -402,17 +412,36 @@ function timelineBody(module, index) {
  * saying how. The same copy the L1 widget headlines with — one card holding
  * both, rather than a card each, which is what the six-card arrangement used to
  * spend two of its slots on. */
-function targetsBody(module) {
+/** The SDG 11 targets a project addresses, one box each: the target's number,
+ * an ⓘ carrying its official wording, and what this project does about it.
+ *
+ * The boxes stand side by side in an opened card and stack in a column, which is
+ * the grid's own doing (widgets.css) — two of these paragraphs at a column's
+ * width would be two very narrow measures.
+ *
+ * The lead is guarded rather than assumed: a city whose lead sentence is not
+ * written yet gets the boxes with no lead, not the raw i18n key, which is how
+ * an unwritten ⓘ behaves too.
+ */
+function targetsBody(module, index) {
+  const lead =
+    module.leadKey && hasString(module.leadKey)
+      ? `<p class="module__lead">${t(module.leadKey)}</p>`
+      : '';
   const items = module.targets
-    .map(
-      (target) => `
-      <li class="module__target-item">
-        <span class="module__target-code">${t('problemFit.targetHeading').replace('{code}', target.code)}</span>
+    .map((target, slot) => {
+      const heading = t('problemFit.targetHeading').replace('{code}', target.code);
+      const info = target.infoKey
+        ? infoPoint(`module-info-${index}-target-${slot}`, target.infoKey, heading)
+        : '';
+      return `
+      <li class="module__target-item module__panel">
+        <span class="module__target-code">${heading}${info}</span>
         <p class="module__prose">${t(target.textKey)}</p>
-      </li>`,
-    )
+      </li>`;
+    })
     .join('');
-  return `<ul class="module__targets">${items}</ul>`;
+  return `${lead}<ul class="module__targets">${items}</ul>`;
 }
 
 /** A card that is named but not yet researched — Politik, Timeline. It says so

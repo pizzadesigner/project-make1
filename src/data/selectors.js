@@ -425,6 +425,15 @@ export function modalSplitTargetForCity(citySlug) {
 //    renumbering the three after it — and so the key says what it holds.
 // Cities absent here show an empty Problem Fit widget and the L2 placeholder —
 // the same graceful-null pattern as MODAL_SPLIT_TARGETS.
+// Where the official wording of an SDG 11 target is quoted from. One source for
+// every city and every target: the targets are the UN's, not a measurement any
+// city made, so this is a constant rather than a row in a CSV.
+const SDG_TARGET_SOURCE = {
+  url: 'https://know-sdgs.jrc.ec.europa.eu/sdg/11',
+  label: 'European Commission, Joint Research Centre — Knowledge base on the SDGs: SDG 11',
+  accessed: '2026-08-25',
+};
+
 const PROBLEM_FIT = {
   koeln: {
     targets: ['11.2', '11.6'],
@@ -568,7 +577,13 @@ const MODULE_ORDER = ['modalSplit', 'car', 'airQuality', 'cycleNetwork', 'cyclis
 function withCardCopy(modules, prefix) {
   return modules.map((module) => {
     if (!module.kind) return module;
-    const withInfo = { ...module, infoKey: `${prefix}.info.${module.key}` };
+    // A card can also say it wants no info point (`info: false`): the SDGs card
+    // carries one inside each of its two boxes, naming the target that box is
+    // about, and a third on the card title would have nothing left to explain.
+    const withInfo =
+      module.info === false
+        ? { ...module }
+        : { ...module, infoKey: `${prefix}.info.${module.key}` };
     // A card can say it has no closing block to fill (`detail: false`): the
     // Politik card's recommendations already are what such a block would hold,
     // and a "Sources" heading under them would promise a document none of it
@@ -828,9 +843,14 @@ export function problemFitModules(problemFit) {
     labelKey: `problemFit.card.${key}`,
     ...extra,
   });
+  // Two keys per target, and they are keyed differently on purpose: what the
+  // project does about a target is this city's (`<slug>.target.<code>`), while
+  // the target's own wording is the UN's and the same everywhere
+  // (`targetDefinition.<code>`).
   const targets = (problemFit?.targets ?? []).map((code) => ({
     code,
     textKey: `problemFit.${problemFit.slug}.target.${code}`,
+    infoKey: `problemFit.targetDefinition.${code}`,
   }));
   const summary = (problemFit?.summary ?? []).map(
     (block) => `problemFit.${problemFit.slug}.summary.${block}`,
@@ -843,7 +863,14 @@ export function problemFitModules(problemFit) {
       summary.length > 0
         ? named('problemFit', 'prose', { paragraphs: summary, detail: false })
         : named('problemFit', 'placeholder'),
-      targets.length > 0 ? named('sdgs', 'targets', { targets }) : { key: 'sdgs', kind: null },
+      targets.length > 0
+        ? named('sdgs', 'targets', {
+            targets,
+            info: false,
+            leadKey: `problemFit.${problemFit.slug}.sdgsLead`,
+            sources: [SDG_TARGET_SOURCE],
+          })
+        : { key: 'sdgs', kind: null },
       named('plan', 'placeholder'),
       named('milestones', 'placeholder'),
     ],

@@ -1217,12 +1217,26 @@
 /* The SDGs card: one entry per SDG 11 target the project addresses — the code,
    and the line saying how. A list rather than a card each, which is what the
    six-card arrangement used to spend two of its slots on. */
+
+/* The SDGs card's two boxes. One column in a card in the column — two of these
+   paragraphs at that width would be two very narrow measures — and two columns
+   once the card is opened, where the pair reads as two parallel claims rather
+   than a list of two. The boxes stretch to the taller of them, so the pair
+   squares off instead of leaving a step between them. */
 .module__targets {
   margin: 0;
   padding: 0;
   list-style: none;
   display: grid;
   gap: var(--space-3);
+}
+
+.module__lead + .module__targets {
+  margin-top: var(--space-3);
+}
+
+.widget-detail__card.is-expanded .module__targets {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .module__target-code {

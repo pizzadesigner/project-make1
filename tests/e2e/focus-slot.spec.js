@@ -82,10 +82,12 @@ for (const criterion of ['problemFit', 'impact']) {
 // card, and everything inside asks for them by name.
 test('a card reads larger opened than it does in a column', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
-  // The SDGs card: the one in this criterion whose body is prose, which is what
-  // the measure below is about. Its neighbours are named placeholders, so the
-  // comparison is this card against itself at the two sizes — which is the
-  // claim anyway, and a stronger one than against whatever sits beside it.
+  // The Problem Fit card: four paragraphs across the card's full width, which is
+  // what the width check below is about. The SDGs card would be the wrong
+  // subject for it — its copy sits in two boxes side by side once opened, so its
+  // prose is half the card wide by design. The comparison is this card against
+  // itself at the two sizes, which is the claim anyway and a stronger one than
+  // against whatever sits beside it.
   await page.goto('/');
   await page.waitForSelector('.marker');
   await page.locator(CITY).first().click({ force: true });
@@ -109,8 +111,8 @@ test('a card reads larger opened than it does in a column', async ({ page }) => 
       };
     }, sel);
 
-  const inColumn = await sizes('.widget-detail__card[data-module="sdgs"]');
-  await page.locator('.widget-detail__card[data-module="sdgs"]').click({ force: true });
+  const inColumn = await sizes('.widget-detail__card[data-module="problemFit"]');
+  await page.locator('.widget-detail__card[data-module="problemFit"]').click({ force: true });
   await page.waitForTimeout(OPENED);
   const opened = await sizes('.widget-detail__card.is-expanded');
 

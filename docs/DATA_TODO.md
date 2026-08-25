@@ -514,8 +514,18 @@ The keys that want copy, one per card that has content today:
   (`problemFit.<slug>.target.<code>`), and `problemFit` holds Cologne's
   four-paragraph project summary (`problemFit.koeln.summary.{intro,completion,counts,ebertplatz}`,
   listed in `PROBLEM_FIT.koeln.summary`). `plan` (the 10-Punkte-Plan) and
-  `milestones` are still placeholders waiting on copy. No card here has an info
-  point written yet.
+  `milestones` are still placeholders waiting on copy.
+
+  The `sdgs` card carries **no info point of its own** (`info: false`) — its two
+  boxes each carry one instead, holding the official wording of that target
+  (`problemFit.targetDefinition.<code>`, keyed globally rather than per city
+  because the targets are the UN's). Its closing "Quellen" block and its source
+  chip both point at the JRC knowledge base on SDG 11. **Two things to check
+  there:** the German wording is the official Agenda 2030 translation of targets
+  11.2 and 11.6 and should be read against the published German text, and
+  `source_accessed` is 2026-08-25 — the day the link was added to the app, not a
+  verified retrieval. `problemFit.info.problemFit`, `.plan` and `.milestones` are
+  still unwritten.
 
   The summary card carries **no closing block** (`detail: false`) — it is
   already the overview such a block would summarise. That leaves three figures
