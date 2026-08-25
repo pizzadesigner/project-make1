@@ -8,7 +8,7 @@
 
 import { test, expect } from '@playwright/test';
 
-const FALLBACK_ZOOM = 5; // FOCUS_ZOOM in europeMap.js — where the first transition lands
+const FOCUS_ZOOM = 5; // FOCUS_ZOOM in europeMap.js — where the first transition heads
 
 // Long enough to cover the transition itself (--motion-slow, 280ms) *and*
 // however long Playwright takes to resolve and dispatch the click. The window
@@ -48,9 +48,21 @@ test('clicking a city animates the zoom instead of jumping', async ({ page }) =>
   const samples = await samplesPromise;
 
   // A real transition passes through the middle; the bug went 1 → 5 in one frame.
-  const midFlight = samples.filter((k) => k > 1.05 && k < FALLBACK_ZOOM - 0.05);
+  //
+  // The upper bound is what isolates the movement under test. The city's own
+  // geometry loads asynchronously and re-fits the map far past 5 when it
+  // arrives, so anything at or above FOCUS_ZOOM belongs to that second
+  // transition — and with the jump cut, every sample after the first frame does.
+  // Keeping the ceiling below it is what makes a jump cut fail here.
+  //
+  // The floor is low because the first transition is eased and may be
+  // interrupted by that re-fit while it is still early: measured, it can be cut
+  // off around 1.05, so a floor at 1.05 threw away every sample it had. What has
+  // to be true is that the scale was interpolated at all, and values a few
+  // thousandths above 1 say so as well as values near the middle do.
+  const midFlight = samples.filter((k) => k > 1.0005 && k < FOCUS_ZOOM - 0.05);
   expect(
     midFlight.length,
-    `expected intermediate zoom scales between 1 and ${FALLBACK_ZOOM}, saw: ${[...new Set(samples)].join(', ')}`,
+    `expected intermediate zoom scales between 1 and ${FOCUS_ZOOM}, saw: ${[...new Set(samples)].join(', ')}`,
   ).toBeGreaterThan(2);
 });

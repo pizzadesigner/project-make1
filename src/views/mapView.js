@@ -9,7 +9,6 @@
 // reachable only as cold/shared links; nothing here navigates to them.
 
 import { t } from '../lib/i18n.js';
-import { SDG11_TARGETS, SDG11_TARGET_CODES } from '../lib/sdg11.js';
 import {
   widgetMetricsForProject,
   impactSubMetrics,
@@ -56,7 +55,6 @@ export function render(container, props) {
   const hints = hintLayer.render(refs.root);
   let mapHandle = null;
   let widgetHandle = null;
-  let legendNode = null;
   let comingSoonNode = null;
   let focusedCity = null;
   let activeCriterion = null;
@@ -133,18 +131,11 @@ export function render(container, props) {
     focusedCity = next.focusedCity ?? null;
     activeCriterion = next.activeCriterion ?? null;
     activeModule = next.activeModule ?? null;
-    // Reset and the language toggle are always available (top-right). Back and
-    // the legend appear once a city is focused (L1); the overview panel shows
-    // only at L0.
+    // Reset and the language toggle are always available (top-right). Back
+    // appears once a city is focused (L1); the overview panel shows only at L0.
     const atOverview = !(focusedCity || activeCriterion);
     refs.back.hidden = atOverview;
     refs.overview.hidden = !atOverview;
-    // The legend sits bottom-left. An L2 opening on that side now stands its
-    // modules directly on the canvas, with no panel to hide what is underneath,
-    // so the legend steps aside until that layer closes.
-    const legendCovered =
-      Boolean(activeCriterion) && widgetStack.widgetSide(activeCriterion) === 'left';
-    if (legendNode) legendNode.hidden = atOverview || legendCovered;
     if (next.status === 'error') {
       teardownMap();
       return showState(refs.stage, 'state--error', t('state.error'));
@@ -207,9 +198,6 @@ export function render(container, props) {
         onSelect: (slug) => props.setFocusedCity(slug),
       });
       widgetHandle = widgetStack.render(refs.stage, widgetProps);
-      legendNode = buildLegend(next.projects);
-      legendNode.hidden = !next.focusedCity;
-      refs.stage.append(legendNode);
       comingSoonNode = buildComingSoon();
       refs.stage.append(comingSoonNode);
     }
@@ -230,7 +218,6 @@ export function render(container, props) {
     mapHandle = null;
     widgetHandle.destroy();
     widgetHandle = null;
-    legendNode = null;
     comingSoonNode = null;
   }
 
@@ -251,7 +238,7 @@ function buildShell(container, props) {
   const root = document.createElement('section');
   root.className = 'view view--map';
   // Controls sit in the corners the map layers leave free: Back top-left above
-  // the widget stack, Reset + language top-right, legend bottom-left. Reset and
+  // the widget stack, Reset + language top-right. Reset and
   // language show at every layer including the overview (L0); Back appears once
   // a city is focused. Both clusters sit above the L2 overlay so they stay
   // reachable there.
@@ -282,44 +269,6 @@ function buildShell(container, props) {
   };
 }
 
-/** The map's key. Every row describes something the map actually draws: the
- * three marker states (europeMap.js#applyMarkerFocus), and the SDG-11 targets
- * the loaded projects carry.
- *
- * Targets are keyed by glyph + code, never by their colour alone: the ten
- * `--sdg-*` tokens are not colour-separable as a categorical palette (worst
- * pairs 11.a↔11.2 ΔE 1.1 deutan, 11.7↔11.6 ΔE 4.5 in normal vision), so the
- * swatch is decorative support and the glyph carries identity. See
- * docs/HANDOFF.md §7. The swatch shares the marker's own token, so it stays
- * truthful if the marker styling changes.
- * @param {import('../data/types.js').Project[]} projects
- */
-function buildLegend(projects) {
-  const legend = document.createElement('section');
-  legend.className = 'legend';
-  legend.setAttribute('aria-label', t('legend.ariaLabel'));
-  legend.append(
-    legendGroup(t('legend.markers'), [
-      { modifier: 'city', label: t('legend.markerCity') },
-      { modifier: 'focused', label: t('legend.markerFocused') },
-      { modifier: 'other', label: t('legend.markerOther') },
-    ]),
-  );
-  const targets = targetsInDataset(projects);
-  if (targets.length > 0) {
-    legend.append(
-      legendGroup(
-        t('legend.targets'),
-        targets.map((code) => ({
-          glyph: SDG11_TARGETS[code].glyph,
-          label: `${code} ${t(`sdg.target.${code}`)}`,
-        })),
-      ),
-    );
-  }
-  return legend;
-}
-
 /** The L1 "coming soon" scrim: a black-transparent layer covering the focused
  * city and its widgets (see .map-coming-soon), shown for cities with no
  * researched content (cityHasResearchedContent). Kept in the DOM and toggled via
@@ -331,43 +280,6 @@ function buildComingSoon() {
   overlay.setAttribute('role', 'status');
   overlay.innerHTML = `<span class="map-coming-soon__label">${t('city.comingSoon')}</span>`;
   return overlay;
-}
-
-/** The SDG-11 targets actually present in the dataset, in SDG11_TARGET_CODES
- * order. Listing all ten would describe markers that are not on the map. */
-function targetsInDataset(projects) {
-  const present = new Set(projects.map((project) => project.sdg11Target));
-  return SDG11_TARGET_CODES.filter((code) => present.has(code));
-}
-
-/** One titled block of legend rows. Each row is a swatch (a marker state) or a
- * glyph (an SDG-11 target) plus its label. */
-function legendGroup(title, rows) {
-  const group = document.createElement('div');
-  group.className = 'legend__group';
-  const heading = document.createElement('h2');
-  heading.className = 'legend__title';
-  heading.textContent = title;
-  const list = document.createElement('ul');
-  list.className = 'legend__items';
-  for (const row of rows) {
-    const item = document.createElement('li');
-    item.className = 'legend__item';
-    const mark = document.createElement('span');
-    if (row.glyph) {
-      mark.className = 'legend__glyph';
-      mark.textContent = row.glyph;
-      mark.setAttribute('aria-hidden', 'true');
-    } else {
-      mark.className = `legend__swatch legend__swatch--${row.modifier}`;
-    }
-    const text = document.createElement('span');
-    text.textContent = row.label;
-    item.append(mark, text);
-    list.append(item);
-  }
-  group.append(heading, list);
-  return group;
 }
 
 function showSkeleton(stage) {

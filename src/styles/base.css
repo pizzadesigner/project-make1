@@ -6,7 +6,6 @@
 @import './components/source-chip.css';
 @import './components/line-chart.css';
 @import './components/city-silhouette.css';
-@import './components/legend.css';
 @import './components/connector.css';
 
 /* Global base layer: resets, page chrome, and the shared building blocks
@@ -20,7 +19,7 @@
 }
 
 /* The `hidden` attribute must beat component display rules (.button is
- * inline-block, .legend is flex) so toggling it reliably hides an element. */
+ * inline-block, some panels are flex) so toggling it reliably hides an element. */
 [hidden] {
   display: none !important;
 }
