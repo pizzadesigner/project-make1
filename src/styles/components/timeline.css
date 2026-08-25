@@ -1,123 +1,132 @@
-/* The project's story as a serpentine (timelineChart.js): a track that runs
- * across, drops a row and runs back, with one dot per event on it.
+/* The project's story as a chart (timelineChart.js): a serpentine track with one
+ * mark per event, drawn in the same language as the other charts here — the
+ * accent colour for marks, the grid's weight for rules, muted 12-unit labels.
  *
- * The track is an SVG stretched over the grid; the dots are placed by the same
- * fractions, so nothing is measured — the two stay together at any card width. */
+ * One SVG in a fixed viewBox, scaled to the card's width, exactly as line-chart
+ * does it. Overflow is visible because a mark grows past its own edge on hover. */
 .timeline {
-  --timeline-row: 3rem;
-
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(var(--timeline-columns), 1fr);
-  grid-template-rows: repeat(var(--timeline-rows), var(--timeline-row));
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
 }
 
-/* Drawn in pixels at the card's own size (timelineChart.js#paint), so the
-   corners are circles rather than whatever a stretched viewBox made of them. */
-.timeline__track {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
+/* The line each row of events stands on — the grid, at the grid's weight. */
+.timeline__rule {
+  stroke: var(--color-border);
+  stroke-width: 0.5;
+}
+
+/* The three phases, each in its own colour. Taken from the mode palette the
+   donut and the cycle-network bar already use rather than a second set invented
+   here, so one system covers every chart on these cards.
+
+   The colour is carried on the phase's own elements as --phase, and the band,
+   the track, the marks and the swatch all read it — which is what makes a
+   stretch of track and the name above it obviously the same thing. */
+.timeline__band--history,
+.timeline__line--history,
+.timeline__event--history,
+.timeline__swatch--history {
+  --phase: var(--color-mode-transit);
+}
+
+.timeline__band--delivery,
+.timeline__line--delivery,
+.timeline__event--delivery,
+.timeline__swatch--delivery {
+  --phase: var(--color-accent);
+}
+
+.timeline__band--outlook,
+.timeline__line--outlook,
+.timeline__event--outlook,
+.timeline__swatch--outlook {
+  --phase: var(--color-mode-bike);
+}
+
+/* A stretch of one phase, behind the events that belong to it. Quiet enough to
+   group them without becoming a thing to look at: the events are the content
+   and this is the ground they sit on. */
+.timeline__band {
+  fill: var(--phase, var(--color-surface));
+  fill-opacity: 0.12;
+}
+
+/* The dot before a phase's name. Colour is never the only thing telling two
+   phases apart — the name is beside it, and the name is the muted text colour
+   because 12 units of coloured type would have to clear 4.5:1 on its own. */
+.timeline__swatch {
+  fill: var(--phase, var(--color-accent));
+}
+
+.timeline__phase,
+.timeline__when,
+.timeline__label {
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+.timeline__phase {
+  fill: var(--color-text-muted);
+  text-anchor: middle;
+  letter-spacing: 0.02em;
+}
+
+.timeline__when {
+  fill: var(--color-text-muted);
+  text-anchor: middle;
+}
+
+.timeline__label {
+  fill: var(--color-text);
+  text-anchor: middle;
 }
 
 .timeline__line {
   fill: none;
-  stroke: var(--color-border);
-  stroke-width: 2;
+  stroke: var(--phase, var(--color-accent));
+  stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-/* One event. Placed on the grid rather than positioned, so it lands on the same
-   cell centre the track was drawn through. */
-.timeline__dot {
-  grid-column: calc(var(--column) + 1);
-  grid-row: calc(var(--row) + 1);
-  position: relative;
-  z-index: 1;
-  display: grid;
+.timeline__mark {
+  fill: var(--phase, var(--color-accent));
+  stroke: var(--color-canvas);
+  stroke-width: 2;
+  transition: r var(--motion-fast) var(--ease-standard);
+}
 
-  /* The mark at the top of the cell and the name below it, rather than the pair
-     centred: the track is drawn through the marks (timelineChart.js#markCentres),
-     and a mark that moved with the length of its name would drag the line with
-     it. */
-  align-content: start;
-  justify-items: center;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: center;
+/* Still ahead rather than done: hollow, so the end of the track reads as open. */
+.timeline__event--planned .timeline__mark {
+  fill: var(--color-canvas);
+  stroke: var(--phase, var(--color-accent));
+}
+
+/* The whole event is the target, not the six units of the mark. */
+.timeline__event {
   cursor: help;
 }
 
-.timeline__mark {
-  width: 0.7rem;
-  height: 0.7rem;
-  border-radius: 999px;
-  background: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-surface);
-  transition: transform var(--motion-fast) var(--ease-standard);
+.timeline__hit {
+  fill: transparent;
 }
 
-/* Still ahead rather than done: hollow, so the track's end reads as open. */
-.timeline__dot--planned .timeline__mark {
-  background: var(--color-surface);
-  border: 2px solid var(--color-accent);
+.timeline__event:hover .timeline__mark,
+.timeline__event:focus-visible .timeline__mark {
+  r: 9;
 }
 
-.timeline__dot:hover .timeline__mark,
-.timeline__dot:focus-visible .timeline__mark {
-  transform: scale(1.35);
+/* The focus ring goes on the mark, which is the thing being pointed at — the
+   group's own box is the whole cell and would draw a rectangle around the
+   labels too. */
+.timeline__event:focus {
+  outline: none;
 }
 
-/* The names, once the card is opened. Under the dot rather than beside it: the
-   track runs both ways, so a label to one side would be inside the line on
-   every second row. */
-.timeline__label {
-  margin-top: var(--space-1);
-  display: grid;
-  gap: 1px;
-  font-size: var(--font-size-xs);
-  line-height: var(--line-tight);
-  color: var(--color-text);
-  overflow-wrap: anywhere;
-}
-
-.timeline__when {
-  color: var(--color-text-muted);
-}
-
-/* A taller row once the labels are in it. */
-.timeline--expanded {
-  --timeline-row: 5.5rem;
-}
-
-/* The phases, named above the track. A label among the dots would be one more
-   thing to read at a glance, which is what the small reading is avoiding. */
-.timeline__phases {
-  margin: 0 0 var(--space-2);
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-}
-
-.timeline__phase::before {
-  content: '';
-  display: inline-block;
-  width: 0.4rem;
-  height: 0.4rem;
-  margin-right: var(--space-1);
-  border-radius: 999px;
-  background: var(--color-border);
-  vertical-align: middle;
+.timeline__event:focus-visible .timeline__mark {
+  stroke: var(--color-text);
 }
 
 @media (prefers-reduced-motion: reduce) {

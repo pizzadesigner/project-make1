@@ -390,20 +390,11 @@ function recommendationHtml(item, expanded) {
     </details>`;
 }
 
-/** The Timeline card: the phases it runs through, named above the track, and the
- * track itself — which the chart draws once this markup is in the DOM.
- *
- * The phases are written here rather than among the dots: a label on the track
- * would be one more thing to read at a glance, which is exactly what the small
- * reading is trying not to have. */
+/** The Timeline card: the chart, and nothing around it. The phases used to be
+ * named above the track; they are bands inside it now, which is where they
+ * belong — a phase is a stretch of the story, not a key to it. */
 function timelineBody(module, index) {
-  const phases = timelineChart
-    .phaseLegend(module.phases)
-    .map((labelKey) => `<li class="timeline__phase">${t(labelKey)}</li>`)
-    .join('');
-  return `
-    <ul class="timeline__phases">${phases}</ul>
-    <div class="module__timeline" data-timeline="${index}"></div>`;
+  return `<div class="module__timeline" data-timeline="${index}"></div>`;
 }
 
 /** A card that is named but not yet researched — Politik, Timeline. It says so

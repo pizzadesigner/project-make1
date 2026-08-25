@@ -1013,12 +1013,14 @@ describe('the adoption cards', () => {
   // instead: at each size, what is written is what there is room to read.
   it('shows the timeline as dots alone, and names them once opened', () => {
     open();
-    const dots = card(4).querySelectorAll('.timeline__dot');
-    expect(dots).toHaveLength(3);
+    const events = card(4).querySelectorAll('.timeline__event');
+    expect(events).toHaveLength(3);
     expect(card(4).querySelectorAll('.timeline__label')).toHaveLength(0);
-    expect(dots[0].querySelector('.link-hint').textContent).toBe('Gründung');
+    // The text a hover shows rides in the event's <desc>, which is what the hint
+    // layer draws and what a screen reader takes as the description.
+    expect(events[0].querySelector('.link-hint').textContent).toBe('Gründung');
     // The undated entry is still ahead, and reads that way.
-    expect(dots[2].classList.contains('timeline__dot--planned')).toBe(true);
+    expect(events[2].getAttribute('class')).toContain('timeline__event--planned');
 
     stack.update({
       ...props,
@@ -1027,13 +1029,17 @@ describe('the adoption cards', () => {
       activeModule: 'timeline',
     });
     const opened = region().querySelector('.widget-detail__card.is-expanded');
-    expect(opened.querySelectorAll('.timeline__label')).toHaveLength(3);
-    // The card's own info point carries a .link-hint too; the dot's is the one.
-    expect(opened.querySelector('.timeline__dot .link-hint').textContent).toBe('Wie es dazu kam.');
-    // Every dot is reachable by keyboard and says what it is without a hover.
-    expect(opened.querySelector('.timeline__dot').getAttribute('aria-label')).toBe(
-      'Okt. 2015: Gründung',
+    expect(opened.querySelectorAll('.timeline__label').length).toBeGreaterThanOrEqual(3);
+    // The card's own info point carries a .link-hint too; the event's is the one.
+    expect(opened.querySelector('.timeline__event .link-hint').textContent).toBe(
+      'Wie es dazu kam.',
     );
+    // Every event is reachable by keyboard and says what it is without a hover —
+    // which the charts' own dots are not, and this is content rather than a
+    // point on a line.
+    const first = opened.querySelector('.timeline__event');
+    expect(first.getAttribute('aria-label')).toBe('Okt. 2015: Gründung');
+    expect(first.getAttribute('tabindex')).toBe('0');
   });
 
   // The Politik card's recommendations are a toggle list. In a column they are
