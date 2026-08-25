@@ -50,7 +50,6 @@ const props = {
   impactModules: [],
   problemFitModules: [],
   adoptionModules: [],
-  problemFit: null,
   comingSoon: false,
   activeModule: null,
   onSelectCriterion: () => {},
@@ -216,6 +215,29 @@ describe('filling the modules', () => {
     undoGeometry = null;
   });
 
+  // The SDGs card, as selectors.js#problemFitModules hands it down: a lead, two
+  // targets, and an ⓘ on each of them that the L1 preview has to leave behind.
+  const problemFitCards = [
+    {
+      key: 'sdgs',
+      kind: 'targets',
+      labelKey: 'problemFit.card.sdgs',
+      leadKey: 'problemFit.koeln.sdgsLead',
+      targets: [
+        {
+          code: '11.2',
+          textKey: 'problemFit.koeln.target.11.2',
+          infoKey: 'problemFit.targetDefinition.11.2',
+        },
+        {
+          code: '11.6',
+          textKey: 'problemFit.koeln.target.11.6',
+          infoKey: 'problemFit.targetDefinition.11.6',
+        },
+      ],
+    },
+  ];
+
   const source = { url: 'https://example.org/a', label: 'A', accessed: '2026-08-23' };
   const noteSource = { url: 'https://example.org/b', label: 'B', accessed: '2026-08-23' };
   const filled = [
@@ -296,6 +318,23 @@ describe('filling the modules', () => {
     expect(widget.querySelector('.module__note')).toBeNull();
     expect(widget.querySelector('.module__sources')).toBeNull();
     expect(widget.querySelector('.module__info')).toBeNull();
+    expect(widget.querySelector('.module__expand')).toBeNull();
+  });
+
+  // All three widgets stand on one of their own cards now, so the correspondence
+  // is the thing to hold: what you click at L1 is what opens at L2, not a
+  // summary of it. Problem Fit's is the SDGs card — its lead and its two boxes.
+  it('stands the problem fit widget on the card it opens into', () => {
+    stack.update({ ...props, problemFitModules: problemFitCards });
+    const widget = container.querySelector('.widget--problemFit');
+    expect(widget.querySelectorAll('.module__target-item')).toHaveLength(2);
+    expect(widget.querySelector('.module__lead')).not.toBeNull();
+    expect(widget.textContent).toContain('SDG 11.2');
+    // Everything that belongs to the card and not to the widget standing on it —
+    // the info points included, because the widget is one control and a button
+    // inside it is a tab stop before it.
+    expect(widget.querySelector('.module__info')).toBeNull();
+    expect(widget.querySelector('.module__sources')).toBeNull();
     expect(widget.querySelector('.module__expand')).toBeNull();
   });
 

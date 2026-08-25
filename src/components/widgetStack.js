@@ -17,7 +17,7 @@
 // why the movement is measured rather than declared.
 //
 // render(container, { project, activeCriterion, activeModule, metrics,
-// impactModules, problemFitModules, adoptionModules, problemFit, comingSoon,
+// impactModules, problemFitModules, adoptionModules, comingSoon,
 // onSelectCriterion, onSelectModule }) and the component never reads the store —
 // data comes down, the clicked widget goes up via
 // onSelectCriterion('problemFit'|'impact'|'adoption') and the clicked module via
@@ -28,12 +28,13 @@
 // *which* figure a city shows — it renders what it is handed, and an empty shell
 // for null, so no fabricated number can appear for anything unsourced
 // (Neutrality/Honesty — see docs/DESIGN_RATIONALE.md).
-// Problem Fit carries its own content per city (selectors.js#problemFitForCity):
-// the SDG 11 targets at L1, and at L2 the same narrative one block per module
-// (selectors.js#problemFitModules). Impact's L2 modules are the city's sourced
-// data topics (selectors.js#impactModules) — Cologne fills all six, Paris the
-// three it has rows for, Lisbon and Helsinki none. Adoption's are what another
-// city needs in order to run the project itself (selectors.js#adoptionModules).
+// Each criterion's L2 cards come down as their own list, and each L1 widget is
+// drawn from one of them (PREVIEW_CARD) rather than from anything of its own.
+// Problem Fit's are the project summary, its SDG 11 targets and its two plans
+// (selectors.js#problemFitModules); Impact's are the city's sourced data topics
+// (selectors.js#impactModules) — Cologne fills all six, Paris the three it has
+// rows for, Lisbon and Helsinki none; Adoption's are what another city needs in
+// order to run the project itself (selectors.js#adoptionModules).
 //
 // Neither Problem Fit nor Adoption has a headline *figure*, so at L1 both list
 // what their L2 holds instead of showing a bar: for Problem Fit the SDG targets
@@ -61,7 +62,7 @@ const STACK_MARGIN = 16;
 // (see restackRightColumn).
 const STACK_STEP = 140;
 const STACK_GAP = 16;
-const WIDGET_WIDTH = '320px';
+const WIDGET_WIDTH = '380px';
 // Problem Fit carries the SDG explanations as prose, so rather than a fixed width
 // it sizes to its content (fit-content) clamped between a min and max: a short
 // entry hugs its text, a long one caps at the max and wraps taller. The value
@@ -69,7 +70,7 @@ const WIDGET_WIDTH = '320px';
 const PROBLEM_FIT_WIDTH = 'fit-content';
 const PROBLEM_FIT_MIN_WIDTH = '260px';
 const PROBLEM_FIT_MAX_WIDTH = '380px';
-const WIDGET_PADDING = '16px 18px';
+const WIDGET_PADDING = '18px 20px';
 // At L2 the widgets left standing on the map's side are context, not content:
 // already inert and dimmed, they also step down in size so the modules have the
 // attention. Scaled rather than re-sized, so the whole card shrinks together
@@ -167,12 +168,7 @@ export function render(container, props) {
       applyWidget(
         widget,
         layout[widget.kind],
-        widgetContent(
-          widget.kind,
-          next.metrics[widget.kind],
-          next.problemFit ?? null,
-          modulesFor(widget.kind, next),
-        ),
+        widgetContent(widget.kind, next.metrics[widget.kind], modulesFor(widget.kind, next)),
       );
       widget.node.tabIndex = inert ? -1 : 0;
       widget.node.style.pointerEvents = inert ? 'none' : 'auto';
@@ -668,6 +664,13 @@ const MODULE_COLUMNS = [3, 2, 1];
  * two columns leave room for the cards to be wider, which the charts want. */
 const CRITERION_COLUMNS = { impact: [3, 3], adoption: [2, 2], problemFit: [2, 2] };
 
+// Which of a criterion's cards its L1 widget is drawn from. The card has to be
+// one that carries its own content at that size: Impact's cycle network is a
+// figure with its legend, Adoption's cost is the sum and what it bought, Problem
+// Fit's SDGs is the two targets. A criterion whose card is missing for this city
+// falls back to the figure or the empty shell below.
+const PREVIEW_CARD = { impact: 'cycleNetwork', adoption: 'cost', problemFit: 'sdgs' };
+
 // How many of a criterion's cards stand below the columns rather than inside
 // one, spanning the whole arrangement. Adoption's timeline is the only one so
 // far: a timeline runs along its long axis, so the widest place in the
@@ -793,24 +796,6 @@ function moduleRect(module) {
   };
 }
 
-/** Problem Fit's L1 body: each SDG 11 target the project addresses, with a
- * one-line explanation of how. The explanations live in i18n keyed by slug and
- * target code (`problemFit.<slug>.target.<code>`); this only lays them out. */
-function problemFitTargetsHtml({ slug, targets }) {
-  const items = targets
-    .map((code) => {
-      const heading = t('problemFit.targetHeading').replace('{code}', code);
-      const text = t(`problemFit.${slug}.target.${code}`);
-      return `
-        <li class="widget__problem-fit-target">
-          <span class="widget__problem-fit-code">${heading}</span>
-          <span class="widget__problem-fit-text">${text}</span>
-        </li>`;
-    })
-    .join('');
-  return `<ul class="widget__problem-fit-targets">${items}</ul>`;
-}
-
 function applyWidget(widget, layout, contentHtml) {
   Object.assign(widget.node.style, {
     top: layout.top,
@@ -847,42 +832,20 @@ function widgetHeader(label, chip) {
  * resolve via `impact.<key>`) and is null when the widget's own title says it;
  * `unit` is null for a bare count. `modules` is this widget's own L2 payload,
  * which is what Adoption lists in place of a figure. */
-function widgetContent(criterion, metric, problemFit, modules) {
+function widgetContent(criterion, metric, modules) {
   const label = t(`criteria.${criterion}`);
-  // Problem Fit headlines with the SDG 11 targets it addresses, each with a
-  // one-line explanation of how — not a figure, so it renders text where the
-  // other widgets show a bar.
-  if (criterion === 'problemFit' && problemFit) {
-    return widgetHeader(label, null) + problemFitTargetsHtml(problemFit);
-  }
-  // Adoption stands on its cost card, the way Impact stands on its cycle network
-  // one: the sum, what it bought and the year, without the itemised lines or the
-  // disclaimer that belong to the reading below. It used to list the names of
-  // the cards it opened into, which said what was in there without showing any
-  // of it.
-  if (criterion === 'adoption') {
-    const preview = modules.find((module) => module?.key === 'cost' && module.kind);
-    if (preview) {
-      return (
-        widgetHeader(label, null) +
-        `<span class="widget__submetric">${t(preview.labelKey)}</span>` +
-        modulePreviewHtml(preview)
-      );
-    }
-  }
-  // Impact stands on the card it opens into: the cycle-network module, drawn
-  // exactly as it is at L2 apart from the sentence and the chips underneath it.
-  // The widget used to show a bare figure, which read as a separate thing from
-  // the card it turned into — this is one card at two sizes.
-  if (criterion === 'impact') {
-    const preview = modules.find((module) => module?.key === 'cycleNetwork' && module.kind);
-    if (preview) {
-      return (
-        widgetHeader(label, null) +
-        `<span class="widget__submetric">${t(preview.labelKey)}</span>` +
-        modulePreviewHtml(preview)
-      );
-    }
+  // Every widget stands on one of the cards it opens into, drawn exactly as it
+  // is at L2 apart from the sentence and the chips under it. Each of the three
+  // used to be its own thing — a bare figure, a list of the card names, a list
+  // of the SDG targets — and each read as a separate object from the card it
+  // turned into. This is one card at two sizes.
+  const preview = modules.find((module) => module?.key === PREVIEW_CARD[criterion] && module.kind);
+  if (preview) {
+    return (
+      widgetHeader(label, null) +
+      `<span class="widget__submetric">${t(preview.labelKey)}</span>` +
+      modulePreviewHtml(preview)
+    );
   }
   if (!metric) {
     return widgetHeader(label, null) + `<div class="widget__bar widget__bar--empty"></div>`;

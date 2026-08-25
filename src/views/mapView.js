@@ -171,7 +171,6 @@ export function render(container, props) {
       metrics: widgetMetricsForProject(focusedProject, subMetrics),
       // Problem Fit's SDG targets (L1) + the slug keying its prose; null for
       // every city without researched content, so the widget stays empty there.
-      problemFit,
       // What each criterion's L2 unpacks into — the city's six data topics for
       // Impact, the same Problem Fit narrative one block per card, and what it
       // takes to adopt the project for the third. A city without rows for a

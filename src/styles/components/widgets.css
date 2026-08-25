@@ -145,36 +145,6 @@
   );
 }
 
-/* Problem Fit's L1 body: the SDG 11 targets it addresses, each with a one-line
-   explanation, in place of the bar the other unsourced widgets show (see
-   widgetStack.js#widgetContent). */
-.widget__problem-fit-targets {
-  margin: var(--space-2) 0 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.widget__problem-fit-target {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.widget__problem-fit-code {
-  font-size: var(--font-size-base);
-  font-weight: 700;
-  color: var(--color-accent);
-}
-
-.widget__problem-fit-text {
-  font-size: var(--font-size-base);
-  line-height: 1.45;
-  color: var(--color-text-muted);
-}
-
 /* Adoption's L1 body: the cards its L2 opens into, named — the same
    figure-less treatment Problem Fit gets above, for the same reason (see
    widgetStack.js#adoptionTopicsHtml). Bulleted, because unlike Problem Fit's
@@ -910,6 +880,15 @@
   overflow: hidden;
 }
 
+/* An L1 widget stands on one of its cards' bodies (widgetStack.js#PREVIEW_CARD),
+   and that body was written for a card with room around it. In a widget the
+   figure, the bar and the legend land straight on top of one another, which
+   reads as one dense block rather than a number, its breakdown and its key.
+   Only the widget is loosened; the card at L2 already has its spacing. */
+.widget .module__bar {
+  margin-top: var(--space-3);
+}
+
 .module__bar-part {
   min-width: 2px;
 }
@@ -1118,6 +1097,12 @@
   font-size: var(--font-size-xs);
   line-height: var(--line-tight);
   color: var(--color-text-muted);
+}
+
+/* The other half of the widget's breathing room — see .widget .module__bar. */
+.widget .module__legend {
+  margin-top: var(--space-3);
+  gap: var(--space-2);
 }
 
 .module__legend-item {

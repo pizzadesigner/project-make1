@@ -75,7 +75,25 @@ const PREVIEWS = {
 export function modulePreviewHtml(module, index = -1) {
   if (!module?.kind) return '';
   const body = PREVIEWS[module.kind] ?? BODIES[module.kind];
-  return body ? body(module, index, false) : '';
+  return body ? body(withoutInfoPoints(module), index, false) : '';
+}
+
+/** The same module with nothing in it that is itself a control. An L1 widget is
+ * one thing you click, and the ⓘ on each of the SDGs card's boxes are real
+ * buttons — inside the widget they would be two more tab stops before you reach
+ * the widget itself, and a hover competing with the click that opens the card.
+ * The card's own ⓘ never reaches a preview: it belongs to the label, and a
+ * preview is the body alone. */
+function withoutInfoPoints(module) {
+  if (!module.targets) return module;
+  return {
+    ...module,
+    targets: module.targets.map((target) => {
+      const withoutInfo = { ...target };
+      delete withoutInfo.infoKey;
+      return withoutInfo;
+    }),
+  };
 }
 
 /** One module's card. `index` names its slots (`data-chart="3"`), so the
