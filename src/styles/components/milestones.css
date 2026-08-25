@@ -1,0 +1,99 @@
+/* The milestone line (milestoneChart.js): one vertical line down the card with a
+ * mark per year, in the same language as the serpentine timeline beside it —
+ * accent marks ringed in the canvas colour, the grid's weights, muted 12-unit
+ * labels.
+ *
+ * One colour throughout rather than the timeline's three: that card's rows carry
+ * a phase and these do not, and colouring them would be inventing a grouping the
+ * data does not have. Overflow is visible because a mark grows on hover. */
+.milestones {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+/* A year nothing happened in. Drawn under the line, so only the ends of each
+   stroke show and the line stays unbroken.
+
+   The muted text colour rather than the border colour these would otherwise
+   take: a tick here is not decoration, it is the unit the line is measured in —
+   count four of them and you have read the four years the project stalled. That
+   makes it a graphical object carrying information, which owes 3:1 (CLAUDE.md).
+   --color-border is #33405c on a #161d2b card, about 1.8:1, and in practice the
+   ticks could not be counted at all. */
+.milestones__tick {
+  stroke: var(--color-text-muted);
+  stroke-width: 1;
+}
+
+.milestones__line {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.milestones__mark {
+  fill: var(--color-accent);
+  stroke: var(--color-canvas);
+  stroke-width: 2;
+  transition: r var(--motion-fast) var(--ease-standard);
+}
+
+/* Size is set on the <svg> by milestoneChart.js and inherited from there, not
+   declared here: the line breaking is computed against it, so a size this
+   stylesheet chose on its own would be a wrap computed for the wrong column. */
+.milestones__when,
+.milestones__label {
+  font-family: var(--font-sans);
+}
+
+/* The year sits against the line, reading toward it. `central` rather than a
+   nudged baseline: the label has to sit on the mark's centre, and one figure
+   that is right by eye at one size is wrong at the other. */
+.milestones__when {
+  fill: var(--color-text-muted);
+  text-anchor: end;
+  dominant-baseline: central;
+}
+
+.milestones__label {
+  fill: var(--color-text);
+  dominant-baseline: central;
+}
+
+/* Closed, the year is the control that opens what happened in it. Opened, the
+   events are written out and the group is not focusable at all — so this only
+   ever applies where there is something to point at. */
+.milestones__year[role='button'] {
+  cursor: help;
+}
+
+.milestones__hit {
+  fill: transparent;
+}
+
+/* The ring goes on the mark, which is the thing being pointed at — the group's
+   own box is the whole row and would draw a rectangle around the year too. */
+.milestones__year:focus {
+  outline: none;
+}
+
+.milestones__year:focus-visible .milestones__mark {
+  r: 8;
+  stroke: var(--color-text);
+}
+
+/* Under the pointer, only where the mark is a control. Opened, the events are
+   written beside it and there is nothing to point at, so growing would promise
+   something to open. */
+.milestones__year[role='button']:hover .milestones__mark {
+  r: 8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .milestones__mark {
+    transition: none;
+  }
+}

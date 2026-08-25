@@ -690,12 +690,17 @@ describe('problemFitModules', () => {
     ]);
   });
 
-  // The card's two boxes each carry their own ⓘ naming the target, so a third
-  // on the card title would have nothing left to explain.
-  it('gives the SDGs card no info point of its own', () => {
+  // Two of the four carry no ⓘ, for the same reason in two shapes: the SDGs
+  // card's two boxes each carry their own, and the summary card is already the
+  // explanation an ⓘ would give. The two placeholders keep theirs.
+  it('leaves the summary and SDGs cards without an info point', () => {
     const modules = problemFitModules(problemFitForCity('koeln'));
-    expect(modules[1].infoKey).toBeUndefined();
-    expect(modules[0].infoKey).toBe('problemFit.info.problemFit');
+    expect(modules.map((module) => module.infoKey)).toEqual([
+      undefined,
+      undefined,
+      'problemFit.info.plan',
+      'problemFit.info.milestones',
+    ]);
   });
 
   // The target wording is quoted, so it carries the document it is quoted from
@@ -734,7 +739,6 @@ describe('problemFitModules', () => {
   // opts out of one rather than opening a "More detail" heading over nothing.
   it('gives the summary card no closing block', () => {
     const [summary] = problemFitModules(problemFitForCity('koeln'));
-    expect(summary.infoKey).toBe('problemFit.info.problemFit');
     expect(summary.detailKey).toBeUndefined();
     expect(summary.detailTitleKey).toBeUndefined();
   });
@@ -782,6 +786,31 @@ describe('problemFitModules', () => {
     const plan = problemFitModules(problemFitForCity('paris-marne-la-vallee'))[2];
     expect(plan.kind).toBe('placeholder');
     expect(plan.points).toBeUndefined();
+  });
+
+  // Two things happened in 2019, and a line drawn to scale has one place to put
+  // them both — so the grouping is the selector's answer, not the chart's.
+  it('groups the milestones into the years they fall in', () => {
+    const milestones = [
+      { citySlug: 'koeln', year: 2019, event: 'Deutscher Fahrradpreis' },
+      { citySlug: 'koeln', year: 2015, event: 'Gründung von #RingFrei' },
+      { citySlug: 'koeln', year: 2019, event: 'Tempo 30 auf den Ringen' },
+      { citySlug: 'paris-marne-la-vallee', year: 2020, event: 'Coronapistes' },
+    ];
+    const card = problemFitModules(problemFitForCity('koeln'), milestones)[3];
+    expect(card.kind).toBe('milestones');
+    expect(card.detailKey).toBeUndefined();
+    expect(card.years).toEqual([
+      { year: 2015, events: ['Gründung von #RingFrei'] },
+      { year: 2019, events: ['Deutscher Fahrradpreis', 'Tempo 30 auf den Ringen'] },
+    ]);
+  });
+
+  // No rows for this city is a card nobody has written, not an empty chart.
+  it('falls back to the placeholder for a city with no milestones', () => {
+    const card = problemFitModules(problemFitForCity('koeln'), [])[3];
+    expect(card.kind).toBe('placeholder');
+    expect(card.years).toBeUndefined();
   });
 
   // A city with no targets researched gets an empty shell there, not a

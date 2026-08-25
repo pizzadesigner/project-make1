@@ -178,7 +178,7 @@ export function render(container, props) {
       // topic gets an empty card there, never a filled-in one (see
       // selectors.js#impactModules).
       impactModules: impactModules(next.cityIndicators, focusedProject?.citySlug ?? null),
-      problemFitModules: problemFitModules(problemFit),
+      problemFitModules: problemFitModules(problemFit, next.milestones),
       adoptionModules: adoptionModules(
         next.cityIndicators,
         focusedProject?.citySlug ?? null,

@@ -71,6 +71,16 @@ export {};
 /**
  * One event on a project's timeline (`data/timeline.csv`). Narrative rather than
  * measurement, so it carries no figure and no source of its own.
+ * A dated step in the project's public story, for the Problem Fit card's
+ * milestone line. Narrative like TimelineEvent, but a point in time rather than
+ * a stretch of one: the year is a number because the line is drawn to scale.
+ * @typedef {Object} Milestone
+ * @property {string} citySlug
+ * @property {number} year
+ * @property {string} event
+ */
+
+/**
  * @typedef {Object} TimelineEvent
  * @property {string} citySlug
  * @property {string} phase        Which stretch of the story it belongs to.

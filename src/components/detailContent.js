@@ -33,6 +33,7 @@ import {
 } from '../lib/format.js';
 import * as lineChart from './lineChart.js';
 import * as timelineChart from './timelineChart.js';
+import * as milestoneChart from './milestoneChart.js';
 import * as modalSplitChart from './modalSplitChart.js';
 import * as sourceChip from './sourceChip.js';
 
@@ -50,6 +51,7 @@ const BODIES = {
   linkGroups: linkGroupsBody,
   policy: policyBody,
   timeline: timelineBody,
+  milestones: milestonesBody,
   targets: targetsBody,
   points: pointsBody,
   placeholder: placeholderBody,
@@ -271,6 +273,16 @@ function mountChart(root, module, index, children, expanded) {
     }
     return;
   }
+  if (module.kind === 'milestones') {
+    const slot = root.querySelector(`[data-milestones="${index}"]`);
+    if (slot) {
+      children.push({
+        index,
+        handle: milestoneChart.render(slot, { years: module.years, expanded }),
+      });
+    }
+    return;
+  }
   const slot = root.querySelector(`[data-chart="${index}"]`);
   if (!slot) return;
   const compact = !expanded;
@@ -461,6 +473,11 @@ function pointsBody(module, index, expanded) {
     )
     .join('');
   return `<ol class="module__points">${items}</ol>`;
+}
+
+/** The milestone card: the line, and nothing around it. */
+function milestonesBody(module, index) {
+  return `<div class="module__milestones" data-milestones="${index}"></div>`;
 }
 
 /** A card that is named but not yet researched — Politik, Timeline. It says so

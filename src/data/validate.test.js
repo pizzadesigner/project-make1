@@ -167,3 +167,44 @@ describe('validateDataset — city indicators', () => {
     ).toThrow(/unknown city_slug/);
   });
 });
+
+// The milestone line is drawn to scale, which puts more weight on the year than
+// a narrative row usually carries: a row whose year cannot be read has no place
+// on the line at all, so it is an issue rather than a mark at zero.
+describe('validateDataset — milestones', () => {
+  // A city is known by having a project, not by appearing in cities.csv.
+  const koeln = projectRow({ id: 'koeln-ringe', city: 'koeln', city_display: 'Köln' });
+  const milestone = (overrides = {}) => ({
+    city_slug: 'koeln',
+    year: '2019',
+    event: 'Einführung von Tempo 30 auf den gesamten Ringen',
+    ...overrides,
+  });
+
+  it('reads a milestone row and sorts the line by year', () => {
+    const { milestones } = validateDataset({
+      projectRows: [koeln],
+      milestoneRows: [milestone({ year: '2024', event: 'Barbarossaplatz' }), milestone()],
+    });
+    expect(milestones.map((row) => row.year)).toEqual([2019, 2024]);
+    expect(milestones[0].event).toBe('Einführung von Tempo 30 auf den gesamten Ringen');
+  });
+
+  it('rejects a milestone for a city nobody has heard of', () => {
+    expect(() =>
+      validateDataset({
+        projectRows: [koeln],
+        milestoneRows: [milestone({ city_slug: 'atlantis' })],
+      }),
+    ).toThrow(DataError);
+  });
+
+  it('rejects a milestone with no usable year rather than placing it at zero', () => {
+    expect(() =>
+      validateDataset({ projectRows: [koeln], milestoneRows: [milestone({ year: '' })] }),
+    ).toThrow(DataError);
+    expect(() =>
+      validateDataset({ projectRows: [koeln], milestoneRows: [milestone({ year: 'bald' })] }),
+    ).toThrow(DataError);
+  });
+});

@@ -78,8 +78,8 @@ function hasValidCoords(project) {
 }
 
 /**
- * @param {{ projectRows?: object[], metricRows?: object[], peerRows?: object[], cityRows?: object[], timelineRows?: object[] }} raw
- * @returns {{ projects: import('./types.js').Project[], metrics: import('./types.js').Metric[], peers: import('./types.js').PeerCity[], cityIndicators: import('./types.js').CityIndicator[], timeline: import('./types.js').TimelineEvent[] }}
+ * @param {{ projectRows?: object[], metricRows?: object[], peerRows?: object[], cityRows?: object[], timelineRows?: object[], milestoneRows?: object[] }} raw
+ * @returns {{ projects: import('./types.js').Project[], metrics: import('./types.js').Metric[], peers: import('./types.js').PeerCity[], cityIndicators: import('./types.js').CityIndicator[], timeline: import('./types.js').TimelineEvent[], milestones: import('./types.js').Milestone[] }}
  */
 export function validateDataset({
   projectRows = [],
@@ -87,6 +87,7 @@ export function validateDataset({
   peerRows = [],
   cityRows = [],
   timelineRows = [],
+  milestoneRows = [],
 }) {
   const issues = [];
   const projects = projectRows.map(coerceProject);
@@ -194,6 +195,27 @@ export function validateDataset({
   }
   timeline.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
+  // The milestone line, one row per event. Narrative like the timeline above and
+  // unsourced for the same reason — but the year is a figure the chart is drawn
+  // to, so a row without a usable one is dropped rather than placed at zero,
+  // where it would put a mark on the line in a year nothing happened.
+  const milestones = [];
+  for (const row of milestoneRows) {
+    const citySlug = toText(row.city_slug);
+    if (!citySlug) continue;
+    if (!citySlugs.has(citySlug)) {
+      issues.push(`Milestone row references unknown city_slug: "${citySlug}"`);
+      continue;
+    }
+    const year = toNumberOrNull(row.year);
+    if (year == null || !Number.isInteger(year)) {
+      issues.push(`Milestone row for "${citySlug}" has no usable year: "${row.year}"`);
+      continue;
+    }
+    milestones.push({ citySlug, year, event: toText(row.event) });
+  }
+  milestones.sort((a, b) => a.year - b.year);
+
   if (issues.length > 0) {
     throw new DataError(
       `Dataset failed validation (${issues.length} issue(s)):\n- ${issues.join('\n- ')}`,
@@ -201,5 +223,5 @@ export function validateDataset({
     );
   }
 
-  return { projects, metrics, peers, cityIndicators, timeline };
+  return { projects, metrics, peers, cityIndicators, timeline, milestones };
 }

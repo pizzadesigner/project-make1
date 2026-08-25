@@ -849,7 +849,37 @@ function roadSafetyModule(cityIndicators, citySlug) {
  * @param {{ slug: string, targets: string[], body: { term?: string, text: string }[] } | null} problemFit
  * @returns {{ key: string, kind: string|null }[]}
  */
-export function problemFitModules(problemFit) {
+/** The milestone card: the city's dated steps, grouped into the years they fall
+ * in. Grouped here rather than in the chart because which events share a mark is
+ * a question about the data — two things happened in 2019, and a line drawn to
+ * scale has one place to put them both. The chart is handed the answer.
+ * @param {import('./types.js').Milestone[]} milestones
+ * @param {string|null} citySlug
+ */
+function milestonesModule(milestones, citySlug) {
+  const rows = milestones.filter((milestone) => milestone.citySlug === citySlug);
+  if (rows.length === 0) {
+    return { key: 'milestones', kind: 'placeholder', labelKey: 'problemFit.card.milestones' };
+  }
+  const byYear = new Map();
+  for (const row of rows) {
+    if (!byYear.has(row.year)) byYear.set(row.year, []);
+    byYear.get(row.year).push(row.event);
+  }
+  return {
+    key: 'milestones',
+    kind: 'milestones',
+    labelKey: 'problemFit.card.milestones',
+    // The line is the whole card, and the rows carry no document of their own —
+    // so there is nothing a closing block would hold. See docs/DATA_TODO.md.
+    detail: false,
+    years: [...byYear.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([year, events]) => ({ year, events })),
+  };
+}
+
+export function problemFitModules(problemFit, milestones = []) {
   const named = (key, kind, extra = {}) => ({
     key,
     kind,
@@ -879,11 +909,13 @@ export function problemFitModules(problemFit) {
   );
   return withCardCopy(
     [
-      // The card is the project in four paragraphs and closes there: it is
-      // already the overview a closing block would summarise, so `detail: false`
-      // spares it a "More detail" heading with nothing left to put under it.
+      // The card is the project in four paragraphs and is nothing but them: it is
+      // already the overview a closing block would summarise (`detail: false`)
+      // and already the explanation an ⓘ would give (`info: false`), so it
+      // carries neither rather than a heading and a hint with nothing left to
+      // say under them.
       summary.length > 0
-        ? named('problemFit', 'prose', { paragraphs: summary, detail: false })
+        ? named('problemFit', 'prose', { paragraphs: summary, info: false, detail: false })
         : named('problemFit', 'placeholder'),
       targets.length > 0
         ? named('sdgs', 'targets', {
@@ -897,7 +929,7 @@ export function problemFitModules(problemFit) {
       points.length > 0
         ? named('plan', 'points', { points, detail: false, sources: [PLAN_SOURCE] })
         : named('plan', 'placeholder'),
-      named('milestones', 'placeholder'),
+      milestonesModule(milestones, problemFit?.slug ?? null),
     ],
     'problemFit',
   );

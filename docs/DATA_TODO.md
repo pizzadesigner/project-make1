@@ -528,8 +528,28 @@ The keys that want copy, one per card that has content today:
   **Three things to check there:** the German wording is the official Agenda 2030 translation of targets
   11.2 and 11.6 and should be read against the published German text, and
   `source_accessed` is 2026-08-25 — the day the link was added to the app, not a
-  verified retrieval. `problemFit.info.problemFit` and `.milestones` are still
-  unwritten.
+  verified retrieval.
+
+  The summary card carries **neither an ⓘ nor a closing block** (`info: false`,
+  `detail: false`): four paragraphs that are already the overview either one
+  would have held. `problemFit.info.milestones` is the only info key on this
+  criterion still unwritten.
+
+  The `milestones` card is the milestone line (`milestoneChart.js`) over
+  `data/milestones.csv` — `city_slug,year,event`, seven Cologne rows for
+  2015–2024. **The line is drawn to scale**: a mark's distance down it is its
+  distance in years, which is why `validate.js` drops a row whose year cannot be
+  read rather than placing it at zero. Two events fall in 2019 and share one
+  mark; that grouping is `selectors.js#milestonesModule`, not the chart's.
+
+  Same two gaps the adoption timeline has, for the same reason: **the rows carry
+  no source** — narrative rather than measurement, so the no-source-no-render
+  rule that guards a figure does not drop them, and where the account came from
+  is still open — and **the events are German only**, living in the CSV rather
+  than in the bundles. Both cards now want the same decision: a second column per
+  language, or moving the copy into `strings.{en,de}.json`. The card carries no
+  closing block (`detail: false`) — the line is the whole card, and there is no
+  document behind it to name.
 
   The `plan` card is the #RingFrei ten-point plan, keyed
   `problemFit.koeln.plan.<1-10>.{short,text}` — the short line the card shows in

@@ -9,6 +9,7 @@ import metricsUrl from '../../data/metrics.csv?url';
 import peersUrl from '../../data/peer_cities.csv?url';
 import cityIndicatorsUrl from '../../data/cities.csv?url';
 import timelineUrl from '../../data/timeline.csv?url';
+import milestonesUrl from '../../data/milestones.csv?url';
 import { validateDataset } from './validate.js';
 import { CITY_GEO } from './cityGeo.js';
 
@@ -26,16 +27,25 @@ const geoUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
  * @returns {Promise<{ projects: import('./types.js').Project[], metrics: import('./types.js').Metric[], peers: import('./types.js').PeerCity[], cityIndicators: import('./types.js').CityIndicator[], geo: object }>}
  */
 export async function loadDataset() {
-  const [projectRows, metricRows, peerRows, cityRows, timelineRows, geo] = await Promise.all([
-    csv(projectsUrl),
-    csv(metricsUrl),
-    csv(peersUrl),
-    csv(cityIndicatorsUrl),
-    csv(timelineUrl),
-    json(GEO_URL),
-  ]);
+  const [projectRows, metricRows, peerRows, cityRows, timelineRows, milestoneRows, geo] =
+    await Promise.all([
+      csv(projectsUrl),
+      csv(metricsUrl),
+      csv(peersUrl),
+      csv(cityIndicatorsUrl),
+      csv(timelineUrl),
+      csv(milestonesUrl),
+      json(GEO_URL),
+    ]);
   return {
-    ...validateDataset({ projectRows, metricRows, peerRows, cityRows, timelineRows }),
+    ...validateDataset({
+      projectRows,
+      metricRows,
+      peerRows,
+      cityRows,
+      timelineRows,
+      milestoneRows,
+    }),
     geo,
   };
 }
