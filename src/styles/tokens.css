@@ -169,12 +169,16 @@
    * share a row band and still each be their own height.
    *
    * --module-column-offset is what the row bands used to do for free. The
-   * middle column sits half a step below the outer ones so its cards read as
-   * between the others rather than beside them; that half step used to emerge
-   * from every module being the same height and spanning two rows of six. With
-   * heights no longer uniform there is nothing for it to emerge from, so it is
-   * stated. Not called "stagger": --module-stagger is already the delay between
-   * two modules setting off, and this is a distance, not a clock.
+   * second column sits below the first so its cards read as between the others
+   * rather than beside them; that step used to emerge from every module being
+   * the same height and spanning two rows of six. With heights no longer uniform
+   * there is nothing for it to emerge from, so it is stated. Not called
+   * "stagger": --module-stagger is already the delay between two modules setting
+   * off, and this is a distance, not a clock.
+   *
+   * It was 112px, which is most of a card: enough that the second column read as
+   * starting a long way down rather than as offset from the first. Half that is
+   * still clearly a step and no longer a gap.
    *
    * --module-fly is how much of that flight a module actually travels: the
    * distance itself is measured at the click (widgetStack.js#setFlightOrigin —
@@ -184,7 +188,7 @@
    *
    * --module-leave-duration is also read in JS (widgetStack.js#leave) to know
    * how long to hold the region on the way out. */
-  --module-column-offset: 112px;
+  --module-column-offset: 56px;
   --module-fly: 1;
 
   /* How far a module sits off the line the grid put it on, and how far it drifts
@@ -225,6 +229,11 @@
    * step up from the 309px three columns give them and the surplus goes back to
    * the canvas the city is drawn on. */
   --module-column-max: 400px;
+
+  /* How far a card spanning the columns reaches past them, on the side away
+   * from the arrangement's outer edge — into the canvas rather than towards the
+   * screen. Enough to read as deliberate, not enough to look misaligned. */
+  --module-span-overhang: 10px;
   --module-rail-width: 176px;
   --module-rail-gap: 14px;
   --module-focus-gap: 28px;

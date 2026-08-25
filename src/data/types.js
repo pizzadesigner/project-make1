@@ -67,3 +67,18 @@
  */
 
 export {};
+
+/**
+ * One event on a project's timeline (`data/timeline.csv`). Narrative rather than
+ * measurement, so it carries no figure and no source of its own.
+ * @typedef {Object} TimelineEvent
+ * @property {string} citySlug
+ * @property {string} phase        Which stretch of the story it belongs to.
+ * @property {number|null} position  Its place in the order; the track is evenly
+ *   spaced, because "Ab 2018" and "Mai–Aug. 2022" are not points in time.
+ * @property {string|null} dateLabel  As the source writes it, or null for an
+ *   entry that has a status instead.
+ * @property {string|null} status  "In Planung" — set where there is no date.
+ * @property {string} title
+ * @property {string} details
+ */

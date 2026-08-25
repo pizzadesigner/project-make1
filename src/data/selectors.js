@@ -576,16 +576,20 @@ const MODULE_ORDER = ['modalSplit', 'car', 'airQuality', 'cycleNetwork', 'cyclis
  * @param {string} prefix
  */
 function withCardCopy(modules, prefix) {
-  return modules.map((module) =>
-    module.kind
-      ? {
-          ...module,
-          infoKey: `${prefix}.info.${module.key}`,
-          detailKey: `${prefix}.detail.${module.key}`,
-          detailTitleKey: `${prefix}.detailTitle.${module.key}`,
-        }
-      : module,
-  );
+  return modules.map((module) => {
+    if (!module.kind) return module;
+    const withInfo = { ...module, infoKey: `${prefix}.info.${module.key}` };
+    // A card can say it has no closing block to fill (`detail: false`): the
+    // Politik card's recommendations already are what such a block would hold,
+    // and a "Sources" heading under them would promise a document none of it
+    // comes from.
+    if (module.detail === false) return withInfo;
+    return {
+      ...withInfo,
+      detailKey: `${prefix}.detail.${module.key}`,
+      detailTitleKey: `${prefix}.detailTitle.${module.key}`,
+    };
+  });
 }
 
 /** A city's year series for one indicator, inside the display window. */
@@ -871,7 +875,10 @@ export function problemFitModules(problemFit) {
 //   'linkGroups' the same, grouped under headings (the funding levels)
 //   'prose'      one quoted paragraph, with the document it is quoted from
 //   null         not researched for this city — an empty card
-const ADOPTION_ORDER = ['cost', 'context', 'departments', 'partners', 'recommendation', 'funding'];
+// Down the near column first, then the far one, then the card spanning both:
+// what it costs and where the money comes from together, the city it was built
+// in and the politics that built it together, and the timeline under both.
+const ADOPTION_ORDER = ['cost', 'funding', 'context', 'politics', 'timeline'];
 
 // The context card's four figures. The first three are sourced rows in
 // `cities.csv`; density is derived from two of them the way the research source
@@ -901,27 +908,6 @@ const ADOPTION = {
         { key: 'ebertplatz' },
       ],
     },
-    departments: [
-      {
-        key: 'verkehrsmanagement',
-        url: 'https://www.stadt-koeln.de/service/adressen/amt-fuer-verkehrsmanagement',
-      },
-      { key: 'mobilitaet', url: 'https://www.stadt-koeln.de/service/adressen/10704/index.html' },
-    ],
-    partners: [
-      { key: 'ringfrei', url: 'https://nationaler-radverkehrsplan.de/de/praxis/ringfrei' },
-      { key: 'adfc', url: 'https://koeln.adfc.de/artikel/uebersicht-zum-projekt-ringfrei' },
-      { key: 'vcd', url: 'https://nrw.vcd.org/der-vcd-in-nrw/koeln/' },
-      {
-        key: 'dvr',
-        url: 'https://www.dvr.de/pakt-fuer-verkehrssicherheit/projekte/umgestaltung-der-koelner-ringe/',
-      },
-    ],
-    recommendation: {
-      url: 'https://www.dvr.de/pakt-fuer-verkehrssicherheit/projekte/umgestaltung-der-koelner-ringe/',
-      label: 'Deutscher Verkehrssicherheitsrat – Umgestaltung der Kölner Ringe',
-      accessed: '2026-08-23',
-    },
   },
 };
 
@@ -930,6 +916,34 @@ const ADOPTION = {
 // card headed "what you need to adopt this" rather than in `cities.csv`. The
 // last group carries no links because "sponsorship" and "an agreement with the
 // transit authority" are routes, not programmes with a page to open.
+// Who steered the project, and what the people who did it would tell the next
+// city. The names and the recommendations are copy (`adoption.<slug>.politics.*`);
+// what is here is which of them there are, in what order, and which have a page
+// worth opening — three of the seven do, and the rest are named without a link
+// rather than given one that points nowhere in particular.
+const ADOPTION_POLICY = {
+  koeln: {
+    authorities: [
+      { key: 'mobilitaet', url: 'https://www.stadt-koeln.de/service/adressen/10704/index.html' },
+      {
+        key: 'verkehrsmanagement',
+        url: 'https://www.stadt-koeln.de/service/adressen/amt-fuer-verkehrsmanagement',
+      },
+    ],
+    alliance: { key: 'ringfrei', url: 'https://nationaler-radverkehrsplan.de/de/praxis/ringfrei' },
+    members: [
+      { key: 'adfc', url: 'https://koeln.adfc.de/artikel/uebersicht-zum-projekt-ringfrei' },
+      { key: 'agora' },
+      { key: 'einrichtungsmeile' },
+      { key: 'radkomm' },
+      { key: 'vcd', url: 'https://nrw.vcd.org/der-vcd-in-nrw/koeln/' },
+    ],
+    // Each opens into what Cologne did and what another city should take from
+    // it — see policyModule for the four strings a recommendation carries.
+    recommendations: ['movement', 'phased', 'reallocation', 'safety', 'structure'],
+  },
+};
+
 const ADOPTION_FUNDING = [
   {
     key: 'eu',
@@ -985,16 +999,18 @@ const ADOPTION_FUNDING = [
  * @param {string|null} [citySlug]
  * @returns {{ key: string, kind: string|null }[]}
  */
-export function adoptionModules(cityIndicators = [], citySlug = null) {
+export function adoptionModules(cityIndicators = [], citySlug = null, timeline = []) {
   const entry = citySlug ? ADOPTION[citySlug] : null;
   const builders = {
     cost: () => costModule(cityIndicators, citySlug, entry?.cost),
     context: () => contextModule(cityIndicators, citySlug),
-    departments: () => linksModule('departments', citySlug, entry?.departments),
-    partners: () =>
-      linksModule('partners', citySlug, entry?.partners, `adoption.${citySlug}.partnersLead`),
-    recommendation: () => recommendationModule(citySlug, entry?.recommendation),
+    // Named, and empty until researched. A placeholder differs from an empty
+    // shell: a shell is a topic this city has no rows for, and stays blank; this
+    // is a topic nobody has looked into for any city yet, and says so under its
+    // own name so the set of six reads as five deliberate cards.
+    politics: () => policyModule(citySlug),
     funding: () => fundingModule(entry),
+    timeline: () => timelineModule(timeline, citySlug),
   };
   return withCardCopy(
     ADOPTION_ORDER.map((key) => (entry ? builders[key]() : { key, kind: null })),
@@ -1017,22 +1033,19 @@ function costModule(cityIndicators, citySlug, cost) {
   const headline = rowFor(cost.headlineKey);
   if (!headline) return { key: 'cost', kind: null };
   const length = rowFor(cost.lengthKey);
+  // The rows the itemised lines were read from. The card no longer lists them —
+  // what the sum covers is the info point's job now, and what was never
+  // published separately the Quellen block's — but a row that the figure rests
+  // on is still a row the card has to cite.
   const itemRows = cost.items.map((item) => (item.indicatorKey ? rowFor(item.indicatorKey) : null));
-  const items = cost.items.map((item, index) => ({
-    key: item.key,
-    labelKey: `adoption.${citySlug}.cost.${item.key}`,
-    value: itemRows[index]?.value ?? null,
-  }));
   return {
     key: 'cost',
     kind: 'cost',
     labelKey: 'adoption.cost',
     headline: { value: headline.value, year: headline.year },
     scopeKey: `adoption.${citySlug}.costScope`,
-    coversKey: `adoption.${citySlug}.costCovers`,
     length: length ? { value: length.value, unit: length.unit } : null,
     perKm: length ? roundToThousand(headline.value / length.value) : null,
-    items,
     rateKey: `adoption.${citySlug}.costRate`,
     disclaimerKey: `adoption.${citySlug}.costNote`,
     sources: sourcesOfRows([headline, length, ...itemRows]),
@@ -1079,47 +1092,96 @@ function contextModule(cityIndicators, citySlug) {
     key: 'context',
     kind: 'facts',
     labelKey: 'adoption.context',
+    // No closing block: the figures here are four rows and their chips, and a
+    // "Sources" heading under them would name a document where the chips
+    // already name three.
+    detail: false,
     facts,
     sources: sourcesOfRows(read),
-  };
-}
-
-/** A list of outbound links — the departments that own the project, or the
- * organisations that were at the table — with an optional sentence above it.
- * The link text is translated copy keyed by city, the URL is not. */
-function linksModule(key, citySlug, links, leadKey = null) {
-  if (!links || links.length === 0) return { key, kind: null };
-  return {
-    key,
-    kind: 'links',
-    labelKey: `adoption.${key}`,
-    lead: leadKey,
-    links: links.map((link) => ({ ...link, textKey: `adoption.${citySlug}.${key}.${link.key}` })),
-  };
-}
-
-/** What the planners would tell the next city, quoted rather than paraphrased —
- * so it carries the document it is quoted from as its source. */
-function recommendationModule(citySlug, source) {
-  if (!source) return { key: 'recommendation', kind: null };
-  return {
-    key: 'recommendation',
-    kind: 'prose',
-    labelKey: 'adoption.recommendation',
-    text: `adoption.${citySlug}.recommendation`,
-    source,
   };
 }
 
 /** The funding routes, grouped by level of government. The same list for every
  * German city (see ADOPTION_FUNDING), so it is built once and gated only on the
  * city having researched adoption content at all. */
+/** The Politik card: who was responsible, who took part, and what the people
+ * who ran it would tell the next city.
+ *
+ * `detail: false` because this card is the exception that carries no closing
+ * block: what would go in one is already here, as the recommendations, and a
+ * "Sources" heading under them would promise a document none of it comes from.
+ */
+function policyModule(citySlug) {
+  const entry = citySlug ? ADOPTION_POLICY[citySlug] : null;
+  if (!entry) return { key: 'politics', kind: 'placeholder', labelKey: 'adoption.politics' };
+  const named = (item) => ({ ...item, textKey: `adoption.${citySlug}.politics.${item.key}` });
+  return {
+    key: 'politics',
+    kind: 'policy',
+    labelKey: 'adoption.politics',
+    detail: false,
+    authorities: entry.authorities.map(named),
+    alliance: named(entry.alliance),
+    members: entry.members.map(named),
+    recommendations: entry.recommendations.map((key) => ({
+      key,
+      titleKey: `adoption.${citySlug}.politics.rec.${key}.title`,
+      claimKey: `adoption.${citySlug}.politics.rec.${key}.claim`,
+      exampleKey: `adoption.${citySlug}.politics.rec.${key}.example`,
+      lessonKey: `adoption.${citySlug}.politics.rec.${key}.lesson`,
+    })),
+  };
+}
+
+/** The Timeline card: what happened, in order, on one track.
+ *
+ * Evenly spaced rather than laid on a time axis — "Ab 2018" and "Mai–Aug. 2022"
+ * are not points in time, and three events in late 2015 would sit on top of one
+ * another. The date is the label; the order is the placement.
+ *
+ * `detail: false` like the other two written Adoption cards: every event already
+ * opens into its own account, and one "Sources" heading under thirteen of them
+ * would promise a single document behind all of them.
+ */
+function timelineModule(timeline, citySlug) {
+  const events = timeline.filter((event) => event.citySlug === citySlug);
+  if (events.length === 0) {
+    return { key: 'timeline', kind: 'placeholder', labelKey: 'adoption.timeline' };
+  }
+  return {
+    key: 'timeline',
+    kind: 'timeline',
+    labelKey: 'adoption.timeline',
+    detail: false,
+    events: events.map((event) => ({
+      key: `${event.phase}-${event.position}`,
+      phase: event.phase,
+      // A dated event and one that is still ahead read the same way here: what
+      // the source put in its first column, whichever column that was.
+      when: event.dateLabel ?? event.status ?? '',
+      planned: !event.dateLabel,
+      title: event.title,
+      details: event.details,
+    })),
+    // Where each stretch of the story begins, for the labels along the track.
+    phases: [...new Set(events.map((event) => event.phase))].map((phase) => ({
+      phase,
+      labelKey: `adoption.timeline.phase.${phase}`,
+      from: events.findIndex((event) => event.phase === phase),
+    })),
+  };
+}
+
 function fundingModule(entry) {
   if (!entry) return { key: 'funding', kind: null };
   return {
     key: 'funding',
     kind: 'linkGroups',
     labelKey: 'adoption.funding',
+    // No closing block, for the same reason the Politik card has none: each
+    // route already opens into its own terms, and a "Sources" heading under
+    // thirteen of them would promise one document behind all of them.
+    detail: false,
     groups: ADOPTION_FUNDING.map((group) => ({
       key: group.key,
       headingKey: `adoption.funding.${group.key}`,

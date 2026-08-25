@@ -88,13 +88,14 @@ function render(state) {
 async function loadData() {
   setState({ status: 'loading' });
   try {
-    const { projects, metrics, peers, cityIndicators, geo } = await loadDataset();
+    const { projects, metrics, peers, cityIndicators, timeline, geo } = await loadDataset();
     setState({
       status: 'ready',
       projects,
       metrics,
       peers,
       cityIndicators,
+      timeline,
       geo,
     });
   } catch (error) {

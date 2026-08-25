@@ -470,8 +470,45 @@ The keys that want copy, one per card that has content today:
 
 - **Impact** — `modalSplit`, `car`, `airQuality`, `cycleNetwork`, `cyclists`,
   `roadSafety`
-- **Adoption** — `cost`, `context`, `departments`, `partners`,
-  `recommendation`, `funding`
+- **Adoption** — all five cards now carry an info point, and `cost` is the only
+  one with a closing block: its "Quellen" names the press conference the €2.9M
+  was announced at and the three costs nobody published a figure for. `context`
+  opts out of that block (`detail: false`) — its four figures already carry three
+  chips between them, and one heading above those would name a document where
+  the chips already name three. The `departments`, `partners` and
+  `recommendation` cards were removed along with their copy and their links —
+  git has them if that turns out to be the wrong call.
+
+  `timeline` is filled, from `data/timeline.csv`: thirteen events in three
+  phases, evenly spaced on a serpentine track because "Ab 2018" and
+  "Mai–Aug. 2022" are not points in time. **Those rows carry no source of their
+  own** — they are narrative rather than measurement, so the no-source-no-render
+  rule that guards a figure does not drop them, and where the account came from
+  is still an open question for the card. Its `phase` values map to
+  `adoption.timeline.phase.*`, which are the only translated strings on it: the
+  dates, titles and details live in the CSV and are German only. Translating
+  them means either a second column per language or moving the copy into the
+  bundles — worth deciding before another city gets a timeline.
+
+  `funding` follows the schema in `Project Make I _ SS2026.csv`: each route opens
+  into its Details, Förderquote and Zugang. Eight of the thirteen routes have
+  those terms; **Junge Generation Fahrrad, and the whole Bürgerfinanzierung and
+  Private Partner groups, do not** — they are named with their links and no
+  disclosure, because that CSV has no row for them. A route gains its disclosure
+  the moment `adoption.funding.<key>.details` is added, with no code change. The
+  card has no source of its own yet: the schema's "[siehe hier]" was left out
+  until there is a URL for it. Like `politics`, it carries **no closing block**
+  (`detail: false`) — each route already opens into its own terms, and one
+  "Sources" heading under thirteen of them would promise a single document
+  behind all of them.
+
+  `politics` is written and is the one card with **no closing block at all**
+  (`detail: false` in `policyModule`): its five recommendations already are what
+  such a block would hold, and a "Sources" heading under them would promise a
+  document none of it comes from. Its recommendations, its two name lists and
+  its info point are all copy (`adoption.koeln.politics.*`); three of the seven
+  organisations carry a link, and the other four are named without one rather
+  than given one that points nowhere in particular.
 - **Problem Fit** — `target-11.2`, `target-11.6`, and the city's own body
   blocks (`intro`, `ringsBody`, `routesBody`, `goalBody` for Cologne;
   `overview` for Paris)

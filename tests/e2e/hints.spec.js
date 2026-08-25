@@ -59,7 +59,9 @@ function boxOverflow(page) {
  * and there are enough anchors here that a fixed pause per hover adds up to most
  * of a test timeout. */
 async function worstOverflow(page) {
-  const anchors = page.locator('.widget-detail [data-hint]');
+  // Visible ones only. A funding route keeps its programme page inside a closed
+  // disclosure, and an anchor nobody can see is an anchor nobody can hover.
+  const anchors = page.locator('.widget-detail [data-hint]:visible');
   const box = page.locator('.hint-layer');
   const count = await anchors.count();
   expect(count).toBeGreaterThan(0);

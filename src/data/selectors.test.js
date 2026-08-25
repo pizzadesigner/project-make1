@@ -744,43 +744,41 @@ describe('adoptionModules', () => {
     })),
   ];
 
-  it('lays the six adoption cards out in the order the design puts them in', () => {
+  it('lays the five adoption cards out in the order the design puts them in', () => {
     const modules = adoptionModules(contextRows, 'koeln');
     expect(modules.map((module) => module.key)).toEqual([
       'cost',
-      'context',
-      'departments',
-      'partners',
-      'recommendation',
       'funding',
+      'context',
+      'politics',
+      'timeline',
     ]);
+    // Timeline is named but unresearched: a placeholder rather than an empty
+    // shell, which is what a topic with no rows for *this city* gets.
     expect(modules.map((module) => module.kind)).toEqual([
       'cost',
-      'facts',
-      'links',
-      'links',
-      'prose',
       'linkGroups',
+      'facts',
+      'policy',
+      'placeholder',
     ]);
+    // Two cards carry no closing block: the Politik card's recommendations and
+    // the funding card's routes already are what one would hold, so both opt out
+    // rather than showing an empty "Sources". Every card keeps its info point.
+    expect(modules[1].detailKey).toBeUndefined();
+    expect(modules[3].detailKey).toBeUndefined();
+    expect(modules[3].infoKey).toBe('adoption.info.politics');
+    expect(modules[1].infoKey).toBe('adoption.info.funding');
   });
 
-  // The card's whole point is the one figure the city published set against the
-  // three it did not: an item with no row keeps its line and loses its number.
-  it('builds the cost card from the published sum and the lines that have none', () => {
+  it('builds the cost card from the published sum and what it bought', () => {
     const [cost] = adoptionModules(contextRows, 'koeln');
     expect(cost.headline).toEqual({ value: 2900000, year: 2023 });
     expect(cost.length).toEqual({ value: 9, unit: 'km' });
-    expect(cost.coversKey).toBe('adoption.koeln.costCovers');
-    expect(cost.items).toEqual([
-      {
-        key: 'signals',
-        labelKey: 'adoption.koeln.cost.signals',
-        value: 1500000,
-      },
-      { key: 'planning', labelKey: 'adoption.koeln.cost.planning', value: null },
-      { key: 'gapClosures', labelKey: 'adoption.koeln.cost.gapClosures', value: null },
-      { key: 'ebertplatz', labelKey: 'adoption.koeln.cost.ebertplatz', value: null },
-    ]);
+    // The card no longer itemises what the sum covered — that account moved to
+    // the info point and the Quellen block — but it still cites every row the
+    // figure rests on, the signals row among them.
+    expect(cost.sources.length).toBeGreaterThan(0);
   });
 
   // 2,900,000 / 9 = 322,222.2… — quoted to the nearest thousand, because the
@@ -804,7 +802,7 @@ describe('adoptionModules', () => {
   });
 
   it('builds the context card from the sourced rows, with density derived', () => {
-    const [, context] = adoptionModules(contextRows, 'koeln');
+    const [, , context] = adoptionModules(contextRows, 'koeln');
     expect(context.facts).toEqual([
       { key: 'population', value: 1028273, unit: 'people', year: 2025 },
       { key: 'ringCorridor', value: 10, unit: 'km', year: 2024 },
@@ -818,37 +816,12 @@ describe('adoptionModules', () => {
   });
 
   it('drops a context fact the city has no row for', () => {
-    const [, context] = adoptionModules(contextRows.slice(0, 1), 'koeln');
+    const [, , context] = adoptionModules(contextRows.slice(0, 1), 'koeln');
     expect(context.facts.map((fact) => fact.key)).toEqual(['population']);
   });
 
-  it('keeps the link text in i18n and the URL out of it', () => {
-    const [, , departments, partners] = adoptionModules(contextRows, 'koeln');
-    expect(departments.links).toEqual([
-      {
-        key: 'verkehrsmanagement',
-        url: 'https://www.stadt-koeln.de/service/adressen/amt-fuer-verkehrsmanagement',
-        textKey: 'adoption.koeln.departments.verkehrsmanagement',
-      },
-      {
-        key: 'mobilitaet',
-        url: 'https://www.stadt-koeln.de/service/adressen/10704/index.html',
-        textKey: 'adoption.koeln.departments.mobilitaet',
-      },
-    ]);
-    expect(partners.lead).toBe('adoption.koeln.partnersLead');
-    expect(partners.links.map((link) => link.key)).toEqual(['ringfrei', 'adfc', 'vcd', 'dvr']);
-  });
-
-  // Quoted, not paraphrased — so the card has to be able to say where from.
-  it('gives the recommendation the document it is quoted from', () => {
-    const recommendation = adoptionModules(contextRows, 'koeln')[4];
-    expect(recommendation.text).toBe('adoption.koeln.recommendation');
-    expect(recommendation.source.url).toContain('dvr.de');
-  });
-
   it('groups the funding routes by level, and names the ones with no page to open', () => {
-    const funding = adoptionModules(contextRows, 'koeln')[5];
+    const funding = adoptionModules(contextRows, 'koeln')[1];
     expect(funding.groups.map((group) => group.key)).toEqual(['eu', 'federal', 'civic', 'private']);
     expect(funding.groups[0].links).toHaveLength(5);
     expect(funding.groups[3].links).toEqual([]);

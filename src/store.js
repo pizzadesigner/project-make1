@@ -10,6 +10,7 @@
  * @property {import('./data/types.js').Metric[]} metrics
  * @property {import('./data/types.js').PeerCity[]} peers
  * @property {import('./data/types.js').CityIndicator[]} cityIndicators  City-level researched context, keyed by citySlug.
+ * @property {import('./data/types.js').TimelineEvent[]} timeline  The project's own story, one row per event.
  * @property {object|null} geo  Committed Europe TopoJSON, or null until loaded.
  * @property {string|null} focusedCity   citySlug zoomed into on the map (L1), or null. Kept in
  *   the store, not the URL: the in-place zoom is a single-page interaction, so #/city/:slug is
@@ -33,6 +34,7 @@ const state = {
   metrics: [],
   peers: [],
   cityIndicators: [],
+  timeline: [],
   geo: null,
   focusedCity: null,
   activeCriterion: null,

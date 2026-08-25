@@ -32,6 +32,7 @@ import {
   formatHostname,
 } from '../lib/format.js';
 import * as lineChart from './lineChart.js';
+import * as timelineChart from './timelineChart.js';
 import * as modalSplitChart from './modalSplitChart.js';
 import * as sourceChip from './sourceChip.js';
 
@@ -46,8 +47,18 @@ const BODIES = {
   trend: trendBody,
   prose: proseBody,
   facts: factsBody,
-  links: linksBody,
   linkGroups: linkGroupsBody,
+  policy: policyBody,
+  timeline: timelineBody,
+  placeholder: placeholderBody,
+};
+
+/** What a widget shows when it stands on a card, where the whole card is too
+ * much for it. Only the cost card needs one so far: its body is a figure, four
+ * itemised lines and a disclaimer, and the lines scroll inside a 320px widget.
+ * Anything without an entry here shows its body unchanged. */
+const PREVIEWS = {
+  cost: costPreview,
 };
 
 /** A module's body alone: its figure, its chart, its legend, and nothing around
@@ -59,7 +70,7 @@ const BODIES = {
  * one widget, so it takes the slot no card uses. */
 export function modulePreviewHtml(module, index = -1) {
   if (!module?.kind) return '';
-  const body = BODIES[module.kind];
+  const body = PREVIEWS[module.kind] ?? BODIES[module.kind];
   return body ? body(module, index, false) : '';
 }
 
@@ -76,7 +87,7 @@ export function moduleHtml(module, index, expanded = false) {
     ${labelHtml(module, index)}
     ${body(module, index, expanded)}
     ${noteHtml(module)}
-    ${expanded ? inDepthHtml(module) : ''}
+    ${expanded && module.detailKey ? inDepthHtml(module) : ''}
     ${sourcesHtml(module, index)}`;
 }
 
@@ -185,10 +196,48 @@ export function mountModule(root, module, index, children, expanded = false) {
   if (!module || !module.kind) return;
   const locale = getLocale();
   mountChart(root, module, index, children, expanded);
+  if (ACCORDIONS.has(module.kind)) children.push({ index, handle: mountAccordion(root, index) });
   for (const [slot, source] of sourcesOf(module).entries()) {
     const node = root.querySelector(`[data-chip="${index}-${slot}"]`);
     if (node) children.push({ index, handle: sourceChip.render(node, { ...source, locale }) });
   }
+}
+
+// The kinds whose cards hold a list of disclosures, and so want one open at a
+// time (mountAccordion).
+const ACCORDIONS = new Set(['policy', 'linkGroups']);
+
+/** One disclosure open at a time. Five of them, each holding two paragraphs,
+ * and a card that is already the tallest in its criterion: left free, opening a
+ * third pushed the arrangement well past the region and the reader lost the one
+ * they had come for. The <details> keep doing the work; this only closes the
+ * others when one is opened.
+ * @returns {{ update(): void, destroy(): void }}
+ */
+function mountAccordion(root, index) {
+  const section = root.querySelector(`[data-accordion="${index}"]`);
+  const items = section ? [...section.querySelectorAll('details')] : [];
+  // `toggle` does not bubble, so each one is listened to rather than the section.
+  const onToggle = (event) => {
+    if (!event.target.open) return;
+    for (const other of items) if (other !== event.target) other.open = false;
+  };
+  for (const item of items) item.addEventListener('toggle', onToggle);
+
+  // A link inside a summary is still inside a summary: the click would reach it
+  // and open the terms as well as the page. Held here rather than on the anchor
+  // itself so it is torn down with everything else this mounts.
+  const links = section ? [...section.querySelectorAll('summary .module__programme-link')] : [];
+  const keepToClick = (event) => event.stopPropagation();
+  for (const link of links) link.addEventListener('click', keepToClick);
+
+  return {
+    update() {},
+    destroy() {
+      for (const item of items) item.removeEventListener('toggle', onToggle);
+      for (const link of links) link.removeEventListener('click', keepToClick);
+    },
+  };
 }
 
 /** The one chart a module carries, if it carries one. Compact everywhere except
@@ -196,6 +245,20 @@ export function mountModule(root, module, index, children, expanded = false) {
  * pills, which is the right trade in a 300px card and the wrong one in a card
  * with room for them. */
 function mountChart(root, module, index, children, expanded) {
+  if (module.kind === 'timeline') {
+    const slot = root.querySelector(`[data-timeline="${index}"]`);
+    if (slot) {
+      children.push({
+        index,
+        handle: timelineChart.render(slot, {
+          events: module.events,
+          phases: module.phases,
+          expanded,
+        }),
+      });
+    }
+    return;
+  }
   const slot = root.querySelector(`[data-chart="${index}"]`);
   if (!slot) return;
   const compact = !expanded;
@@ -237,37 +300,120 @@ function donutAriaLabel({ labelKey, modes, rings, latestYear }) {
 
 // --- bodies, one per kind --------------------------------------------------
 
-/** What the project cost: the one figure the city published, what that figure
- * covers, and the lines it does not. A cost with no number is as much the point
- * of the card as the headline is — it renders as the em dash any missing value
- * renders as, so "not published" never reads as "nothing". The closing sentence
- * carries the derived per-km rate, filled in here rather than written into the
- * copy: a translator should never be the one holding a number. */
+/** What the project cost: the one figure the city published, what it bought, and
+ * the derived per-km rate under it.
+ *
+ * It used to itemise what the sum covered and the three lines nobody published a
+ * figure for, each an em dash. That account now lives where it reads better —
+ * the info point says what the figure covers, and the card's Quellen block says
+ * which costs were never published separately — so the card itself is the figure
+ * and its rate. The rate is filled in here rather than written into the copy: a
+ * translator should never be the one holding a number. */
 function costBody(module) {
   const locale = getLocale();
-  const rows = module.items
-    .map(
-      (item) => `
-      <li class="module__cost-item">
-        <span class="module__cost-label">${t(item.labelKey)}</span>
-        <b class="module__cost-value">${formatCurrencyCompact(item.value, locale)}</b>
-      </li>`,
-    )
-    .join('');
-  // The list is the part that gives, not the disclaimer: a card whose whole
-  // argument is "this is not the full bill" must never scroll that sentence out
-  // of sight. Same escape valve the funding card uses, one element lower.
   return `
     <p class="module__value">
       <b>${formatCurrencyCompact(module.headline.value, locale)}</b>
       ${costScope(module, locale)}
       ${module.headline.year ? `<span class="module__year">${module.headline.year}</span>` : ''}
     </p>
-    <div class="module__scroll">
-      <p class="module__lead">${t(module.coversKey)}</p>
-      <ul class="module__cost-items">${rows}</ul>
-    </div>
     <p class="module__note">${costDisclaimer(module, locale)}</p>`;
+}
+
+/** The cost card's figure and what it covers, without the itemised lines under
+ * it or the disclaimer under those. What a widget standing on this card shows:
+ * the sum, the length it bought and the year — the part that reads at a glance,
+ * with the part that needs reading left to the card itself. */
+function costPreview(module) {
+  const locale = getLocale();
+  return `
+    <p class="module__value">
+      <b>${formatCurrencyCompact(module.headline.value, locale)}</b>
+      ${costScope(module, locale)}
+      ${module.headline.year ? `<span class="module__year">${module.headline.year}</span>` : ''}
+    </p>`;
+}
+
+/** The Politik card: who steered the project and who pushed it, side by side,
+ * and under them what the people who ran it would tell the next city.
+ *
+ * The recommendations are the reason this card exists, and they are long — five
+ * of them, each with what Cologne did and what to take from it. In a column
+ * they are named and nothing more; opened, each name carries the sentence that
+ * summarises it and a disclosure holding the rest. Native <details>, so the
+ * keyboard and the screen reader come with it; one at a time, so the card does
+ * not grow past the region every time another is opened (mountAccordion). */
+function policyBody(module, index, expanded) {
+  return `
+    <div class="module__policy-who">
+      ${namedList('adoption.politics.authorities', module.authorities)}
+      ${namedList('adoption.politics.participation', module.members, module.alliance)}
+    </div>
+    <section class="module__panel module__policy-advice" data-accordion="${index}">
+      <h3 class="module__link-heading">${t('adoption.politics.recommendations')}</h3>
+      ${module.recommendations.map((item) => recommendationHtml(item, expanded)).join('')}
+    </section>`;
+}
+
+/** One of the two name panels at the top of the Politik card: a heading and the
+ * names under it, in a box of its own. The card's three sections are three
+ * boxes — the same surface the Kontext card's tiles use, one to a category
+ * rather than one to an entry, so a name is a line and not a box inside a box.
+ *
+ * `lead` is the alliance the names belong to, which stands above them rather
+ * than among them: #RingFrei is not a seventh organisation, it is the six of
+ * them together. A name with a page worth opening is the link. */
+function namedList(headingKey, entries, lead = null) {
+  const line = (entry) =>
+    `<li class="module__link-item">${entry.url ? outboundLink(entry.url, t(entry.textKey)) : t(entry.textKey)}</li>`;
+  return `
+    <div class="module__panel module__policy-list">
+      <h3 class="module__link-heading">${t(headingKey)}</h3>
+      ${lead ? `<p class="module__policy-lead">${lead.url ? outboundLink(lead.url, t(lead.textKey)) : t(lead.textKey)}</p>` : ''}
+      <ul class="module__links">${entries.map(line).join('')}</ul>
+    </div>`;
+}
+
+/** One recommendation. Named in a column; opened, the name carries its sentence
+ * and a disclosure holding what Cologne did and what to learn from it. */
+function recommendationHtml(item, expanded) {
+  const title = t(item.titleKey);
+  if (!expanded) return `<p class="module__toggle-title">${title}</p>`;
+  return `
+    <details class="module__toggle">
+      <summary class="module__toggle-summary">
+        <span class="module__toggle-title">${title}</span>
+        <span class="module__toggle-lead">${t(item.claimKey)}</span>
+      </summary>
+      <p class="module__prose">${t(item.exampleKey)}</p>
+      <p class="module__prose">${t(item.lessonKey)}</p>
+    </details>`;
+}
+
+/** The Timeline card: the phases it runs through, named above the track, and the
+ * track itself — which the chart draws once this markup is in the DOM.
+ *
+ * The phases are written here rather than among the dots: a label on the track
+ * would be one more thing to read at a glance, which is exactly what the small
+ * reading is trying not to have. */
+function timelineBody(module, index) {
+  const phases = timelineChart
+    .phaseLegend(module.phases)
+    .map((labelKey) => `<li class="timeline__phase">${t(labelKey)}</li>`)
+    .join('');
+  return `
+    <ul class="timeline__phases">${phases}</ul>
+    <div class="module__timeline" data-timeline="${index}"></div>`;
+}
+
+/** A card that is named but not yet researched — Politik, Timeline. It says so
+ * in as many words rather than standing blank, which is what an *empty shell*
+ * does: a shell is a topic this city has no rows for and may never have, while
+ * this is one nobody has looked into yet for anywhere. Same dashed outline the
+ * unwritten in-depth block uses, so "nothing here yet" reads the same way
+ * wherever it appears. */
+function placeholderBody() {
+  return `<p class="module__in-depth-empty">${t('module.placeholder')}</p>`;
 }
 
 /** What the headline sum was spent on, in the unit slot beside it — the length
@@ -434,52 +580,79 @@ function factsBody(module) {
   return `<div class="module__facts">${tiles}</div>`;
 }
 
-/** A list of places to go next: the departments that own the project, or the
- * organisations that were at the table. Each row is an outbound link, and the
- * lead sentence above them — when the card has one — says what the list is. */
-function linksBody(module) {
-  return `
-    ${module.lead ? `<p class="module__lead">${t(module.lead)}</p>` : ''}
-    <div class="module__scroll"><ul class="module__links">${linkItems(module.links)}</ul></div>`;
-}
-
 /** The funding routes, grouped by the level of government that offers them. A
  * group's `plain` entries are routes rather than programmes — "sponsorship" has
  * no page to open — so they are named without a link rather than given one that
  * points nowhere in particular. */
-function linkGroupsBody(module) {
+function linkGroupsBody(module, index) {
   const groups = module.groups
     .map(
       (group) => `
       <li class="module__link-group">
         <h3 class="module__link-heading">${t(group.headingKey)}</h3>
         <ul class="module__links">
-          ${linkItems(group.links)}
-          ${group.plain.map((key) => `<li class="module__link-item">${t(key)}</li>`).join('')}
+          ${group.links.map((link) => programmeHtml(link.textKey, link.url)).join('')}
+          ${group.plain.map((key) => programmeHtml(key, null)).join('')}
         </ul>
       </li>`,
     )
     .join('');
-  return `<div class="module__scroll"><ul class="module__link-groups">${groups}</ul></div>`;
+  return `<div class="module__scroll" data-accordion="${index}"><ul class="module__link-groups">${groups}</ul></div>`;
 }
 
-/** One row per link. The text is translated copy and the URL is not, so the two
- * travel separately all the way down to here.
+/** One funding route. Where its terms have been written down it opens into
+ * them — what the programme is, what share it pays, and how a city gets at it;
+ * where they have not, it is its name and nothing more.
  *
- * The hint carries the host rather than the name: the name is already the link's
- * visible text, so repeating it would say nothing, while "which site does
- * 'Connecting Europe Facility' actually send me to" is the question the reader
- * has. Hidden from the accessibility tree — a screen reader gets the link text,
- * and the host would only interrupt it. */
-function linkItems(links) {
-  return links
-    .map(
-      (link) => `
-      <li class="module__link-item">
-        <a class="module__link" data-hint href="${encodeURI(link.url)}" target="_blank" rel="noopener noreferrer">${t(link.textKey)}<span class="link-hint" aria-hidden="true">${formatHostname(link.url)}</span></a>
-      </li>`,
-    )
-    .join('');
+ * The programme's own page goes *inside* the disclosure rather than on the name.
+ * A summary that is both a link and a toggle is ambiguous to click and invalid
+ * to nest, so the name opens the terms and the page is a line under them. */
+function programmeHtml(textKey, url) {
+  const name = t(textKey);
+  // The page sits beside the name as the same outbound arrow every source on
+  // these cards carries, not inside the disclosure and not on the name itself:
+  // a summary that is both a link and a toggle is ambiguous to click and invalid
+  // to nest, and a link buried three paragraphs down is a link nobody finds.
+  const page = url ? programmeLink(url, name) : '';
+  if (!hasString(`${textKey}.details`)) {
+    return `<li class="module__programme"><span class="module__link-item">${name}</span>${page}</li>`;
+  }
+  const field = (labelKey, key) => `
+    <p class="module__prose">
+      <b class="module__toggle-field">${t(labelKey)}</b>
+      ${t(`${textKey}.${key}`)}
+    </p>`;
+  // The arrow rides in the summary, beside the name it belongs to. Outside the
+  // disclosure it was pushed to the far edge of the card, because the disclosure
+  // has to be full width for the paragraphs inside it — which put the link a
+  // long way from the thing it opens. Its click is kept from reaching the
+  // summary (mountAccordion), so following it does not also toggle the terms.
+  return `
+    <li class="module__programme">
+      <details class="module__toggle">
+        <summary class="module__toggle-summary module__toggle-summary--row">
+          <span class="module__toggle-title">${name}</span>
+          ${page}
+        </summary>
+        ${field('adoption.funding.detailsLabel', 'details')}
+        ${field('adoption.funding.quoteLabel', 'quote')}
+        ${field('adoption.funding.accessLabel', 'access')}
+      </details>
+    </li>`;
+}
+
+/** The arrow beside a programme's name. Named for a screen reader, which gets
+ * "Programme page: Interreg" rather than a bare arrow, and carrying the host as
+ * its hint like every other outbound link here. */
+function programmeLink(url, name) {
+  const label = `${t('adoption.funding.programmePage')}: ${name}`;
+  return `<a class="source-chip module__programme-link" data-hint href="${encodeURI(url)}" target="_blank" rel="noopener noreferrer" aria-label="${label}"><span class="link-hint" aria-hidden="true">${formatHostname(url)}</span></a>`;
+}
+
+/** An outbound link with the host on it, the way every other one on these cards
+ * carries it (hintLayer.js draws the hint). */
+function outboundLink(url, text) {
+  return `<a class="module__link" data-hint href="${encodeURI(url)}" target="_blank" rel="noopener noreferrer">${text}<span class="link-hint" aria-hidden="true">${formatHostname(url)}</span></a>`;
 }
 
 // --- shared pieces ---------------------------------------------------------

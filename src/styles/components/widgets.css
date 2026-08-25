@@ -350,8 +350,12 @@
    the arrangement scrolls (.widget-detail). */
 .widget-detail__modules {
   display: flex;
-  align-items: stretch;
-  gap: var(--space-8);
+
+  /* Down the page now, not across it: the columns are one row inside this, and
+     a card may stand below them spanning the whole width (Adoption's timeline —
+     widgetStack.js#CRITERION_SPANNING). */
+  flex-direction: column;
+  gap: var(--space-4);
 
   /* This is a flex item too (of .widget-detail), so its own automatic minimum
      is its min-content width — the widest thing any card holds, added up across
@@ -360,8 +364,30 @@
   min-width: 0;
 }
 
-/* One column. `stretch` above gives all of them the tallest one's height, which
-   is what a bottom-aligned column measures itself against. */
+/* The row the columns stand in. `stretch` gives all of them the tallest one's
+   height, which is what a bottom-aligned column measures itself against. */
+.widget-detail__columns {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-8);
+  min-width: 0;
+}
+
+/* A card standing below the columns rather than in one, as wide as the two of
+   them plus a little. Lined up under them and not with the region: the columns
+   pack to the side their widget is on and leave the rest as canvas, so a card
+   stretched across the whole region would start out over the map. */
+.widget-detail__module--span {
+  align-self: flex-start;
+  width: calc(2 * var(--module-column-max) + var(--space-8) + var(--module-span-overhang));
+  max-width: 100%;
+}
+
+.widget-detail--right .widget-detail__module--span {
+  align-self: flex-end;
+}
+
+/* One column. */
 .widget-detail__column {
   flex: 1;
   min-width: 0;
@@ -526,10 +552,21 @@
    place; what differs here is when it sets off, and how far off the ruled line
    it settles.
 
-   Every --nudge-x-step in the first column is positive, and that is the one
-   rule the nudges follow rather than a taste: multiplied by --fan-x it always
-   points *into* the region, so the arrangement's outer edge is the column line
-   and nothing reaches past it towards the edge of the screen. The columns the
+   Two rules rather than a taste. Every --nudge-x-step in the first column is
+   positive: multiplied by --fan-x it always points *into* the region, so the
+   arrangement's outer edge is the column line and nothing reaches past it
+   towards the edge of the screen.
+
+   And no --nudge-y-step is lower than the one before it. A column is filled
+   consecutively, so the cards that can close on each other are always module n
+   and module n+1: a step of −0.7 after a +0.7 shut 16.8px of a 16px gap and the
+   two cards overlapped, before the idle drift had moved either of them. Never
+   stepping down means the nudges can only ever open that gap, and the drift —
+   3px each way, on two cards — is the only thing left that closes it. The steps
+   still differ in size, which is what keeps the gaps uneven and the arrangement
+   read as placed rather than ruled; it is only their direction that is fixed.
+
+   The columns the
    region has room around — the middle one, and the last one, which faces the
    map across --l2-region-gap — still stray both ways. */
 .widget-detail__module--1 {
@@ -562,7 +599,7 @@
 .widget-detail__module--4 {
   --module-index: 3;
   --nudge-x-step: -0.5;
-  --nudge-y-step: -0.7;
+  --nudge-y-step: 0.7;
   --idle-x: calc(var(--module-idle) * -0.7);
   --idle-y: calc(var(--module-idle) * -0.9);
   --idle-speed: 1.4;
@@ -571,7 +608,7 @@
 .widget-detail__module--5 {
   --module-index: 4;
   --nudge-x-step: 0.9;
-  --nudge-y-step: 0.3;
+  --nudge-y-step: 0.75;
   --idle-x: calc(var(--module-idle) * 1);
   --idle-y: calc(var(--module-idle) * 0.5);
   --idle-speed: 1.1;
@@ -580,7 +617,7 @@
 .widget-detail__module--6 {
   --module-index: 5;
   --nudge-x-step: -0.6;
-  --nudge-y-step: -0.5;
+  --nudge-y-step: 0.8;
   --idle-x: calc(var(--module-idle) * -0.5);
   --idle-y: calc(var(--module-idle) * 1);
   --idle-speed: 0.95;
@@ -592,7 +629,7 @@
    the arrangement reads right to left. The rows, the stagger and the arrows are
    untouched; the arrows are drawn from the modules' measured places
    (widgetStack.js#moduleRect), so they follow this by themselves. */
-.widget-detail--right .widget-detail__modules {
+.widget-detail--right .widget-detail__columns {
   flex-direction: row-reverse;
 }
 
@@ -915,6 +952,142 @@
   gap: var(--space-3);
 }
 
+/* One section of a card, boxed. The same surface the Kontext card's tiles sit
+   on, at the size of a category rather than of an entry: the Politik card is
+   three of these, so a name inside one is a line and not a box within a box. */
+.module__panel {
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+}
+
+/* The Politik card. Two short lists of names across the top, and under them the
+   recommendations — which are the reason the card exists and much the longest
+   thing on it.
+
+   The lists share a row and wrap to one column when there is no width for two:
+   at 400px the names are long ("Amt für nachhaltige Mobilitätsentwicklung"), and
+   two columns of those would be two words a line. */
+.module__policy-who {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+}
+
+.module__policy-list {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+/* The alliance the names below it belong to. A line rather than a tile: it is
+   not one more organisation, it is the ones under it taken together. */
+.module__policy-lead {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.module__policy-advice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+/* One disclosure, closed — a recommendation on the Politik card, a funding route
+   on the Finanzierungsmöglichkeiten one. The whole summary is the hit target, so
+   the marker sits with the title rather than in a column of its own. */
+.module__toggle {
+  border-top: 1px solid var(--color-border-glass);
+  padding-top: var(--space-2);
+}
+
+/* One funding route: its name — which opens its terms where there are any — and
+   the arrow to its own page beside it. */
+.module__programme {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.module__programme .module__toggle {
+  flex: 1;
+  min-width: 0;
+}
+
+.module__programme-link {
+  flex: 0 0 auto;
+}
+
+/* The first disclosure in a section needs no rule above it: the heading is
+   already the line it would draw. */
+.module__policy-advice .module__toggle:first-of-type,
+.module__link-group .module__toggle:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.module__toggle-summary {
+  cursor: pointer;
+  display: grid;
+  gap: var(--space-1);
+  list-style: none;
+}
+
+.module__toggle-summary::-webkit-details-marker {
+  display: none;
+}
+
+/* A summary that is a row rather than a stack: the name, then the arrow to the
+   programme's own page right beside it. `flex-start` is what keeps the arrow
+   against the name instead of out at the edge of the card. */
+.module__toggle-summary--row {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: var(--space-2);
+}
+
+/* The marker, drawn rather than inherited: the native triangle differs per
+   browser and sits on the first line of a two-line summary in some of them. */
+.module__toggle-title {
+  margin: 0;
+  position: relative;
+  padding-left: var(--space-4);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.module__toggle-summary .module__toggle-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.35em;
+  border-top: 0.3em solid transparent;
+  border-bottom: 0.3em solid transparent;
+  border-left: 0.4em solid currentcolor;
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+
+.module__toggle[open] .module__toggle-title::before {
+  transform: rotate(90deg);
+}
+
+.module__toggle-lead {
+  padding-left: var(--space-4);
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* The name of a field inside a funding route's disclosure — Details, the rate,
+   how to get at it. Its own line, because the text after it is a paragraph and
+   not a value. */
+.module__toggle-field {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
 /* The unit a chart's values are read in, above the chart. Shared by the trend
    card, which has no axis to label, and by a multi-series line chart, whose
    legend carries a number per series and no unit for any of them. */
@@ -1069,6 +1242,13 @@
   color: var(--color-text);
 }
 
+/* What a disclosure holds. Indented to the marker, so what is inside reads as
+   belonging to the title it opened from. */
+.module__toggle .module__prose {
+  padding-left: var(--space-4);
+  margin-top: var(--space-2);
+}
+
 /* A card whose body is a list rather than a chart. This was the worst of the
    squeezes: the funding list wanted 387px inside a 232px card and put the
    difference behind a scrollbar. The name is now a leftover — it is the class
@@ -1096,6 +1276,10 @@
   padding: var(--space-2);
   background: var(--color-surface);
   border-radius: var(--radius-sm);
+
+  /* German compounds are longer than these tiles are wide, and ran past them
+     rather than breaking. */
+  overflow-wrap: anywhere;
 }
 
 .module__fact-label {
@@ -1115,47 +1299,6 @@
   font-size: var(--font-size-base);
   font-variant-numeric: tabular-nums;
   line-height: var(--line-tight);
-}
-
-/* What the project cost, line by line: the label on the left, its figure hard
-   right, and an em dash on the lines the city publishes no figure for. Rows
-   rather than the context card's tiles — these are unlike quantities, read one
-   after another, not four comparable figures read against each other. */
-.module__cost-items {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-/* The line that says what the sum bought sits above the list inside the same
-   scroller, so the two move together and the disclaimer below them never does. */
-.module__lead + .module__cost-items {
-  margin-top: var(--space-2);
-}
-
-.module__cost-item {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  font-size: var(--font-size-xs);
-  line-height: 1.35;
-  color: var(--color-text-muted);
-}
-
-.module__cost-label {
-  min-width: 0;
-}
-
-/* The figures sit on the right edge whatever their label's length, so the
-   column reads down; tabular numerals put the dashes and the sums on one grid. */
-.module__cost-value {
-  margin-left: auto;
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text);
 }
 
 /* The sentence that says what a list is, above the list. */
@@ -1465,7 +1608,6 @@
    the label sits at one edge and its figure at the other, and the row stops
    being a pair. A long label wraps instead, which costs a line and keeps the
    two ends together. */
-.widget-detail__card.is-expanded .module__cost-items,
 .widget-detail__card.is-expanded .module__legend,
 .widget-detail__card.is-expanded .module__matrix {
   max-width: var(--module-focus-rows);

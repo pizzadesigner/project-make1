@@ -16,6 +16,9 @@ import { test, expect } from '@playwright/test';
 
 const CITY = '.marker[aria-label*="Köln"], .marker[aria-label*="Cologne"]';
 const CRITERIA = ['problemFit', 'impact', 'adoption'];
+// How many cards each criterion opens into. Adoption is five: four in two
+// columns and the timeline spanning both below them.
+const CARDS = { problemFit: 6, impact: 6, adoption: 5 };
 // Both zoom transitions, then the module flight and its stagger.
 const FOCUSED = 2500;
 const SETTLED = 3200;
@@ -72,8 +75,26 @@ async function openWidget(page, criterion) {
   await page.waitForTimeout(FOCUSED);
   await page.locator(`.widget--${criterion}`).click({ force: true });
   await page.waitForTimeout(SETTLED);
-  await expect(page.locator('.widget-detail__module')).toHaveCount(6);
+  await expect(page.locator('.widget-detail__module')).toHaveCount(CARDS[criterion]);
   await waitForLanded(page);
+}
+
+/** The region needs no scrollbar to show what it holds. It grew one over 9px of
+ * decoration once: a module sits off the line the columns put it on and drifts a
+ * few px afterwards, and both reach past the cells that were measured.
+ *
+ * Sideways always: the columns are capped, so the only thing that can push the
+ * arrangement wider than the region is that decoration. Vertically only where
+ * the content fits to begin with — a criterion whose cards are simply taller
+ * than the region scrolls for them by design, and that is content rather than
+ * decoration. */
+async function expectFits(page, { vertical = true } = {}) {
+  const overflow = await page.locator('.widget-detail').evaluate((node) => ({
+    y: node.scrollHeight - node.clientHeight,
+    x: node.scrollWidth - node.clientWidth,
+  }));
+  expect(overflow.x, 'the region scrolls sideways').toBeLessThanOrEqual(0);
+  if (vertical) expect(overflow.y, 'the region scrolls vertically').toBeLessThanOrEqual(0);
 }
 
 /** Wait for the entrance to be over, not merely for the clock to run out.
@@ -126,12 +147,11 @@ test('modules still fit their content on a narrower window', async ({ page }) =>
   }
 });
 
-// The arrangement is still three staggered columns, and the columns are what
-// carry it now that no two modules share a row band.
+// Problem Fit is the last criterion on the staggered arrangement — three
+// columns holding 3, 2 and 1. Impact and Adoption have their own, below.
 test('the three columns hold 3, 2 and 1 modules and stay staggered', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
-  // Adoption keeps the staggered arrangement; Impact has its own, below.
-  await openWidget(page, 'adoption');
+  await openWidget(page, 'problemFit');
 
   const columns = page.locator('.widget-detail__column');
   await expect(columns).toHaveCount(3);
@@ -178,9 +198,44 @@ test('impact stands its six in two columns of three, wider and without arrows', 
   // ends of a line, so nothing is drawn between them.
   await expect(page.locator('.connector__line')).toHaveCount(0);
 
+  // And the whole arrangement fits its region, decoration included — the nudge
+  // and the idle drift both reach past the cells the columns measured.
+  await expectFits(page);
+
   // The middle column keeps its half step down.
   const [first, second] = await columns.evaluateAll((nodes) =>
     nodes.map((node) => node.getBoundingClientRect().top),
   );
   expect(second - first).toBeGreaterThan(50);
+});
+
+// Adoption is five cards, not six: two columns of two, and the timeline below
+// them across the width of both. A timeline runs along its long axis, so the
+// widest place in the arrangement is the one that suits it.
+test('adoption stands four in two columns with the timeline spanning below', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await openWidget(page, 'adoption');
+
+  const columns = page.locator('.widget-detail__column');
+  await expect(columns).toHaveCount(2);
+  const counts = await columns.evaluateAll((nodes) =>
+    nodes.map((node) => node.querySelectorAll('.widget-detail__module').length),
+  );
+  expect(counts).toEqual([2, 2]);
+
+  const span = page.locator('.widget-detail__module--span');
+  await expect(span).toHaveCount(1);
+  const [spanBox, columnBox] = await Promise.all([
+    span.boundingBox(),
+    columns.first().boundingBox(),
+  ]);
+  // Wider than a column, and below both of them.
+  expect(spanBox.width).toBeGreaterThan(columnBox.width * 1.8);
+  expect(spanBox.y).toBeGreaterThan(columnBox.y + columnBox.height - 1);
+
+  // Five separate requirements in no particular order: nothing joins them.
+  await expect(page.locator('.connector__line')).toHaveCount(0);
+  // Sideways only: the Politik card's recommendations make this arrangement
+  // taller than the region, which it scrolls for.
+  await expectFits(page, { vertical: false });
 });

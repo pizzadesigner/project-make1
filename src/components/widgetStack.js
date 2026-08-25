@@ -553,9 +553,14 @@ function focusPlaces(arrangement, focusIndex, side) {
   const rail = boxes.filter((_, index) => index !== focusIndex);
   const scale = railScale(rail, area.height - railGap * (rail.length - 1));
   // What the rail actually takes, which is not always what it was asked for: a
-  // card held at the scale floor stays wider than the nominal width. Measured
+  // card held at the scale floor stays wider than the nominal width, and one
+  // that overflows the rail is scaled down to it instead (see below). Measured
   // rather than assumed, so the slot beside it gets the room that is really left.
-  const railWidth = Math.max(...rail.map((box) => box.width * scale));
+  // What the rail takes: the typical card at the shared scale. Typical, not
+  // widest, because one card can be nothing like the others — Adoption's
+  // timeline spans both columns — and letting it set the width would give the
+  // rail twice the room it needs and the slot beside it half.
+  const taken = medianWidth(rail) * scale;
 
   let y = area.y;
   const places = boxes.map((box, index) => {
@@ -564,9 +569,13 @@ function focusPlaces(arrangement, focusIndex, side) {
     // with rather than by the rail's — they differ at the floor, and a card
     // placed on the rail's would hang over the edge of the screen by exactly
     // that difference.
-    const x = side === 'right' ? area.x + area.width - box.width * scale : area.x;
-    const place = { x, y, width: box.width, height: box.height, scale };
-    y += box.height * scale + railGap;
+    // One scale for the set, except for a card too wide to stand in it: a card
+    // that is already a different size is not made one of the set by being
+    // scaled like one, so it takes whatever scale brings it down to the rail.
+    const own = Math.min(scale, taken / box.width);
+    const x = side === 'right' ? area.x + area.width - box.width * own : area.x;
+    const place = { x, y, width: box.width, height: box.height, scale: own };
+    y += box.height * own + railGap;
     return place;
   });
 
@@ -575,13 +584,21 @@ function focusPlaces(arrangement, focusIndex, side) {
   // inside the card still takes only the height it needs (.is-expanded).
   const height = Math.max(area.height, y - railGap - area.y);
   places[focusIndex] = {
-    x: side === 'right' ? area.x : area.x + railWidth + focusGap,
+    x: side === 'right' ? area.x : area.x + taken + focusGap,
     y: area.y,
-    width: Math.max(area.width - railWidth - focusGap, railWidth),
+    width: Math.max(area.width - taken - focusGap, taken),
     height,
   };
   places.height = height;
   return places;
+}
+
+/** The width of the rail's typical card. The middle of the sorted widths rather
+ * than the mean, so one card of a different order — a spanning one — moves it by
+ * nothing at all. */
+function medianWidth(rail) {
+  const widths = rail.map((box) => box.width).sort((a, b) => a - b);
+  return widths[Math.floor((widths.length - 1) / 2)];
 }
 
 /** The one scale the rail shrinks by: enough to fit the rail's width, enough to
@@ -639,11 +656,12 @@ const MODULE_ARROWS = [
   [1, 4],
 ];
 
-// Impact's six cards are six separate measurements — a modal split and a count
-// of cyclists are not two ends of a line — so an arrow between any two of them
-// claims a relationship the data does not have. The other criteria's cards do
-// follow on from one another, and keep theirs.
-const ARROWLESS = new Set(['impact']);
+// Impact's cards are six separate measurements — a modal split and a count of
+// cyclists are not two ends of a line — and Adoption's are five separate things
+// another city needs, in no particular order. An arrow between any two of them
+// claims a relationship the data does not have. Problem Fit's blocks do follow
+// on from one another, and keep theirs.
+const ARROWLESS = new Set(['impact', 'adoption']);
 
 /** Which module payloads a criterion opens into. Impact unpacks into the city's
  * six data topics, Problem Fit into its narrative blocks, Adoption into what it
@@ -670,7 +688,14 @@ const MODULE_COLUMNS = [3, 2, 1];
  * cards to be wider, which the charts in this criterion are the ones that want.
  * Only Impact: the other two have not been looked at yet, and an arrangement
  * changed underneath them would be a change nobody asked for. */
-const CRITERION_COLUMNS = { impact: [3, 3] };
+const CRITERION_COLUMNS = { impact: [3, 3], adoption: [2, 2] };
+
+// How many of a criterion's cards stand below the columns rather than inside
+// one, spanning the whole arrangement. Adoption's timeline is the only one so
+// far: a timeline runs along its long axis, so the widest place in the
+// arrangement is the one that suits it — and spanning both columns is also what
+// makes it read as belonging to neither.
+const CRITERION_SPANNING = { adoption: 1 };
 
 function columnsFor(criterion) {
   return CRITERION_COLUMNS[criterion] ?? MODULE_COLUMNS;
@@ -682,22 +707,32 @@ function columnsFor(criterion) {
 function moduleScaffold(modules = [], criterion = null) {
   let slot = 0;
   const layout = columnsFor(criterion);
+  const spanning = CRITERION_SPANNING[criterion] ?? 0;
+  const total = Math.min(MODULE_SLOTS, modules.length || MODULE_SLOTS);
+  const box = (span) => {
+    const index = slot;
+    slot += 1;
+    const wide = span ? ' widget-detail__module--span' : '';
+    return `<div class="widget-detail__module widget-detail__module--${index + 1}${wide}">
+       ${cardHtml(modules[index], index)}
+     </div>`;
+  };
   const columns = layout
     .map((count, column) => {
-      const boxes = Array.from({ length: Math.min(count, MODULE_SLOTS - slot) }, () => {
-        const index = slot;
-        slot += 1;
-        return `<div class="widget-detail__module widget-detail__module--${index + 1}">
-         ${cardHtml(modules[index], index)}
-       </div>`;
-      }).join('');
+      const room = Math.max(Math.min(count, total - spanning - slot), 0);
+      const boxes = Array.from({ length: room }, () => box(false)).join('');
       return `<div class="widget-detail__column widget-detail__column--${column + 1}">${boxes}</div>`;
     })
     .join('');
-  // The count is on the element because it decides how wide a column may be:
-  // two columns have room to be wider than three, and the surplus goes back to
-  // the canvas rather than into the cards (see .widget-detail__modules--2).
-  return `<div class="widget-detail__modules widget-detail__modules--${layout.length}">${columns}</div>`;
+  // Whatever the columns do not take stands below them, across the full width.
+  const full = Array.from({ length: spanning }, () => box(true)).join('');
+  // The column count is on the element because it decides how wide a column may
+  // be: two columns have room to be wider than three, and the surplus goes back
+  // to the canvas rather than into the cards (see .widget-detail__modules--2).
+  return `<div class="widget-detail__modules widget-detail__modules--${layout.length}">
+     <div class="widget-detail__columns">${columns}</div>
+     ${full}
+   </div>`;
 }
 
 /** One card, always at its small reading — a card that opens is re-rendered
@@ -819,16 +854,6 @@ function problemFitTargetsHtml({ slug, targets }) {
   return `<ul class="widget__problem-fit-targets">${items}</ul>`;
 }
 
-/** Adoption's L1 body: the cards its L2 opens into, named. Driven by the module
- * list itself rather than a second list here, so a card that gains content
- * appears in the widget and one that has none never does. */
-function adoptionTopicsHtml(modules) {
-  const items = modules
-    .map((module) => `<li class="widget__topic">${t(module.labelKey)}</li>`)
-    .join('');
-  return `<ul class="widget__topics">${items}</ul>`;
-}
-
 function applyWidget(widget, layout, contentHtml) {
   Object.assign(widget.node.style, {
     top: layout.top,
@@ -873,12 +898,20 @@ function widgetContent(criterion, metric, problemFit, modules) {
   if (criterion === 'problemFit' && problemFit) {
     return widgetHeader(label, null) + problemFitTargetsHtml(problemFit);
   }
-  // Adoption has no single figure either — what it has is a set of topics — so
-  // it names the ones this city has content for. An unresearched city has none
-  // and falls through to the empty shell below.
+  // Adoption stands on its cost card, the way Impact stands on its cycle network
+  // one: the sum, what it bought and the year, without the itemised lines or the
+  // disclaimer that belong to the reading below. It used to list the names of
+  // the cards it opened into, which said what was in there without showing any
+  // of it.
   if (criterion === 'adoption') {
-    const filled = modules.filter((module) => module?.kind);
-    if (filled.length > 0) return widgetHeader(label, null) + adoptionTopicsHtml(filled);
+    const preview = modules.find((module) => module?.key === 'cost' && module.kind);
+    if (preview) {
+      return (
+        widgetHeader(label, null) +
+        `<span class="widget__submetric">${t(preview.labelKey)}</span>` +
+        modulePreviewHtml(preview)
+      );
+    }
   }
   // Impact stands on the card it opens into: the cycle-network module, drawn
   // exactly as it is at L2 apart from the sentence and the chips underneath it.

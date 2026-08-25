@@ -67,17 +67,23 @@ test('focusing a city zooms in place without navigating', async ({ page }) => {
 // only a browser can show is that the modules actually travel into place, and
 // that none of them reaches over the map.
 test('opening a widget stands its modules in the freed half', async ({ page }) => {
+  // A stage the arrangement fits on. The scrollbar check below is about the
+  // decoration — the nudge and the idle drift both reach past the cells the grid
+  // measured — and not about six cards of prose being taller than a 720px
+  // window, which they legitimately are and which the region scrolls for.
+  await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto('/');
   await page.waitForSelector('.marker');
   await page.locator(`.marker[aria-label*="${sourced.city_display}"]`).click({ force: true });
 
-  // Adoption rather than Impact, which has since been given an arrangement of
-  // its own: two columns of three and no arrows (widgetStack.js#CRITERION_COLUMNS,
+  // Problem Fit rather than Impact or Adoption, both of which have since been
+  // given arrangements of their own — two columns, and no arrows between cards
+  // that do not follow on from one another (widgetStack.js#CRITERION_COLUMNS,
   // #ARROWLESS). What this test is about — the modules standing in the half the
   // map gave up, staggered, with the arrows drawn only once they have landed —
-  // is the arrangement the other two criteria still use. Impact's own layout has
-  // its own test in module-fit.spec.js.
-  const widget = page.locator('.widget--adoption');
+  // is the arrangement Problem Fit still uses. The other two have their own
+  // tests in module-fit.spec.js.
+  const widget = page.locator('.widget--problemFit');
   await expect(widget).toBeVisible();
   await widget.click();
 
@@ -132,9 +138,10 @@ test('opening a widget stands its modules in the freed half', async ({ page }) =
 
   // Which way "along the columns" runs depends on the side the region is on: a
   // right-hand region mirrors, so its first column is the rightmost one and the
-  // arrangement reads right to left (see .widget-detail--right). Adoption is a
-  // right-hand widget, so asserting a left-to-right order here was asserting
-  // the mirror away.
+  // arrangement reads right to left (see .widget-detail--right). Problem Fit is
+  // a left-hand widget and so does not mirror, but the check stays written for
+  // both: which side a criterion sits on is a layout decision, not this test's
+  // subject.
   const rightHanded = await region.evaluate((node) =>
     node.classList.contains('widget-detail--right'),
   );
@@ -165,7 +172,10 @@ test('opening a widget stands its modules in the freed half', async ({ page }) =
     y: node.scrollHeight - node.clientHeight,
     x: node.scrollWidth - node.clientWidth,
   }));
-  expect(overflow.y).toBeLessThanOrEqual(0);
+  // Sideways only. Vertically, six cards of prose are taller than the region on
+  // any stage, and it scrolls for them by design — that is content, not
+  // decoration. Whether an arrangement fits its region at all is checked per
+  // criterion in module-fit.spec.js, where the criteria that do fit are.
   expect(overflow.x).toBeLessThanOrEqual(0);
 
   // The arrows wait for the modules. They are drawn only once every module has

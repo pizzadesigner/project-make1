@@ -16,6 +16,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render } from './widgetStack.js';
 
+// A third thing jsdom does not implement: the timeline redraws its track when
+// the card it is in changes width. Same shape as the stubs below — a gap in the
+// test environment, not a branch the component should carry.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  disconnect() {}
+};
+
 /** jsdom ships no matchMedia, and a11y.js asks it whether to animate. */
 function stubReducedMotion(reduce) {
   window.matchMedia = () => ({ matches: reduce });
@@ -142,7 +150,8 @@ describe('entering L2', () => {
   it('opens the region with its full set of modules', () => {
     stack.update({ ...props, activeCriterion: 'adoption' });
     expect(region().hidden).toBe(false);
-    expect(modules()).toHaveLength(6);
+    // Adoption is five cards: four in two columns and the timeline below them.
+    expect(modules()).toHaveLength(5);
   });
 
   // Each module's position in the three staggered columns, the order it flies
@@ -153,7 +162,7 @@ describe('entering L2', () => {
     const places = [...modules()].map((module) =>
       [...module.classList].find((name) => name.startsWith('widget-detail__module--')),
     );
-    expect(places).toEqual([1, 2, 3, 4, 5, 6].map((n) => `widget-detail__module--${n}`));
+    expect(places).toEqual([1, 2, 3, 4, 5].map((n) => `widget-detail__module--${n}`));
   });
 
   it('opens on the side its widget sits on', () => {
@@ -167,9 +176,16 @@ describe('entering L2', () => {
   // The modules are empty shells until content is moved into them
   // (detailContent.js), and an empty shell must not be announced as if it held
   // a figure.
-  it('draws the arrows between the modules they join', () => {
-    stack.update({ ...props, activeCriterion: 'adoption' });
+  // Problem Fit's blocks follow on from one another and keep their arrows.
+  // Impact's six measurements and Adoption's five requirements do not, so an
+  // arrow between any two of them would claim a relationship the data has not
+  // got — see widgetStack.js#ARROWLESS.
+  it('draws the arrows only where the cards follow on from one another', () => {
+    stack.update({ ...props, activeCriterion: 'problemFit' });
     expect(region().querySelectorAll('.connector__line')).toHaveLength(2);
+    stack.update({ ...props, activeCriterion: null });
+    stack.update({ ...props, activeCriterion: 'adoption' });
+    expect(region().querySelectorAll('.connector__line')).toHaveLength(0);
   });
 
   // The widgets left standing on the map's side are context at L2. They are
@@ -189,10 +205,10 @@ describe('entering L2', () => {
   // A city with nothing researched for a criterion gets six empty cards — the
   // honest stand-in, and it must stay distinguishable from a card whose content
   // simply failed to render.
-  it('leaves a criterion with no content standing in six empty cards', () => {
+  it('leaves a criterion with no content standing in empty cards', () => {
     stack.update({ ...props, activeCriterion: 'adoption' });
     const cards = [...region().querySelectorAll('.widget-detail__card')];
-    expect(cards).toHaveLength(6);
+    expect(cards).toHaveLength(5);
     expect(cards.every((card) => card.textContent.trim() === '')).toBe(true);
   });
 });
@@ -579,6 +595,8 @@ describe('the focus slot at L3', () => {
       kind: 'prose',
       labelKey: null,
       infoKey: 'adoption.info.context',
+      detailKey: 'adoption.detail.context',
+      detailTitleKey: 'adoption.detailTitle.context',
       text: `adoption.${city}.recommendation`,
     },
     {
@@ -643,22 +661,22 @@ describe('the focus slot at L3', () => {
     expect(focus.style.transform).toBe('none');
   });
 
-  it('stacks the other five in the rail, all shrunk by the same scale', () => {
+  it('stacks the rest in the rail, all shrunk by the same scale', () => {
     openL2();
     openL3('context');
     // Every module but the one that opened — the empty shells included: they
     // cannot be opened, but they are still cards standing in the arrangement.
-    const rail = [0, 2, 3, 4, 5].map(moduleAt);
+    const rail = [0, 2, 3, 4].map(moduleAt);
     // 176/300 would be 0.587, under the floor — so the floor is what they take,
     // and the rail is allowed to run long rather than the cards being shrunk
     // past reading.
-    expect(rail.map((node) => node.style.transform)).toEqual(Array(5).fill('scale(0.62)'));
+    expect(rail.map((node) => node.style.transform)).toEqual(Array(4).fill('scale(0.62)'));
     // Aligned to the arrangement's outer edge by their own scaled width, so the
     // rail ends exactly where the region does: 900 − 300 × 0.62.
-    expect(rail.map((node) => node.style.left)).toEqual(Array(5).fill('714px'));
+    expect(rail.map((node) => node.style.left)).toEqual(Array(4).fill('714px'));
     // One card's scaled height plus the gap, over and over: 120 × 0.62 + 14,
     // written to whole pixels (round) but accumulated in full.
-    expect(rail.map((node) => node.style.top)).toEqual(['0px', '88px', '177px', '265px', '354px']);
+    expect(rail.map((node) => node.style.top)).toEqual(['0px', '88px', '177px', '265px']);
   });
 
   // The arrows join two cards in the columns arrangement. Once the six have
@@ -703,11 +721,11 @@ describe('the focus slot at L3', () => {
     openL2();
     const control = cardFor('cost').querySelector('.module__expand');
     expect(control.getAttribute('aria-expanded')).toBe('false');
-    expect(control.getAttribute('aria-label')).toBe('Expand The city it was built in');
+    expect(control.getAttribute('aria-label')).toBe('Expand Context');
     openL3('cost');
     const open = cardFor('cost').querySelector('.module__expand');
     expect(open.getAttribute('aria-expanded')).toBe('true');
-    expect(open.getAttribute('aria-label')).toBe('Collapse The city it was built in');
+    expect(open.getAttribute('aria-label')).toBe('Collapse Context');
   });
 
   // A card whose content leads with its own prose has no label to be named by,
@@ -753,7 +771,7 @@ describe('the focus slot at L3', () => {
     it('names the card it explains, and points at the text that explains it', () => {
       openL2();
       const control = cardFor('cost').querySelector('.module__info');
-      expect(control.getAttribute('aria-label')).toBe('About The city it was built in');
+      expect(control.getAttribute('aria-label')).toBe('About Context');
       const hint = cardFor('cost').querySelector('.module__info .link-hint');
       expect(control.getAttribute('aria-describedby')).toBe(hint.id);
       expect(hint.getAttribute('role')).toBe('tooltip');
@@ -763,7 +781,8 @@ describe('the focus slot at L3', () => {
     // which is what t() answers a missing string with.
     it('says the explanation is unwritten rather than showing its key', () => {
       openL2();
-      const hint = cardFor('cost').querySelector('.module__info .link-hint');
+      // A key with nothing behind it, unlike the cards whose copy is written.
+      const hint = cardFor('departments').querySelector('.module__info .link-hint');
       expect(hint.textContent).toContain('has not been written yet');
       expect(hint.textContent).not.toContain('adoption.info');
     });
@@ -813,7 +832,7 @@ describe('the focus slot at L3', () => {
       expect(region().classList.contains('is-settled')).toBe(false);
     });
 
-    it('holds the six out of their columns until they have arrived', () => {
+    it('holds them out of their columns until they have arrived', () => {
       openL2();
       openL3('context');
       openL2();
@@ -822,11 +841,11 @@ describe('the focus slot at L3', () => {
       // since they are still standing in the focus arrangement when it is set.
       expect(
         [...region().querySelectorAll('.widget-detail__module')].map((m) => m.style.top),
-      ).toEqual([0, 130, 260, 390, 520, 650].map((y) => `${y}px`));
+      ).toEqual([0, 130, 260, 390, 520].map((y) => `${y}px`));
       expect(region().querySelector('.widget-detail__module').style.left).toBe('0px');
-      expect(moduleAt(5).style.left).toBe('50px');
+      expect(moduleAt(4).style.left).toBe('40px');
       // No card is left scaled down on the way home.
-      expect(moduleAt(5).style.transform).toBe('none');
+      expect(moduleAt(4).style.transform).toBe('none');
     });
   });
 
@@ -912,49 +931,6 @@ describe('the adoption cards', () => {
       sources: [source],
     },
     {
-      key: 'context',
-      kind: 'facts',
-      labelKey: 'adoption.context',
-      facts: [
-        { key: 'population', value: 1028273, unit: 'people', year: 2025 },
-        { key: 'density', value: 2539, unit: 'per km²' },
-      ],
-      sources: [source, { ...source, url: 'https://example.org/area', label: 'Area' }],
-    },
-    {
-      key: 'departments',
-      kind: 'links',
-      labelKey: 'adoption.departments',
-      lead: null,
-      links: [
-        {
-          key: 'mobilitaet',
-          url: 'https://example.org/amt-68',
-          textKey: 'adoption.koeln.departments.mobilitaet',
-        },
-      ],
-    },
-    {
-      key: 'partners',
-      kind: 'links',
-      labelKey: 'adoption.partners',
-      lead: 'adoption.koeln.partnersLead',
-      links: [
-        {
-          key: 'ringfrei',
-          url: 'https://example.org/ringfrei',
-          textKey: 'adoption.koeln.partners.ringfrei',
-        },
-      ],
-    },
-    {
-      key: 'recommendation',
-      kind: 'prose',
-      labelKey: 'adoption.recommendation',
-      text: 'adoption.koeln.recommendation',
-      source,
-    },
-    {
       key: 'funding',
       kind: 'linkGroups',
       labelKey: 'adoption.funding',
@@ -975,6 +951,50 @@ describe('the adoption cards', () => {
         },
       ],
     },
+    {
+      key: 'context',
+      kind: 'facts',
+      labelKey: 'adoption.context',
+      facts: [
+        { key: 'population', value: 1028273, unit: 'people', year: 2025 },
+        { key: 'density', value: 2539, unit: 'per km²' },
+      ],
+      sources: [source, { ...source, url: 'https://example.org/area', label: 'Area' }],
+    },
+    {
+      key: 'politics',
+      kind: 'policy',
+      labelKey: 'adoption.politics',
+      infoKey: 'adoption.info.politics',
+      authorities: [{ key: 'a', textKey: 'adoption.politics', url: 'https://example.org/amt' }],
+      alliance: { key: 'r', textKey: 'adoption.politics' },
+      members: [{ key: 'm', textKey: 'adoption.politics' }],
+      recommendations: ['movement', 'phased'].map((key) => ({
+        key,
+        titleKey: 'adoption.politics',
+        claimKey: 'adoption.timeline',
+        exampleKey: 'adoption.cost',
+        lessonKey: 'adoption.context',
+      })),
+    },
+    {
+      key: 'timeline',
+      kind: 'timeline',
+      labelKey: 'adoption.timeline',
+      infoKey: 'adoption.info.timeline',
+      events: [
+        { key: 'a', when: 'Okt. 2015', title: 'Gründung', details: 'Wie es dazu kam.' },
+        { key: 'b', when: '2019', title: 'Auszeichnung', details: 'Wofür genau.' },
+        {
+          key: 'c',
+          when: 'In Planung',
+          title: 'Ebertplatz',
+          details: 'Was noch aussteht.',
+          planned: true,
+        },
+      ],
+      phases: [{ phase: 'history', labelKey: 'adoption.timeline.phase.history', from: 0 }],
+    },
   ];
 
   const open = () =>
@@ -983,23 +1003,120 @@ describe('the adoption cards', () => {
 
   it('gives each adoption card the shape its kind calls for', () => {
     open();
-    expect(card(0).querySelectorAll('.module__cost-item')).toHaveLength(2);
-    expect(card(1).querySelectorAll('.module__fact')).toHaveLength(2);
-    expect(card(2).querySelectorAll('.module__link')).toHaveLength(1);
-    expect(card(4).querySelector('.module__prose')).not.toBeNull();
-    expect(card(5).querySelectorAll('.module__link-group')).toHaveLength(2);
+    expect(card(2).querySelectorAll('.module__fact')).toHaveLength(2);
+    expect(card(1).querySelectorAll('.module__link-group')).toHaveLength(2);
   });
 
-  // A cost the city never published is the reason this card exists, so it keeps
-  // its line and shows the em dash a missing value always shows — never a 0,
-  // and never a row quietly dropped, which would read as a complete bill.
-  it('keeps a cost line the source states no figure for', () => {
+  // The timeline is one card read two ways. In a column it is dots and nothing
+  // else — the shape of the whole story — and the hover names the event. Opened,
+  // the names are written beside the dots and the hover brings the account
+  // instead: at each size, what is written is what there is room to read.
+  it('shows the timeline as dots alone, and names them once opened', () => {
+    open();
+    const dots = card(4).querySelectorAll('.timeline__dot');
+    expect(dots).toHaveLength(3);
+    expect(card(4).querySelectorAll('.timeline__label')).toHaveLength(0);
+    expect(dots[0].querySelector('.link-hint').textContent).toBe('Gründung');
+    // The undated entry is still ahead, and reads that way.
+    expect(dots[2].classList.contains('timeline__dot--planned')).toBe(true);
+
+    stack.update({
+      ...props,
+      activeCriterion: 'adoption',
+      adoptionModules: adoption,
+      activeModule: 'timeline',
+    });
+    const opened = region().querySelector('.widget-detail__card.is-expanded');
+    expect(opened.querySelectorAll('.timeline__label')).toHaveLength(3);
+    // The card's own info point carries a .link-hint too; the dot's is the one.
+    expect(opened.querySelector('.timeline__dot .link-hint').textContent).toBe('Wie es dazu kam.');
+    // Every dot is reachable by keyboard and says what it is without a hover.
+    expect(opened.querySelector('.timeline__dot').getAttribute('aria-label')).toBe(
+      'Okt. 2015: Gründung',
+    );
+  });
+
+  // The Politik card's recommendations are a toggle list. In a column they are
+  // named and nothing more; opened, each name carries its sentence and a
+  // disclosure holding what the city did and what to take from it.
+  // The card's three sections are three boxes — the same surface the Kontext
+  // card's tiles sit on, one to a category rather than one to an entry, so a
+  // name inside is a line and not a box within a box. The alliance stands above
+  // its members: it is not one more organisation, it is the ones under it taken
+  // together.
+  it('boxes each section, with the names as lines inside', () => {
+    open();
+    expect(card(3).querySelectorAll('.module__panel')).toHaveLength(3);
+    expect(card(3).querySelectorAll('.module__fact')).toHaveLength(0);
+    expect(card(3).querySelectorAll('.module__policy-lead')).toHaveLength(1);
+    const names = card(3).querySelectorAll('.module__policy-list .module__link-item');
+    expect(names).toHaveLength(2);
+    // A name with a page worth opening is the link; the rest are named without.
+    expect(names[0].querySelector('.module__link')).not.toBeNull();
+  });
+
+  it('names the recommendations in a column and opens them in the slot', () => {
+    open();
+    expect(card(3).querySelectorAll('.module__toggle-title')).toHaveLength(2);
+    expect(card(3).querySelectorAll('details')).toHaveLength(0);
+    expect(card(3).querySelectorAll('.module__toggle-lead')).toHaveLength(0);
+
+    stack.update({
+      ...props,
+      activeCriterion: 'adoption',
+      adoptionModules: adoption,
+      activeModule: 'politics',
+    });
+    const opened = region().querySelector('.widget-detail__card.is-expanded');
+    expect(opened.querySelectorAll('details')).toHaveLength(2);
+    expect(opened.querySelectorAll('.module__toggle-lead')).toHaveLength(2);
+    expect(opened.querySelector('details').hasAttribute('open')).toBe(false);
+  });
+
+  // One at a time. Five recommendations of two paragraphs each on the tallest
+  // card in the criterion: left free, opening a third pushed the arrangement
+  // past the region and the reader lost the one they had come for.
+  it('closes the open recommendation when another is opened', () => {
+    open();
+    stack.update({
+      ...props,
+      activeCriterion: 'adoption',
+      adoptionModules: adoption,
+      activeModule: 'politics',
+    });
+    const [first, second] = region().querySelectorAll('.widget-detail__card.is-expanded details');
+    first.open = true;
+    first.dispatchEvent(new Event('toggle'));
+    expect(first.open).toBe(true);
+
+    second.open = true;
+    second.dispatchEvent(new Event('toggle'));
+    expect(second.open).toBe(true);
+    expect(first.open).toBe(false);
+  });
+
+  // The one card with no closing block: its recommendations already are what one
+  // would hold, so a "Sources" heading under them would promise a document none
+  // of it comes from.
+  it('gives the politics card no in-depth block, even opened', () => {
+    open();
+    stack.update({
+      ...props,
+      activeCriterion: 'adoption',
+      adoptionModules: adoption,
+      activeModule: 'politics',
+    });
+    const opened = region().querySelector('.widget-detail__card.is-expanded');
+    expect(opened.querySelector('.module__in-depth')).toBeNull();
+  });
+
+  // The card is the published sum, what it bought, and the rate under it. What
+  // the sum covered and the costs never published separately are the info
+  // point's and the Quellen block's account now, not a list on the card.
+  it('states the published sum and nothing it did not publish', () => {
     open();
     expect(card(0).querySelector('.module__value b').textContent).toContain('2.9M');
-    const values = [...card(0).querySelectorAll('.module__cost-value')].map(
-      (node) => node.textContent,
-    );
-    expect(values).toEqual(['€1.5M', '—']);
+    expect(card(0).querySelectorAll('.module__cost-item')).toHaveLength(0);
   });
 
   // The rate is arithmetic over the card's own two figures, so it is filled in
@@ -1013,42 +1130,76 @@ describe('the adoption cards', () => {
   // chip, and the derived figure adds none of its own.
   it('chips every row the context card was built from', () => {
     open();
-    expect(card(1).querySelectorAll('.source-chip')).toHaveLength(2);
-    expect(card(4).querySelectorAll('.source-chip')).toHaveLength(1);
+    expect(card(2).querySelectorAll('.source-chip')).toHaveLength(2);
   });
 
   // The whole point of these cards is that they lead somewhere: a link that
   // rendered as text is a dead end wearing the right clothes.
   it('keeps every link an outbound link', () => {
     open();
-    const links = [...region().querySelectorAll('.module__link')];
-    expect(links).toHaveLength(3);
+    // The politics card's names, and the arrow beside a funding route.
+    const links = [...region().querySelectorAll('.module__link, .module__programme-link')];
+    expect(links).toHaveLength(2);
     expect(links.every((link) => link.getAttribute('rel') === 'noopener noreferrer')).toBe(true);
     expect(links.map((link) => link.getAttribute('href'))).toContain('https://example.org/life');
+  });
+
+  // A funding route opens into its terms where they have been written down, and
+  // is its name alone where they have not. Which of the two it is comes from the
+  // bundle rather than from a flag: a route gains its disclosure the moment its
+  // Details / Förderquote / Zugang are added.
+  it('opens a funding route into its terms, or names it and nothing more', () => {
+    open();
+    // LIFE has its terms; the private-partner routes do not.
+    const routes = card(1).querySelectorAll('details.module__toggle');
+    expect(routes).toHaveLength(1);
+    expect(routes[0].querySelectorAll('.module__toggle-field')).toHaveLength(3);
+    // The page sits beside the name as an arrow, in the summary rather than on
+    // the name or down among the paragraphs: the name opens the terms, the arrow
+    // opens the page, and neither does the other's job.
+    expect(routes[0].querySelector('summary .module__programme-link')).not.toBeNull();
+    expect(routes[0].querySelector('summary .module__toggle-title a')).toBeNull();
+  });
+
+  // Following the arrow must not also open the terms it sits beside.
+  it('does not toggle the terms when the programme page is followed', () => {
+    open();
+    stack.update({
+      ...props,
+      activeCriterion: 'adoption',
+      adoptionModules: adoption,
+      activeModule: 'funding',
+    });
+    const route = region().querySelector('.widget-detail__card.is-expanded details.module__toggle');
+    const link = route.querySelector('summary .module__programme-link');
+    link.addEventListener('click', (event) => event.preventDefault());
+    link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    expect(route.open).toBe(false);
   });
 
   // "Sponsorship" is a route, not a programme with a page — so it is named
   // rather than given a link that points at nothing in particular.
   it('names a funding route that has nowhere to point without linking it', () => {
     open();
-    const [, privateGroup] = card(5).querySelectorAll('.module__link-group');
+    const [, privateGroup] = card(1).querySelectorAll('.module__link-group');
     expect(privateGroup.querySelectorAll('.module__link-item')).toHaveLength(1);
     expect(privateGroup.querySelector('.module__link')).toBeNull();
   });
 
-  // Adoption has no headline figure, so the L1 widget names what its L2 holds.
-  // The hatched empty bar has to stay reserved for a widget with nothing at all.
-  it('lists the filled cards on the L1 widget instead of an empty bar', () => {
+  // The L1 widget stands on the cost card: the sum and what it bought, without
+  // the itemised lines or the disclaimer that belong to the reading below it.
+  it('stands the adoption widget on its cost card', () => {
     stack.update({ ...props, adoptionModules: adoption });
     const widget = container.querySelector('.widget--adoption');
     expect(widget.querySelector('.widget__bar--empty')).toBeNull();
-    expect(widget.querySelectorAll('.widget__topic')).toHaveLength(6);
+    expect(widget.querySelector('.module__value b').textContent).toContain('2.9M');
+    expect(widget.querySelectorAll('.module__cost-item')).toHaveLength(0);
+    expect(widget.querySelector('.module__note')).toBeNull();
   });
 
   it('keeps the empty bar for a city with no adoption content', () => {
     stack.update({ ...props, adoptionModules: [] });
     const widget = container.querySelector('.widget--adoption');
     expect(widget.querySelector('.widget__bar--empty')).not.toBeNull();
-    expect(widget.querySelectorAll('.widget__topic')).toHaveLength(0);
   });
 });

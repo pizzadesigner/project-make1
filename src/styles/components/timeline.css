@@ -1,0 +1,127 @@
+/* The project's story as a serpentine (timelineChart.js): a track that runs
+ * across, drops a row and runs back, with one dot per event on it.
+ *
+ * The track is an SVG stretched over the grid; the dots are placed by the same
+ * fractions, so nothing is measured — the two stay together at any card width. */
+.timeline {
+  --timeline-row: 3rem;
+
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--timeline-columns), 1fr);
+  grid-template-rows: repeat(var(--timeline-rows), var(--timeline-row));
+}
+
+/* Drawn in pixels at the card's own size (timelineChart.js#paint), so the
+   corners are circles rather than whatever a stretched viewBox made of them. */
+.timeline__track {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.timeline__line {
+  fill: none;
+  stroke: var(--color-border);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* One event. Placed on the grid rather than positioned, so it lands on the same
+   cell centre the track was drawn through. */
+.timeline__dot {
+  grid-column: calc(var(--column) + 1);
+  grid-row: calc(var(--row) + 1);
+  position: relative;
+  z-index: 1;
+  display: grid;
+
+  /* The mark at the top of the cell and the name below it, rather than the pair
+     centred: the track is drawn through the marks (timelineChart.js#markCentres),
+     and a mark that moved with the length of its name would drag the line with
+     it. */
+  align-content: start;
+  justify-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  cursor: help;
+}
+
+.timeline__mark {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-surface);
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+
+/* Still ahead rather than done: hollow, so the track's end reads as open. */
+.timeline__dot--planned .timeline__mark {
+  background: var(--color-surface);
+  border: 2px solid var(--color-accent);
+}
+
+.timeline__dot:hover .timeline__mark,
+.timeline__dot:focus-visible .timeline__mark {
+  transform: scale(1.35);
+}
+
+/* The names, once the card is opened. Under the dot rather than beside it: the
+   track runs both ways, so a label to one side would be inside the line on
+   every second row. */
+.timeline__label {
+  margin-top: var(--space-1);
+  display: grid;
+  gap: 1px;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-tight);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.timeline__when {
+  color: var(--color-text-muted);
+}
+
+/* A taller row once the labels are in it. */
+.timeline--expanded {
+  --timeline-row: 5.5rem;
+}
+
+/* The phases, named above the track. A label among the dots would be one more
+   thing to read at a glance, which is what the small reading is avoiding. */
+.timeline__phases {
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.timeline__phase::before {
+  content: '';
+  display: inline-block;
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-right: var(--space-1);
+  border-radius: 999px;
+  background: var(--color-border);
+  vertical-align: middle;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline__mark {
+    transition: none;
+  }
+}

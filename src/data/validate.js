@@ -78,14 +78,15 @@ function hasValidCoords(project) {
 }
 
 /**
- * @param {{ projectRows?: object[], metricRows?: object[], peerRows?: object[], cityRows?: object[] }} raw
- * @returns {{ projects: import('./types.js').Project[], metrics: import('./types.js').Metric[], peers: import('./types.js').PeerCity[], cityIndicators: import('./types.js').CityIndicator[] }}
+ * @param {{ projectRows?: object[], metricRows?: object[], peerRows?: object[], cityRows?: object[], timelineRows?: object[] }} raw
+ * @returns {{ projects: import('./types.js').Project[], metrics: import('./types.js').Metric[], peers: import('./types.js').PeerCity[], cityIndicators: import('./types.js').CityIndicator[], timeline: import('./types.js').TimelineEvent[] }}
  */
 export function validateDataset({
   projectRows = [],
   metricRows = [],
   peerRows = [],
   cityRows = [],
+  timelineRows = [],
 }) {
   const issues = [];
   const projects = projectRows.map(coerceProject);
@@ -167,6 +168,32 @@ export function validateDataset({
     });
   }
 
+  // The project's own story, one row per event. Narrative rather than
+  // measurement: these rows carry no figure, so the no-source-no-render rule
+  // that guards a number does not apply — an event without a document behind it
+  // is still what happened, and where the account came from is a question for
+  // the card rather than for the row. An unknown city is still an issue, as
+  // everywhere else.
+  const timeline = [];
+  for (const row of timelineRows) {
+    const citySlug = toText(row.city_slug);
+    if (!citySlug) continue;
+    if (!citySlugs.has(citySlug)) {
+      issues.push(`Timeline row references unknown city_slug: "${citySlug}"`);
+      continue;
+    }
+    timeline.push({
+      citySlug,
+      phase: toText(row.phase),
+      position: toNumberOrNull(row.position),
+      dateLabel: toTextOrNull(row.date_label),
+      status: toTextOrNull(row.status),
+      title: toText(row.title),
+      details: toText(row.details),
+    });
+  }
+  timeline.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
   if (issues.length > 0) {
     throw new DataError(
       `Dataset failed validation (${issues.length} issue(s)):\n- ${issues.join('\n- ')}`,
@@ -174,5 +201,5 @@ export function validateDataset({
     );
   }
 
-  return { projects, metrics, peers, cityIndicators };
+  return { projects, metrics, peers, cityIndicators, timeline };
 }

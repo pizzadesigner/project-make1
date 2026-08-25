@@ -179,7 +179,11 @@ export function render(container, props) {
       // selectors.js#impactModules).
       impactModules: impactModules(next.cityIndicators, focusedProject?.citySlug ?? null),
       problemFitModules: problemFitModules(problemFit),
-      adoptionModules: adoptionModules(next.cityIndicators, focusedProject?.citySlug ?? null),
+      adoptionModules: adoptionModules(
+        next.cityIndicators,
+        focusedProject?.citySlug ?? null,
+        next.timeline,
+      ),
       // Under the coming-soon overlay the widgets are covered, so they go inert
       // (not click/focus targets) rather than offering an empty L2 to open.
       comingSoon,
