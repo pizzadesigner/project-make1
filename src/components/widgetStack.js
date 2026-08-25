@@ -9,11 +9,19 @@
 // stood on the deck at L1 is what is standing in the region afterwards. See
 // setFlightOrigin for the measurement that ties the two together.
 //
-// render(container, { project, activeCriterion, metrics, impactModules,
-// problemFitModules, adoptionModules, problemFit, comingSoon,
-// onSelectCriterion }) and the component never reads the store — data comes
-// down, the clicked widget goes up via
-// onSelectCriterion('problemFit'|'impact'|'adoption').
+// Clicking one of those modules enters L3: that card opens into a focus slot
+// taking most of the region, and the other five step aside into a rail down the
+// side the widget is on, scaled down together rather than pushed off screen. The
+// region keeps its L2 share of the stage — the room comes from inside the
+// arrangement, which is mostly air. See applyFocusLayout, and buildDetail for
+// why the movement is measured rather than declared.
+//
+// render(container, { project, activeCriterion, activeModule, metrics,
+// impactModules, problemFitModules, adoptionModules, problemFit, comingSoon,
+// onSelectCriterion, onSelectModule }) and the component never reads the store —
+// data comes down, the clicked widget goes up via
+// onSelectCriterion('problemFit'|'impact'|'adoption') and the clicked module via
+// onSelectModule(moduleKey|null).
 //
 // `metrics` is keyed by widget (`selectors.js#widgetMetricsForProject`): each
 // value is `{ key, value, unit }` or null. This component decides nothing about
@@ -37,7 +45,7 @@ import { t, getLocale } from '../lib/i18n.js';
 import { formatNumber } from '../lib/format.js';
 import { motionMs } from '../lib/a11y.js';
 import * as connector from './connector.js';
-import { moduleHtml, mountModuleExtras } from './detailContent.js';
+import { moduleHtml, mountModuleExtras, mountModule } from './detailContent.js';
 
 const WIDGETS = ['problemFit', 'impact', 'adoption'];
 
@@ -133,6 +141,7 @@ export function render(container, props) {
   // of the entrance (see setFlightOrigin).
   const detail = buildDetail(
     (kind) => widgets.find((widget) => widget.kind === kind)?.node ?? null,
+    props.onSelectModule ?? (() => {}),
   );
   root.append(...widgets.map((w) => w.node), detail.node);
   container.append(root);
@@ -163,7 +172,7 @@ export function render(container, props) {
       widget.node.style.pointerEvents = inert ? 'none' : 'auto';
       widget.node.setAttribute('aria-hidden', String(inert));
     }
-    detail.sync(active, modulesFor(active, next));
+    detail.sync(active, modulesFor(active, next), next.activeModule ?? null);
   }
 
   update(props);
@@ -200,17 +209,36 @@ function buildWidget(kind, onSelectCriterion) {
 /** The L2 region: one reused element, shown on the active widget's side while
  * the map cuts to the other half. It carries no back control of its own — the
  * screen's Back button (and Escape) already step back one layer from anywhere,
- * and a second one inside the region was a duplicate of that. */
-function buildDetail(sourceNodeFor) {
+ * and a second one inside the region was a duplicate of that.
+ *
+ * It is also where L3 happens: one module opens into a focus slot and the other
+ * five stand aside in a rail (see applyFocusLayout). That movement is measured
+ * rather than declared, for the same reason the L1→L2 flight is — where a card
+ * has to travel to depends on where the six of them happen to be standing, which
+ * is a fact about the running page and not something a stylesheet knows. */
+function buildDetail(sourceNodeFor, onSelectModule) {
   const node = document.createElement('section');
   node.className = 'widget-detail';
   node.hidden = true;
   node.setAttribute('aria-live', 'polite');
+  node.addEventListener('click', (event) => {
+    const target = clickTarget(event, focusedKey);
+    if (target !== undefined) onSelectModule(target);
+  });
 
   let leaveTimer = null;
+  let focusTimer = null;
   let openCriterion = null;
+  // The module standing in the focus slot (its `key`), and the payload list it
+  // was picked out of — a re-render of one card needs the module behind it.
+  let focusedKey = null;
+  let shownModules = [];
   let arrows = null;
   let contents = [];
+  // The six resting boxes, measured the moment before the first of them moves,
+  // and the area they stand in. Null whenever no module is pinned: the boxes are
+  // only true while the arrangement they were read off is untouched.
+  let resting = null;
 
   /** Empty the region: nothing left in the DOM, no pending timer, and every
    * chart and chip the modules mounted destroyed rather than orphaned — the
@@ -218,11 +246,15 @@ function buildDetail(sourceNodeFor) {
    * listeners and its tooltip node. */
   function teardown() {
     clearTimeout(leaveTimer);
+    clearTimeout(focusTimer);
     leaveTimer = null;
+    focusTimer = null;
     arrows?.destroy();
     arrows = null;
-    for (const child of contents) child.destroy();
+    for (const child of contents) child.handle.destroy();
     contents = [];
+    resting = null;
+    shownModules = [];
     node.classList.remove('is-leaving');
     node.hidden = true;
     node.replaceChildren();
@@ -240,34 +272,324 @@ function buildDetail(sourceNodeFor) {
     else leaveTimer = setTimeout(teardown, hold);
   }
 
-  function sync(activeCriterion, modules) {
+  function sync(activeCriterion, modules, activeModule) {
     if (!activeCriterion) {
       openCriterion = null;
+      focusedKey = null;
       return leave();
     }
+    const nextFocus = focusableKey(modules, activeModule ?? null);
+    // Opening or closing the focus slot is a move *within* the region: the six
+    // modules are already standing, and rebuilding them would throw away the
+    // boxes the movement has to be measured from. Only the card that changes
+    // reading is re-rendered (changeFocus).
+    const settled = activeCriterion === openCriterion;
+    if (settled && !node.hidden && nextFocus !== focusedKey) return changeFocus(nextFocus);
     // Re-syncing a region that is already open (a locale switch, new data) must
     // not replay the entrance: these modules have already flown out once.
-    const settled = activeCriterion === openCriterion;
     openCriterion = activeCriterion;
     teardown();
-    node.className = detailClass(activeCriterion, settled);
+    shownModules = modules;
+    focusedKey = nextFocus;
+    node.className = detailClass(activeCriterion, settled, nextFocus);
     node.setAttribute('aria-label', t(`criteria.${activeCriterion}`));
     node.innerHTML = detailHeader(activeCriterion) + moduleScaffold(modules);
     node.hidden = false;
     mountModuleExtras(node, modules, contents);
     setFlightOrigin(node, sourceNodeFor(activeCriterion));
     arrows = mountArrows(node);
+    // Rebuilt while a module was open: it goes straight back to the focus slot
+    // rather than flying there a second time. The scaffold above is built small
+    // either way, so the boxes measured here are the arrangement's own — a card
+    // rendered large first would grow inside its column and hand the layout a
+    // resting place it never actually had, which is the one it returns to.
+    if (focusedKey) {
+      resting = measureArrangement(node);
+      renderCard(focusedKey, true);
+      applyFocusLayout(false);
+    }
     return undefined;
+  }
+
+  /** L2↔L3: swap which card is read large, then move the six to match.
+   *
+   * Both readings of a card are the same module rendered twice, so the swap is
+   * two re-renders and nothing else — no chart survives being resized, and one
+   * that was mounted compact has to be built again to draw its axes. */
+  function changeFocus(nextKey) {
+    // Measure before anything changes shape. Opening a card grows it where it
+    // stands, so a measurement taken afterwards describes a layout that was
+    // never on screen — and it is the one the five would fly back to.
+    if (nextKey && !resting) resting = measureArrangement(node);
+    const previous = focusedKey;
+    focusedKey = nextKey;
+    if (previous) renderCard(previous, false);
+    if (nextKey) renderCard(nextKey, true);
+    // Toggled, never rewritten. Rewriting the class list would take .is-pinned
+    // with it, and that class is what holds the six out of their columns and
+    // carries the transition — dropped here, they would arrive back in the
+    // arrangement in the same tick instead of travelling to it.
+    node.classList.toggle('has-focus', Boolean(nextKey));
+    if (nextKey) applyFocusLayout(true);
+    else releaseFocusLayout();
+    return undefined;
+  }
+
+  /** Re-render one card at the size it is about to be read at, destroying only
+   * that card's own mounted pieces — the other five are untouched, which is what
+   * keeps the movement smooth and their charts from being rebuilt for nothing. */
+  function renderCard(key, expanded) {
+    const index = indexOfKey(shownModules, key);
+    const card = node.querySelector(`.widget-detail__card[data-module="${key}"]`);
+    if (index === -1 || !card) return;
+    for (const child of contents.filter((entry) => entry.index === index)) child.handle.destroy();
+    contents = contents.filter((entry) => entry.index !== index);
+    card.innerHTML = moduleHtml(shownModules[index], index, expanded);
+    card.classList.toggle('is-expanded', expanded);
+    mountModule(node, shownModules[index], index, contents, expanded);
+  }
+
+  /** The focus arrangement: the opened module in the slot, the other five in the
+   * rail beside it. `animate` is false when the region has just been rebuilt
+   * under an already-open module — there is no movement to show, only a state to
+   * restore.
+   *
+   * Pinning first is what makes this a movement rather than a jump: every module
+   * is written back to the box it is already standing in, so the layout it flies
+   * from is the one the user is looking at. */
+  function applyFocusLayout(animate) {
+    if (!resting) resting = measureArrangement(node);
+    if (!resting) return;
+    const modules = moduleNodes(node);
+    if (!resting.pinned) pinModules(node, modules, resting, animate);
+    const places = focusPlaces(resting, indexOfKey(shownModules, focusedKey), detailSide(node));
+    if (!places) return;
+    clearTimeout(focusTimer);
+    modules.forEach((module, index) => placeModule(module, places[index]));
+    node.style.setProperty('--modules-height', `${round(places.height)}px`);
+  }
+
+  /** L3→L2: the six travel back to the boxes they were pinned from, and once
+   * they are there the inline geometry comes off, which is what hands them back
+   * to the columns — and to the idle drift the pinning suspended.
+   *
+   * All six on one clock, with nothing staggered. The five in the rail are one
+   * column, not five separate cards: dealing them back a beat apart made one
+   * thing read as five things happening, and the card coming out of the slot
+   * had already finished by the time the last of them set off. So the slot
+   * shrinks while the column travels, and the movement is over at once.
+   *
+   * Held on the token's own clock rather than driven by transitionend — a
+   * dropped frame can never strand the six out of their columns — and so
+   * reduced motion (0ms) releases them in this same tick. */
+  function releaseFocusLayout() {
+    if (!resting?.pinned) return;
+    const modules = moduleNodes(node);
+    modules.forEach((module, index) => placeModule(module, resting.boxes[index]));
+    const hold = motionMs('--module-focus-duration');
+    const unpin = () => {
+      for (const module of modules) module.removeAttribute('style');
+      node.style.removeProperty('--modules-height');
+      // Settled before unpinned, and the order matters. While the six are
+      // pinned their entrance is switched off outright (`animation: none`);
+      // handing them back to the columns re-applies it, and an animation that
+      // was not running starts from its first frame — which is opacity 0, held
+      // through a stagger of up to half a second. The six would blink out and
+      // fade back in one at a time, having just arrived. .is-settled is the flag
+      // that already means "these have flown out once": it starts the entrance
+      // at its last frame instead. Cleared by the next real open, which
+      // recomputes the class list from scratch (detailClass).
+      node.classList.add('is-settled');
+      node.classList.remove('is-pinned');
+      resting = null;
+    };
+    clearTimeout(focusTimer);
+    if (hold === 0) unpin();
+    else focusTimer = setTimeout(unpin, hold);
   }
 
   return { node, sync, destroy: teardown };
 }
 
-/** The region's classes: which side it opens on, and — when it is being
- * re-synced rather than opened — the flag that suppresses the entrance (see
- * .is-settled in widgets.css). */
-function detailClass(criterion, settled) {
-  return `widget-detail widget-detail--${widgetSide(criterion)}${settled ? ' is-settled' : ''}`;
+/** What a click inside the region means, as the module key to open — null to
+ * close the one that is open, and undefined for a click that means nothing here.
+ *
+ * A card answers a click on its own background, which is the mouse affordance;
+ * a link or a control inside it is doing its own job and is left alone. Closing
+ * is the button's alone: a reader half way down an opened card should not lose
+ * it by clicking to place the cursor. */
+function clickTarget(event, focusedKey) {
+  const card = event.target.closest('.widget-detail__card[data-module]');
+  if (!card) return undefined;
+  const key = card.dataset.module;
+  if (event.target.closest('[data-expand]')) return key === focusedKey ? null : key;
+  if (event.target.closest('a, button')) return undefined;
+  return key === focusedKey ? undefined : key;
+}
+
+/** The key of the module to open, or null. Guarded rather than trusted: a key
+ * belongs to one city's list of six, and the layer above it can hold one while
+ * the city underneath changes to a list that has no such card. */
+function focusableKey(modules, activeModule) {
+  if (!activeModule) return null;
+  return modules.some((module) => module?.kind && module.key === activeModule)
+    ? activeModule
+    : null;
+}
+
+function indexOfKey(modules, key) {
+  return key ? modules.findIndex((module) => module?.key === key) : -1;
+}
+
+function moduleNodes(node) {
+  return [...node.querySelectorAll('.widget-detail__module')];
+}
+
+/** Which side of the stage this region opened on, read off its own class rather
+ * than passed down — the rail stands on the side the modules came from, and that
+ * is the one fact the arrangement needs about the screen around it. */
+function detailSide(node) {
+  return node.classList.contains('widget-detail--right') ? 'right' : 'left';
+}
+
+/** The arrangement as it stands: every module's resting box, and the area they
+ * occupy. Measured in offsets, all of them against the region's padding edge
+ * (see moduleRect) — the same box the arrows are drawn in, and immune to the
+ * transforms the flight and the idle drift are riding on.
+ *
+ * Null when nothing is laid out (jsdom, or a region still hidden): with no boxes
+ * to move between there is no movement to make, and the modules stay in the
+ * columns the stylesheet put them in. */
+function measureArrangement(node) {
+  const area = node.querySelector('.widget-detail__modules');
+  if (!area || area.offsetWidth === 0) return null;
+  const boxes = moduleNodes(node).map(moduleRect);
+  if (boxes.length === 0 || boxes.some((box) => box.width === 0)) return null;
+  return {
+    boxes,
+    area: {
+      x: area.offsetLeft,
+      y: area.offsetTop,
+      width: area.offsetWidth,
+      height: area.offsetHeight,
+    },
+    pinned: false,
+  };
+}
+
+/** Take the six out of the columns and stand them exactly where they already
+ * are. The columns collapse the moment their contents go absolute, so the space
+ * they held is written down as --modules-height and given back to the region —
+ * otherwise everything below the arrangement would jump up as it opens. */
+function pinModules(node, modules, arrangement, animate) {
+  node.classList.add('is-pinning');
+  modules.forEach((module, index) => placeModule(module, arrangement.boxes[index]));
+  node.style.setProperty('--modules-height', `${round(arrangement.area.height)}px`);
+  // Separate from .has-focus on purpose: .has-focus says a card is open, this
+  // says the six are out of their columns. The return flight happens after the
+  // first is gone and before the second is, and it needs the transitions.
+  node.classList.add('is-pinned');
+  // Read a layout back before the movement is allowed to start: without it the
+  // pinned boxes and the ones below are the same style recalculation, and the
+  // browser transitions from wherever the module was in the columns instead.
+  if (animate) void node.offsetWidth;
+  node.classList.remove('is-pinning');
+  arrangement.pinned = true;
+}
+
+/** One module's box, written as the four numbers the transition runs on. Scale
+ * rather than a narrower width for the rail: a card re-flowed to 176px is a
+ * different card — its lines rewrap, its chart redraws — where a scaled one is
+ * the same card, smaller, which is what stepping aside should look like. */
+function placeModule(module, box) {
+  Object.assign(module.style, {
+    left: `${round(box.x)}px`,
+    top: `${round(box.y)}px`,
+    width: `${round(box.width)}px`,
+    height: `${round(box.height)}px`,
+    transform: box.scale ? `scale(${box.scale})` : 'none',
+  });
+}
+
+/** Where the six stand at L3: one in the slot, five in the rail.
+ *
+ * The rail takes the side the modules flew out of, so the opened card sits
+ * towards the map rather than against the edge of the screen, and the five that
+ * stepped aside are still on the side their widget is. They shrink by one scale,
+ * not five — a rail whose cards were each sized to their own content would read
+ * as five unrelated things rather than as the set the opened one came out of.
+ *
+ * The scale is whatever makes them fit both ways, floored: below the floor the
+ * rail runs past the bottom instead, and the region scrolls, because a card too
+ * small to read is not a card that still belongs to the arrangement. */
+function focusPlaces(arrangement, focusIndex, side) {
+  if (focusIndex === -1) return null;
+  const { boxes, area } = arrangement;
+  const railGap = pxToken('--module-rail-gap');
+  const focusGap = pxToken('--module-focus-gap');
+  const rail = boxes.filter((_, index) => index !== focusIndex);
+  const scale = railScale(rail, area.height - railGap * (rail.length - 1));
+  // What the rail actually takes, which is not always what it was asked for: a
+  // card held at the scale floor stays wider than the nominal width. Measured
+  // rather than assumed, so the slot beside it gets the room that is really left.
+  const railWidth = Math.max(...rail.map((box) => box.width * scale));
+
+  let y = area.y;
+  const places = boxes.map((box, index) => {
+    if (index === focusIndex) return null;
+    // Aligned to the arrangement's outer edge by the width each card ends up
+    // with rather than by the rail's — they differ at the floor, and a card
+    // placed on the rail's would hang over the edge of the screen by exactly
+    // that difference.
+    const x = side === 'right' ? area.x + area.width - box.width * scale : area.x;
+    const place = { x, y, width: box.width, height: box.height, scale };
+    y += box.height * scale + railGap;
+    return place;
+  });
+
+  // The slot is as tall as the rail beside it, so the two read as one
+  // arrangement rather than as a card with a list running on past it. What is
+  // inside the card still takes only the height it needs (.is-expanded).
+  const height = Math.max(area.height, y - railGap - area.y);
+  places[focusIndex] = {
+    x: side === 'right' ? area.x : area.x + railWidth + focusGap,
+    y: area.y,
+    width: Math.max(area.width - railWidth - focusGap, railWidth),
+    height,
+  };
+  places.height = height;
+  return places;
+}
+
+/** The one scale the rail shrinks by: enough to fit the rail's width, enough to
+ * stack in the height beside the opened card, and never past the floor or above
+ * the size the cards already are. */
+function railScale(rail, availableHeight) {
+  const widest = Math.max(...rail.map((box) => box.width));
+  const stacked = rail.reduce((sum, box) => sum + box.height, 0);
+  const fit = Math.min(pxToken('--module-rail-width') / widest, availableHeight / stacked, 1);
+  return round(Math.max(fit, pxToken('--module-rail-min-scale')), 3);
+}
+
+/** A length token, in px. Geometry lives in tokens.css like every other measure
+ * in this project; this is how the layout code reads it rather than restating
+ * it. Unitless tokens (the scale floor) come back as the bare number. */
+function pxToken(name) {
+  return Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0;
+}
+
+/** The region's classes: which side it opens on, when it is being re-synced
+ * rather than opened — the flag that suppresses the entrance (see .is-settled in
+ * widgets.css) — and whether a module is standing in the focus slot. */
+function detailClass(criterion, settled, focusedKey) {
+  return [
+    'widget-detail',
+    `widget-detail--${widgetSide(criterion)}`,
+    settled ? 'is-settled' : '',
+    focusedKey ? 'has-focus' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 /** The region's heading: the criterion's name. */
@@ -323,12 +645,27 @@ function moduleScaffold(modules = []) {
       const index = slot;
       slot += 1;
       return `<div class="widget-detail__module widget-detail__module--${index + 1}">
-         <div class="widget-detail__card">${moduleHtml(modules[index], index)}</div>
+         ${cardHtml(modules[index], index)}
        </div>`;
     }).join('');
     return `<div class="widget-detail__column widget-detail__column--${column + 1}">${boxes}</div>`;
   }).join('');
   return `<div class="widget-detail__modules">${columns}</div>`;
+}
+
+/** One card, always at its small reading — a card that opens is re-rendered
+ * large afterwards (buildDetail#renderCard), which is what keeps the boxes this
+ * scaffold measures out to the ones the arrangement actually rests in.
+ *
+ * A card with content names itself with `data-module`: that is both what a click
+ * is resolved against (clickTarget) and how the one card that opens is found
+ * again later. An empty shell carries no key, because there is nothing to open
+ * and it must not answer a click as though there were. */
+function cardHtml(module, index) {
+  if (!module?.kind) return `<div class="widget-detail__card"></div>`;
+  return `<div class="widget-detail__card" data-module="${module.key}">
+    ${moduleHtml(module, index)}
+  </div>`;
 }
 
 /** Point every module back at the widget it comes out of.

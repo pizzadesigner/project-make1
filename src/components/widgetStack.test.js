@@ -13,7 +13,7 @@
 // precisely the entrance this replaced, and which looks deliberate enough that
 // nobody would call it a bug.
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render } from './widgetStack.js';
 
 /** jsdom ships no matchMedia, and a11y.js asks it whether to animate. */
@@ -44,7 +44,9 @@ const props = {
   adoptionModules: [],
   problemFit: null,
   comingSoon: false,
+  activeModule: null,
   onSelectCriterion: () => {},
+  onSelectModule: () => {},
 };
 
 // jsdom lays nothing out: every rect is 0x0 and every offset 0. These are the
@@ -419,6 +421,309 @@ describe('re-syncing a region that is already open', () => {
     expect(region().classList.contains('is-settled')).toBe(false);
     stack.update({ ...props, activeCriterion: 'adoption' });
     expect(region().classList.contains('is-settled')).toBe(true);
+  });
+});
+
+// L3: one module opens into the focus slot and the other five stand aside in a
+// rail. The arrangement it moves between is measured on the running page, so
+// what is worth testing is the arithmetic over those measurements — every place
+// here is derived from the boxes and the tokens below, and a card that came out
+// somewhere else is a card standing over the map or on top of another one.
+describe('the focus slot at L3', () => {
+  // The arrangement the six rest in, as jsdom will not lay one out: a 900x600
+  // area holding six 300x120 cards. The numbers are picked so the rail's own
+  // fit (176/300) lands *under* the floor, which is the case that decides
+  // whether the floor is honoured or silently overridden.
+  const AREA = { width: 900, height: 600 };
+  const CARD = { width: 300, height: 120 };
+  const TOKENS = {
+    '--module-rail-width': '176px',
+    '--module-rail-gap': '14px',
+    '--module-focus-gap': '28px',
+    '--module-rail-min-scale': '0.62',
+  };
+
+  /** The tokens the layout reads, and enough offsets to measure a box from. */
+  function stubArrangement() {
+    for (const [name, value] of Object.entries(TOKENS)) {
+      document.documentElement.style.setProperty(name, value);
+    }
+    const box = (node) => {
+      if (node.classList.contains('widget-detail__modules')) return AREA;
+      return moduleIndex(node) === null ? { width: 0, height: 0 } : CARD;
+    };
+    // A distinct resting place per module, so "flew back to where it was" is a
+    // claim about six different boxes rather than about zero six times over.
+    // The columns' own origin stays 0,0 — every box is measured against the
+    // region, which is what the places are written back relative to.
+    const offsets = {
+      offsetWidth: (node) => box(node).width,
+      offsetHeight: (node) => box(node).height,
+      offsetLeft: (node) => (moduleIndex(node) ?? 0) * 10,
+      offsetTop: (node) => (moduleIndex(node) === null ? 0 : moduleIndex(node) * 130),
+    };
+    for (const [name, from] of Object.entries(offsets)) {
+      Object.defineProperty(HTMLElement.prototype, name, {
+        configurable: true,
+        get() {
+          return from(this);
+        },
+      });
+    }
+    return () => {
+      for (const name of Object.keys(offsets)) delete HTMLElement.prototype[name];
+      for (const name of Object.keys(TOKENS)) {
+        document.documentElement.style.removeProperty(name);
+      }
+    };
+  }
+
+  const modulesOf = (city) => [
+    { key: 'cost', kind: 'facts', labelKey: 'adoption.context', facts: [] },
+    { key: 'context', kind: 'prose', labelKey: null, text: `adoption.${city}.recommendation` },
+    { key: 'departments', kind: 'prose', labelKey: null, text: 'adoption.koeln.recommendation' },
+    { key: 'partners', kind: null },
+    { key: 'recommendation', kind: null },
+    { key: 'funding', kind: null },
+  ];
+
+  let undoArrangement = null;
+  let cards;
+
+  beforeEach(() => {
+    undoArrangement = stubArrangement();
+    cards = modulesOf('koeln');
+  });
+  afterEach(() => {
+    undoArrangement?.();
+    undoArrangement = null;
+  });
+
+  const openL2 = (extra = {}) =>
+    stack.update({ ...props, activeCriterion: 'adoption', adoptionModules: cards, ...extra });
+  const openL3 = (key) =>
+    stack.update({
+      ...props,
+      activeCriterion: 'adoption',
+      adoptionModules: cards,
+      activeModule: key,
+    });
+  const cardFor = (key) => region().querySelector(`.widget-detail__card[data-module="${key}"]`);
+  const moduleAt = (index) => region().querySelectorAll('.widget-detail__module')[index];
+  const moduleFor = (key) => cardFor(key).closest('.widget-detail__module');
+
+  it('opens the clicked card and leaves the other five as they were', () => {
+    openL2();
+    openL3('context');
+    expect(cardFor('context').classList.contains('is-expanded')).toBe(true);
+    expect(cardFor('cost').classList.contains('is-expanded')).toBe(false);
+    expect(region().classList.contains('has-focus')).toBe(true);
+  });
+
+  // The whole point of the layer: the card gets the region minus the rail, and
+  // the five it displaced are stacked down the side their widget is on — which
+  // is the right for Adoption, so the opened card sits towards the map rather
+  // than against the edge of the screen.
+  it('gives the opened card the region minus the rail', () => {
+    openL2();
+    openL3('context');
+    const focus = moduleFor('context');
+    expect(focus.style.left).toBe('0px');
+    // 900 − 186 − 28: the rail's width is what its cards come out at (300 ×
+    // 0.62), not the 176 it was asked for — held at the floor they stay wider,
+    // and the slot beside them gets what is actually left.
+    expect(focus.style.width).toBe('686px');
+    expect(focus.style.height).toBe('600px');
+    expect(focus.style.transform).toBe('none');
+  });
+
+  it('stacks the other five in the rail, all shrunk by the same scale', () => {
+    openL2();
+    openL3('context');
+    // Every module but the one that opened — the empty shells included: they
+    // cannot be opened, but they are still cards standing in the arrangement.
+    const rail = [0, 2, 3, 4, 5].map(moduleAt);
+    // 176/300 would be 0.587, under the floor — so the floor is what they take,
+    // and the rail is allowed to run long rather than the cards being shrunk
+    // past reading.
+    expect(rail.map((node) => node.style.transform)).toEqual(Array(5).fill('scale(0.62)'));
+    // Aligned to the arrangement's outer edge by their own scaled width, so the
+    // rail ends exactly where the region does: 900 − 300 × 0.62.
+    expect(rail.map((node) => node.style.left)).toEqual(Array(5).fill('714px'));
+    // One card's scaled height plus the gap, over and over: 120 × 0.62 + 14,
+    // written to whole pixels (round) but accumulated in full.
+    expect(rail.map((node) => node.style.top)).toEqual(['0px', '88px', '177px', '265px', '354px']);
+  });
+
+  // The arrows join two cards in the columns arrangement. Once the six have
+  // moved that pair means nothing, so the layer steps out rather than being
+  // redrawn between two cards that are no longer talking to each other.
+  it('takes the arrows out while the modules are away', () => {
+    openL2();
+    expect(region().classList.contains('is-pinned')).toBe(false);
+    openL3('context');
+    expect(region().classList.contains('is-pinned')).toBe(true);
+  });
+
+  it('puts the six back in their columns when the slot closes', () => {
+    openL2();
+    openL3('context');
+    openL2();
+    expect(region().classList.contains('is-pinned')).toBe(false);
+    expect(region().classList.contains('has-focus')).toBe(false);
+    expect(moduleFor('context').getAttribute('style')).toBeNull();
+    expect(cardFor('context').classList.contains('is-expanded')).toBe(false);
+  });
+
+  // A key is held above this component, and the city underneath it can change to
+  // one whose six cards are not the same six. A key naming no card here opens
+  // nothing rather than opening the card that happens to sit in that position.
+  it('ignores a key that names no card in this set', () => {
+    openL2();
+    openL3('a-card-from-another-city');
+    expect(region().querySelector('.is-expanded')).toBeNull();
+    expect(region().classList.contains('is-pinned')).toBe(false);
+  });
+
+  // An empty shell is the honest stand-in for an unresearched topic. There is
+  // nothing to open, so it must not answer a click as though there were.
+  it('gives no empty shell a key to be opened by', () => {
+    openL2();
+    expect(region().querySelectorAll('.widget-detail__card[data-module]')).toHaveLength(3);
+    expect(region().querySelectorAll('.module__expand')).toHaveLength(3);
+  });
+
+  it('names the card its control acts on, and says which state it is in', () => {
+    openL2();
+    const control = cardFor('cost').querySelector('.module__expand');
+    expect(control.getAttribute('aria-expanded')).toBe('false');
+    expect(control.getAttribute('aria-label')).toBe('Expand The city it was built in');
+    openL3('cost');
+    const open = cardFor('cost').querySelector('.module__expand');
+    expect(open.getAttribute('aria-expanded')).toBe('true');
+    expect(open.getAttribute('aria-label')).toBe('Collapse The city it was built in');
+  });
+
+  // A card whose content leads with its own prose has no label to be named by,
+  // so the control falls back to the card's place in the reading order — "Expand"
+  // alone would not say which of six is about to open.
+  it('falls back to a card\u2019s place when it has no label of its own', () => {
+    openL2();
+    const control = cardFor('context').querySelector('.module__expand');
+    expect(control.getAttribute('aria-label')).toBe('Expand card 2');
+  });
+
+  it('carries the in-depth block, standing empty until its content is written', () => {
+    openL2();
+    expect(region().querySelector('.module__in-depth')).toBeNull();
+    openL3('context');
+    const block = cardFor('context').querySelector('.module__in-depth');
+    expect(block).not.toBeNull();
+    expect(block.querySelector('.module__in-depth-empty').textContent).toContain(
+      'not been published',
+    );
+  });
+
+  // The return is a movement, and the thing that makes it one is that the six
+  // stay out of their columns — positioned, and transitioning — until they have
+  // arrived. The first version of this rewrote the region's class list on the
+  // way out, which took that state with it: the boxes were handed straight back
+  // to the columns in the same tick and the flight never happened at all. Every
+  // end-state assertion still passed.
+  describe('flying back to the arrangement', () => {
+    beforeEach(() => {
+      document.documentElement.style.setProperty('--module-focus-duration', '520ms');
+    });
+    afterEach(() => {
+      document.documentElement.style.removeProperty('--module-focus-duration');
+    });
+
+    it('hands them back without replaying the entrance they never left on', () => {
+      document.documentElement.style.removeProperty('--module-focus-duration');
+      openL2();
+      openL3('context');
+      openL2();
+      // The entrance is switched off while they are pinned, so re-applying it
+      // would start it from its first frame — opacity 0, held through the
+      // stagger — and the six would blink out and fade back in having just
+      // arrived. .is-settled starts it at its last frame instead.
+      expect(region().classList.contains('is-pinned')).toBe(false);
+      expect(region().classList.contains('is-settled')).toBe(true);
+    });
+
+    // The flag says "already flown out once", so it must not outlive the region
+    // it was set on: a criterion opened afresh has an entrance to play.
+    it('leaves a criterion opened afresh with its entrance intact', () => {
+      document.documentElement.style.removeProperty('--module-focus-duration');
+      openL2();
+      openL3('context');
+      openL2();
+      stack.update({ ...props });
+      openL2();
+      expect(region().classList.contains('is-settled')).toBe(false);
+    });
+
+    it('holds the six out of their columns until they have arrived', () => {
+      openL2();
+      openL3('context');
+      openL2();
+      expect(region().classList.contains('is-pinned')).toBe(true);
+      // Written back to the boxes they were measured from — which is the flight,
+      // since they are still standing in the focus arrangement when it is set.
+      expect(
+        [...region().querySelectorAll('.widget-detail__module')].map((m) => m.style.top),
+      ).toEqual([0, 130, 260, 390, 520, 650].map((y) => `${y}px`));
+      expect(region().querySelector('.widget-detail__module').style.left).toBe('0px');
+      expect(moduleAt(5).style.left).toBe('50px');
+      // No card is left scaled down on the way home.
+      expect(moduleAt(5).style.transform).toBe('none');
+    });
+  });
+
+  describe('what a click inside the region means', () => {
+    let onSelectModule;
+    beforeEach(() => {
+      onSelectModule = vi.fn();
+      stack.destroy();
+      stack = render(container, { ...props, onSelectModule });
+    });
+
+    it('opens the card a click lands on', () => {
+      openL2({ onSelectModule });
+      cardFor('cost').click();
+      expect(onSelectModule).toHaveBeenCalledWith('cost');
+    });
+
+    it('closes the open card from its own control, and only from there', () => {
+      stack.update({
+        ...props,
+        onSelectModule,
+        activeCriterion: 'adoption',
+        adoptionModules: cards,
+      });
+      stack.update({
+        ...props,
+        onSelectModule,
+        activeCriterion: 'adoption',
+        adoptionModules: cards,
+        activeModule: 'cost',
+      });
+      // Clicking into the card that is already open is someone reading it.
+      cardFor('cost').click();
+      expect(onSelectModule).not.toHaveBeenCalled();
+      cardFor('cost').querySelector('.module__expand').click();
+      expect(onSelectModule).toHaveBeenCalledWith(null);
+    });
+
+    it('leaves a link inside a card to do its own job', () => {
+      openL2({ onSelectModule });
+      const link = document.createElement('a');
+      link.href = 'https://example.org';
+      cardFor('cost').append(link);
+      link.addEventListener('click', (event) => event.preventDefault());
+      link.click();
+      expect(onSelectModule).not.toHaveBeenCalled();
+    });
   });
 });
 

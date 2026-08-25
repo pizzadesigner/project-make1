@@ -16,6 +16,11 @@
  *   reserved for cold links.
  * @property {'problemFit'|'impact'|'adoption'|null} activeCriterion  Which
  *   Exploration widget (Problem Fit / Impact / Adoption Requirements) is expanded.
+ * @property {string|null} activeModule  The `key` of the L2 module expanded into the
+ *   focus slot (L3), or null. A key rather than a position: the six modules a criterion
+ *   opens into differ per city, so an index would point at a different card in Paris
+ *   than it does in Cologne. Held in the store beside activeCriterion, and for the same
+ *   reason — the whole zoom chain is one page's interaction, not a route.
  * @property {'en'|'de'} locale
  * @property {Error|null} error
  */
@@ -31,6 +36,7 @@ const state = {
   geo: null,
   focusedCity: null,
   activeCriterion: null,
+  activeModule: null,
   locale: 'en',
   error: null,
 };

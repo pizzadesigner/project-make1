@@ -3,8 +3,9 @@
 // the floating controls that overlay every layer.
 //
 // Everything happens here, in place, with no URL change:
-//   L0 overview → click a city → L1 in-place zoom with the Exploration widgets.
-// Back and Escape step back via stepBack(). #/city/:slug and #/list stay
+//   L0 overview → click a city → L1 in-place zoom with the Exploration widgets
+//   → click a widget → L2 modules → click a module → L3 focus slot.
+// Back and Escape step back one layer at a time via stepBack(). #/city/:slug and #/list stay
 // reachable only as cold/shared links; nothing here navigates to them.
 
 import { t } from '../lib/i18n.js';
@@ -54,6 +55,7 @@ export function render(container, props) {
   let comingSoonNode = null;
   let focusedCity = null;
   let activeCriterion = null;
+  let activeModule = null;
   // Each focused city has three independent geometry layers. They load in
   // parallel — a slow or missing one never holds up the others — and each is
   // cached per city. A shared token drops a fetch that resolves after the user
@@ -105,10 +107,12 @@ export function render(container, props) {
     return undefined;
   }
 
-  // One step back through the zoom chain: expanded widget → focused city →
-  // overview. Shared by the Back control and the Escape key so they can't diverge.
+  // One step back through the zoom chain: opened module → expanded widget →
+  // focused city → overview. Shared by the Back control and the Escape key so
+  // they can't diverge.
   function stepBack() {
-    if (activeCriterion) props.setActiveCriterion(null);
+    if (activeModule) props.setActiveModule(null);
+    else if (activeCriterion) props.setActiveCriterion(null);
     else if (focusedCity) props.setFocusedCity(null);
   }
 
@@ -123,6 +127,7 @@ export function render(container, props) {
   function update(next) {
     focusedCity = next.focusedCity ?? null;
     activeCriterion = next.activeCriterion ?? null;
+    activeModule = next.activeModule ?? null;
     // Reset and the language toggle are always available (top-right). Back and
     // the legend appear once a city is focused (L1); the overview panel shows
     // only at L0.
@@ -163,6 +168,10 @@ export function render(container, props) {
     const widgetProps = {
       project: focusedProject,
       activeCriterion: next.activeCriterion,
+      // Which of the criterion's six modules is open in the L3 focus slot, by
+      // its key. Guarded inside the component: a key held over from another
+      // city names no card in this one's six.
+      activeModule: next.activeModule,
       metrics: widgetMetricsForProject(focusedProject, subMetrics),
       // Problem Fit's SDG targets (L1) + the slug keying its prose; null for
       // every city without researched content, so the widget stays empty there.
@@ -179,6 +188,7 @@ export function render(container, props) {
       // (not click/focus targets) rather than offering an empty L2 to open.
       comingSoon,
       onSelectCriterion: props.setActiveCriterion,
+      onSelectModule: props.setActiveModule,
     };
 
     if (!mapHandle) {

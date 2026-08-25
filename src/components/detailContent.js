@@ -15,6 +15,14 @@
 // A null module renders an empty card: the rule that no figure appears without
 // its source cuts both ways, and an empty box is the honest version of "we have
 // not researched this yet" (docs/DESIGN_RATIONALE.md, Neutrality/Honesty).
+//
+// A module renders twice over its life: small, in the L2 arrangement, and again
+// large once it is opened into the L3 focus slot. `expanded` is that second
+// reading — the same content with the room to state itself (charts drawn with
+// their axes rather than as sparklines), plus the in-depth block underneath.
+// That block is a placeholder shell today, tracked in docs/DATA_TODO.md: the
+// extended text is not written yet, and a card that invented some would be
+// exactly the fabricated content the empty-shell rule exists to prevent.
 
 import { t, getLocale } from '../lib/i18n.js';
 import {
@@ -28,8 +36,10 @@ import * as modalSplitChart from './modalSplitChart.js';
 import * as sourceChip from './sourceChip.js';
 
 /** One module's card. `index` names its slots (`data-chart="3"`), so the
- * mounting pass below can find them without the module knowing where it sits. */
-export function moduleHtml(module, index) {
+ * mounting pass below can find them without the module knowing where it sits.
+ * `expanded` is the L3 reading of the same module — see the note at the top of
+ * this file. */
+export function moduleHtml(module, index, expanded = false) {
   if (!module || !module.kind) return '';
   const body = {
     cost: costBody,
@@ -44,58 +54,119 @@ export function moduleHtml(module, index) {
   }[module.kind];
   if (!body) return '';
   return `
+    ${expandHtml(module, index, expanded)}
     ${labelHtml(module)}
     ${body(module, index)}
     ${noteHtml(module)}
+    ${expanded ? inDepthHtml() : ''}
     ${sourcesHtml(module, index)}`;
+}
+
+/** The control that opens a module into the focus slot, and closes it again.
+ *
+ * A real button rather than a role on the card: a card holds links and a chart
+ * that answers the pointer, and interactive content inside something announcing
+ * itself as a button is both invalid and unusable with a screen reader. The card
+ * still answers a click on its own background (widgetStack.js) — that is the
+ * mouse affordance; this is the one a keyboard and a screen reader can reach.
+ *
+ * The glyph is decorative and hidden: what is spoken is the label, which names
+ * the card it acts on, because "Expand" on its own says nothing about which of
+ * six cards is about to open. */
+function expandHtml(module, index, expanded) {
+  const label = t(expanded ? 'module.collapse' : 'module.expand').replace(
+    '{label}',
+    moduleLabel(module, index),
+  );
+  return `
+    <button type="button" class="module__expand" data-expand aria-expanded="${expanded}" aria-label="${label}">
+      <span aria-hidden="true">${expanded ? '\u2921' : '\u2922'}</span>
+    </button>`;
+}
+
+/** The in-depth block: what the focus slot is *for*, standing empty until the
+ * extended content is written (docs/DATA_TODO.md). It says so in as many words
+ * rather than leaving a blank half-card that reads as a rendering fault — an
+ * empty shell is honest, an accidental-looking one is not. */
+function inDepthHtml() {
+  return `
+    <section class="module__in-depth">
+      <h3 class="module__in-depth-heading">${t('module.inDepth')}</h3>
+      <p class="module__in-depth-empty">${t('module.inDepth.pending')}</p>
+    </section>`;
 }
 
 /** The card's own heading. `labelCode` fills the `{code}` an SDG-target heading
  * carries; a block that leads with its own text (an intro paragraph) has no
  * label at all rather than a repeated one. */
-function labelHtml({ labelKey, labelCode }) {
-  if (!labelKey) return '';
-  return `<span class="module__label">${t(labelKey).replace('{code}', labelCode ?? '')}</span>`;
+function labelHtml(module) {
+  if (!module.labelKey) return '';
+  return `<span class="module__label">${moduleLabel(module, 0)}</span>`;
+}
+
+/** What this card is called, for a heading or for a control that names it. The
+ * cards that lead with their own prose carry no label of their own, so a control
+ * that has to name one falls back to the card's place in the reading order —
+ * "Expand" alone would not say which of six is about to open. */
+function moduleLabel({ labelKey, labelCode }, index) {
+  if (!labelKey) return t('module.card').replace('{n}', String(index + 1));
+  return t(labelKey).replace('{code}', labelCode ?? '');
 }
 
 /** Mount every module's live pieces. Called once the scaffold's markup is in
- * the DOM; pushes each child handle so the region can destroy them together. */
-export function mountModuleExtras(root, modules, children) {
-  const locale = getLocale();
-  modules.forEach((module, index) => {
-    if (!module || !module.kind) return;
-    mountChart(root, module, index, children);
-    for (const [slot, source] of sourcesOf(module).entries()) {
-      const node = root.querySelector(`[data-chip="${index}-${slot}"]`);
-      if (node) children.push(sourceChip.render(node, { ...source, locale }));
-    }
-  });
+ * the DOM; pushes each child handle so the region can destroy them together.
+ * `expandedIndex` is the module standing in the focus slot, or -1 for none. */
+export function mountModuleExtras(root, modules, children, expandedIndex = -1) {
+  modules.forEach((module, index) =>
+    mountModule(root, module, index, children, index === expandedIndex),
+  );
 }
 
-/** The one chart a module carries, if it carries one. */
-function mountChart(root, module, index, children) {
+/** One module's live pieces. Separate from the loop above because a module can
+ * be rebuilt on its own — opening one into the focus slot re-renders that card
+ * and nothing else, so its chart is remounted at the size it now has. Every
+ * handle is tagged with the module it belongs to, which is what lets the region
+ * destroy one card's children without touching the other five. */
+export function mountModule(root, module, index, children, expanded = false) {
+  if (!module || !module.kind) return;
+  const locale = getLocale();
+  mountChart(root, module, index, children, expanded);
+  for (const [slot, source] of sourcesOf(module).entries()) {
+    const node = root.querySelector(`[data-chip="${index}-${slot}"]`);
+    if (node) children.push({ index, handle: sourceChip.render(node, { ...source, locale }) });
+  }
+}
+
+/** The one chart a module carries, if it carries one. Compact everywhere except
+ * the focus slot: `compact` is what drops a line chart's axes and a donut's year
+ * pills, which is the right trade in a 300px card and the wrong one in a card
+ * with room for them. */
+function mountChart(root, module, index, children, expanded) {
   const slot = root.querySelector(`[data-chart="${index}"]`);
   if (!slot) return;
+  const compact = !expanded;
   if (module.kind === 'donut') {
-    children.push(
-      modalSplitChart.render(slot, {
+    children.push({
+      index,
+      handle: modalSplitChart.render(slot, {
         modes: module.modes,
         labels: module.modes.map((mode) => t(`impact.mode.${mode}`)),
         rings: module.rings,
         ariaLabel: donutAriaLabel(module),
-        compact: true,
+        compact,
       }),
-    );
+    });
     return;
   }
-  children.push(
-    lineChart.render(slot, {
+  children.push({
+    index,
+    handle: lineChart.render(slot, {
       lines: module.lines,
       unit: module.unit,
       locale: getLocale(),
-      compact: true,
+      compact,
     }),
-  );
+  });
 }
 
 /** Spoken summary of the donut — the newest ring, per mode. */

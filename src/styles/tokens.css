@@ -203,6 +203,26 @@
   --module-stagger: 100ms;
   --module-leave-duration: 260ms;
 
+  /* L3, the focus slot (widgetStack.js#applyFocusLayout). One module opens into
+   * the region minus a rail, and the other five stand in that rail down the side
+   * the widget they came from is on. The region keeps its L2 share of the stage:
+   * the room comes from inside the arrangement, which is mostly air — the third
+   * column holds one card and the second stops short of the first.
+   *
+   * --module-rail-width is what the five shrink to fit; JS reads it, along with
+   * the two gaps, so the geometry is stated once here rather than half here and
+   * half in the layout code. --module-rail-min-scale is the floor under that
+   * shrink: past it a card is decoration rather than something still readable,
+   * and the rail is allowed to run past the fold instead (the region scrolls).
+   *
+   * --module-focus-duration is read in JS as well (widgetStack.js#motionMs), to
+   * know when the modules have arrived and their inline boxes can come off. */
+  --module-rail-width: 176px;
+  --module-rail-gap: 14px;
+  --module-focus-gap: 28px;
+  --module-rail-min-scale: 0.62;
+  --module-focus-duration: 520ms;
+
   /* One easing per axis — that difference is what bends a module's path (see
    * .widget-detail__module). Across: away quickly, settled early. Down: slower
    * to leave, still descending after the sideways travel has finished. Both are
@@ -263,6 +283,7 @@
     --module-fly-duration: 0ms;
     --module-stagger: 0ms;
     --module-leave-duration: 0ms;
+    --module-focus-duration: 0ms;
     --arrow-draw-delay: 0ms;
     --arrow-draw-duration: 0ms;
     --arrow-stagger: 0ms;

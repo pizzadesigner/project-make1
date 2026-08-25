@@ -414,3 +414,24 @@ particular.
 though it arrives as copy rather than as a sourced benchmark row. The stub is
 still the right long-term shape; this is one indicator getting its yardstick
 early.
+
+## The L3 in-depth block — placeholder, no content yet
+
+Every module opened into the L3 focus slot carries an **In depth** block under
+its existing content (`detailContent.js#inDepthHtml`). It is a placeholder: the
+extended text has not been written for any of the eighteen modules, and the
+block says so (`module.inDepth.pending` — "Extended detail for this card has not
+been published yet.").
+
+The slot is the layer's whole reason for existing, so this is the one thing it
+is still missing. Until the copy arrives the block must stay an empty shell:
+padding the slot with a longer restatement of what the small card already says
+would be a fabricated depth, which is the same failure as a fabricated figure
+(CLAUDE.md, Neutrality/Honesty).
+
+When the content does arrive it needs deciding **per module kind**, not once —
+what "in depth" means for the cost card (the lines with no published figure) is
+not what it means for the modal-split donut (the years outside the two-ring
+display window, which `cities.csv` still holds). Every figure it introduces
+carries its own `source_url` like every other, and anything unresearched stays
+marked `TODO(data)` rather than being written as prose.

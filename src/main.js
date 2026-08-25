@@ -32,15 +32,24 @@ let mounted = null; // { name, handle }
 
 function setFocusedCity(citySlug) {
   // Leaving/zooming a city also collapses any expanded Exploration widget — it
-  // does not outlive the focused city it belongs to.
+  // does not outlive the focused city it belongs to, and neither does the module
+  // expanded inside it.
   setState({
     focusedCity: citySlug,
     activeCriterion: citySlug ? getState().activeCriterion : null,
+    activeModule: citySlug ? getState().activeModule : null,
   });
 }
 
+// Each layer clears the one above it: a module is expanded *within* a criterion,
+// so switching or closing the criterion takes its focus slot with it rather than
+// leaving a key pointing at a card that is no longer on screen.
 function setActiveCriterion(criterion) {
-  setState({ activeCriterion: criterion });
+  setState({ activeCriterion: criterion, activeModule: null });
+}
+
+function setActiveModule(moduleKey) {
+  setState({ activeModule: moduleKey });
 }
 
 function toggleLocale() {
@@ -55,6 +64,7 @@ function viewProps(state) {
     navigate,
     setFocusedCity,
     setActiveCriterion,
+    setActiveModule,
     toggleLocale,
   };
 }
