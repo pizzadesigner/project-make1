@@ -671,7 +671,7 @@ describe('problemFitModules', () => {
     expect(modules.map((module) => module.kind)).toEqual([
       'prose',
       'targets',
-      'placeholder',
+      'points',
       'placeholder',
     ]);
     // What the project does about a target is this city's; the target's own
@@ -699,7 +699,9 @@ describe('problemFitModules', () => {
   });
 
   // The target wording is quoted, so it carries the document it is quoted from
-  // — one source for every city, since the targets are the UN's own.
+  // — one source for every city, since the targets are the UN's own — and it
+  // carries it as a chip alone: no closing block (`detail: false`), the same
+  // call the plan card makes for the same reason.
   it('cites the target wording once, for every city', () => {
     const koeln = problemFitModules(problemFitForCity('koeln'))[1];
     const paris = problemFitModules(problemFitForCity('paris-marne-la-vallee'))[1];
@@ -712,6 +714,8 @@ describe('problemFitModules', () => {
     ]);
     expect(paris.sources).toEqual(koeln.sources);
     expect(paris.leadKey).toBe('problemFit.paris-marne-la-vallee.sdgsLead');
+    expect(koeln.detailKey).toBeUndefined();
+    expect(koeln.detailTitleKey).toBeUndefined();
   });
 
   // The summary is block ids, not a paragraph count, so the keys say what they
@@ -741,6 +745,43 @@ describe('problemFitModules', () => {
     const [summary] = problemFitModules(problemFitForCity('paris-marne-la-vallee'));
     expect(summary.kind).toBe('placeholder');
     expect(summary.paragraphs).toBeUndefined();
+  });
+
+  // Two keys per point and the number kept as data: the short line the card
+  // shows in a column, and the full demand it shows opened.
+  it('numbers the plan points and keys both of their texts', () => {
+    const plan = problemFitModules(problemFitForCity('koeln'))[2];
+    expect(plan.points).toHaveLength(10);
+    expect(plan.points[0]).toEqual({
+      number: 1,
+      shortKey: 'problemFit.koeln.plan.1.short',
+      textKey: 'problemFit.koeln.plan.1.text',
+    });
+    expect(plan.points[9].number).toBe(10);
+    expect(plan.points.map((point) => point.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  });
+
+  // One document behind all ten points, and no closing block: a "Quellen"
+  // heading over the one chip would say nothing the chip does not.
+  it('cites the plan once and closes without a block', () => {
+    const plan = problemFitModules(problemFitForCity('koeln'))[2];
+    expect(plan.sources).toEqual([
+      {
+        url: 'https://koeln.adfc.de/artikel/uebersicht-zum-projekt-ringfrei',
+        label: 'ADFC Köln — Übersicht zum Projekt #RingFrei',
+        accessed: '2026-08-25',
+      },
+    ]);
+    expect(plan.detailKey).toBeUndefined();
+    expect(plan.infoKey).toBe('problemFit.info.plan');
+  });
+
+  // A city with no plan of its own keeps the named placeholder rather than an
+  // empty numbered list.
+  it('falls back to the placeholder for a city with no plan', () => {
+    const plan = problemFitModules(problemFitForCity('paris-marne-la-vallee'))[2];
+    expect(plan.kind).toBe('placeholder');
+    expect(plan.points).toBeUndefined();
   });
 
   // A city with no targets researched gets an empty shell there, not a

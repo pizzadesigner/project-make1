@@ -423,8 +423,20 @@ export function modalSplitTargetForCity(citySlug) {
 //    order, each keyed `problemFit.<slug>.summary.<id>`. Ids rather than a
 //    count, so a paragraph can be reordered or dropped without silently
 //    renumbering the three after it — and so the key says what it holds.
+//  - `planPoints`: how many points the city's plan has. A count here, where the
+//    summary takes ids, and for the opposite reason: these points are numbered
+//    on the card — "10-Punkte-Plan" is what the thing is called — so the number
+//    is content, and it is what names the key.
 // Cities absent here show an empty Problem Fit widget and the L2 placeholder —
 // the same graceful-null pattern as MODAL_SPLIT_TARGETS.
+// The #RingFrei plan the Ringe project came out of. One document behind all ten
+// points, so it is the card's source rather than ten repeats of the same link.
+const PLAN_SOURCE = {
+  url: 'https://koeln.adfc.de/artikel/uebersicht-zum-projekt-ringfrei',
+  label: 'ADFC Köln — Übersicht zum Projekt #RingFrei',
+  accessed: '2026-08-25',
+};
+
 // Where the official wording of an SDG 11 target is quoted from. One source for
 // every city and every target: the targets are the UN's, not a measurement any
 // city made, so this is a constant rather than a row in a CSV.
@@ -438,6 +450,7 @@ const PROBLEM_FIT = {
   koeln: {
     targets: ['11.2', '11.6'],
     summary: ['intro', 'completion', 'counts', 'ebertplatz'],
+    planPoints: 10,
   },
   'paris-marne-la-vallee': { targets: ['11.2', '11.6'] },
 };
@@ -852,6 +865,15 @@ export function problemFitModules(problemFit) {
     textKey: `problemFit.${problemFit.slug}.target.${code}`,
     infoKey: `problemFit.targetDefinition.${code}`,
   }));
+  // Two keys per point: the short line the card shows in a column, and the full
+  // demand it shows opened. Objects rather than bare keys, so the per-point
+  // delivery status the info text alludes to can be added later as a third
+  // field without the layout changing — see docs/DATA_TODO.md.
+  const points = Array.from({ length: problemFit?.planPoints ?? 0 }, (unused, at) => ({
+    number: at + 1,
+    shortKey: `problemFit.${problemFit.slug}.plan.${at + 1}.short`,
+    textKey: `problemFit.${problemFit.slug}.plan.${at + 1}.text`,
+  }));
   const summary = (problemFit?.summary ?? []).map(
     (block) => `problemFit.${problemFit.slug}.summary.${block}`,
   );
@@ -867,11 +889,14 @@ export function problemFitModules(problemFit) {
         ? named('sdgs', 'targets', {
             targets,
             info: false,
+            detail: false,
             leadKey: `problemFit.${problemFit.slug}.sdgsLead`,
             sources: [SDG_TARGET_SOURCE],
           })
         : { key: 'sdgs', kind: null },
-      named('plan', 'placeholder'),
+      points.length > 0
+        ? named('plan', 'points', { points, detail: false, sources: [PLAN_SOURCE] })
+        : named('plan', 'placeholder'),
       named('milestones', 'placeholder'),
     ],
     'problemFit',

@@ -1239,6 +1239,50 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* The 10-Punkte-Plan. The number is a counter on a real <ol> rather than the
+   browser's own marker, which cannot be given the accent colour or held in its
+   own column — and the column is the point: the numbers line up under each
+   other and the text starts at one left edge whether a point is one line or
+   five. Opened, each point's short line becomes the title of its full text. */
+.module__points {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: point;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.widget-detail__card.is-expanded .module__points {
+  gap: var(--space-3);
+}
+
+.module__point {
+  counter-increment: point;
+  display: grid;
+  grid-template-columns: 1.4rem minmax(0, 1fr);
+  gap: var(--space-1) var(--space-2);
+}
+
+.module__point::before {
+  content: counter(point);
+  color: var(--color-accent);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+
+  /* Sits on the first line of the title rather than the top of the box, which
+     for a two-line title is a noticeably different place. */
+  line-height: 1.45;
+}
+
+.module__point-title {
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
 .module__target-code {
   display: block;
   margin-bottom: var(--space-1);
@@ -1256,6 +1300,13 @@
   font-size: var(--font-size-sm);
   line-height: 1.45;
   color: var(--color-text);
+}
+
+/* A plan point's text takes the column beside its number — which is the same
+   column the short line takes when the card is closed, so the left edge of the
+   reading does not move as the card opens. */
+.module__point .module__prose {
+  grid-column: 2;
 }
 
 /* What a disclosure holds. Indented to the marker, so what is inside reads as

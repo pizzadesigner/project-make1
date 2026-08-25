@@ -519,13 +519,35 @@ The keys that want copy, one per card that has content today:
   The `sdgs` card carries **no info point of its own** (`info: false`) — its two
   boxes each carry one instead, holding the official wording of that target
   (`problemFit.targetDefinition.<code>`, keyed globally rather than per city
-  because the targets are the UN's). Its closing "Quellen" block and its source
-  chip both point at the JRC knowledge base on SDG 11. **Two things to check
-  there:** the German wording is the official Agenda 2030 translation of targets
+  because the targets are the UN's). It cites the JRC knowledge base on SDG 11 as
+  a chip and carries **no closing block** (`detail: false`), the same call the
+  plan card makes. That dropped a sentence worth getting back somewhere: the
+  block used to say that the wording is the JRC's while *which* two targets the
+  project addresses, and what it does about them, is this dashboard's own
+  reading. The card now cites a source that backs only half of what it shows.
+  **Three things to check there:** the German wording is the official Agenda 2030 translation of targets
   11.2 and 11.6 and should be read against the published German text, and
   `source_accessed` is 2026-08-25 — the day the link was added to the app, not a
-  verified retrieval. `problemFit.info.problemFit`, `.plan` and `.milestones` are
-  still unwritten.
+  verified retrieval. `problemFit.info.problemFit` and `.milestones` are still
+  unwritten.
+
+  The `plan` card is the #RingFrei ten-point plan, keyed
+  `problemFit.koeln.plan.<1-10>.{short,text}` — the short line the card shows in
+  a column, and the full demand it shows opened, one or the other and never both
+  (the short line is a shortening of the long one) — with `planPoints: 10` in
+  `PROBLEM_FIT.koeln` saying how many there are. It carries the ADFC Köln
+  project overview as its one source and **no closing block** (`detail: false`):
+  one document stands behind all ten points, and a "Quellen" heading over a
+  single chip would say nothing the chip does not. Its `source_accessed` is
+  2026-08-25 on the same terms as the JRC link above.
+
+  **The open question there is delivery status.** The card's info text says the
+  points were carried out "bis auf wenige Ausnahmen", and the card cannot show
+  which few — all ten read as demands, and a reader has no way to tell a
+  delivered one from an outstanding one. The points are objects (`number`,
+  `shortKey`, `textKey`), so a `status` field can be added to each without the
+  layout changing; what is missing is the per-point research and a source for
+  it. Until then the claim stands in the info text only.
 
   The summary card carries **no closing block** (`detail: false`) — it is
   already the overview such a block would summarise. That leaves three figures

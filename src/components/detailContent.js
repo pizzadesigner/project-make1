@@ -51,6 +51,7 @@ const BODIES = {
   policy: policyBody,
   timeline: timelineBody,
   targets: targetsBody,
+  points: pointsBody,
   placeholder: placeholderBody,
 };
 
@@ -442,6 +443,24 @@ function targetsBody(module, index) {
     })
     .join('');
   return `${lead}<ul class="module__targets">${items}</ul>`;
+}
+
+/** A numbered plan, at the card's two depths: in a column each point is its one
+ * short line, opened each point is the demand in full. One or the other, never
+ * both — the short line is a shortening of the long one, so showing the pair
+ * together would say everything twice.
+ *
+ * The number comes from a CSS counter on a real <ol>, so the list is numbered
+ * for a screen reader by being a numbered list, not by ten hardcoded digits. */
+function pointsBody(module, index, expanded) {
+  const items = module.points
+    .map((point) =>
+      expanded
+        ? `<li class="module__point"><p class="module__prose">${t(point.textKey)}</p></li>`
+        : `<li class="module__point"><span class="module__point-title">${t(point.shortKey)}</span></li>`,
+    )
+    .join('');
+  return `<ol class="module__points">${items}</ol>`;
 }
 
 /** A card that is named but not yet researched — Politik, Timeline. It says so
