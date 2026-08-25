@@ -24,7 +24,7 @@
 // extended text is not written yet, and a card that invented some would be
 // exactly the fabricated content the empty-shell rule exists to prevent.
 
-import { t, getLocale } from '../lib/i18n.js';
+import { t, getLocale, hasString } from '../lib/i18n.js';
 import {
   formatCurrency,
   formatCurrencyCompact,
@@ -35,30 +35,48 @@ import * as lineChart from './lineChart.js';
 import * as modalSplitChart from './modalSplitChart.js';
 import * as sourceChip from './sourceChip.js';
 
+// What each kind of module draws. Hoisted out of moduleHtml so that the widget
+// standing on a card at L1 can draw the same body without the frame around it
+// (modulePreviewHtml).
+const BODIES = {
+  cost: costBody,
+  donut: donutBody,
+  lines: linesBody,
+  breakdown: breakdownBody,
+  trend: trendBody,
+  prose: proseBody,
+  facts: factsBody,
+  links: linksBody,
+  linkGroups: linkGroupsBody,
+};
+
+/** A module's body alone: its figure, its chart, its legend, and nothing around
+ * them — no label, no closing sentence, no source chips, no controls. This is
+ * what an L1 widget stands on, so that opening it reads as the same card given
+ * more room rather than as a second, different thing.
+ *
+ * `index` names the module's chart and chip slots. A preview is drawn once, in
+ * one widget, so it takes the slot no card uses. */
+export function modulePreviewHtml(module, index = -1) {
+  if (!module?.kind) return '';
+  const body = BODIES[module.kind];
+  return body ? body(module, index, false) : '';
+}
+
 /** One module's card. `index` names its slots (`data-chart="3"`), so the
  * mounting pass below can find them without the module knowing where it sits.
  * `expanded` is the L3 reading of the same module — see the note at the top of
  * this file. */
 export function moduleHtml(module, index, expanded = false) {
   if (!module || !module.kind) return '';
-  const body = {
-    cost: costBody,
-    donut: donutBody,
-    lines: linesBody,
-    breakdown: breakdownBody,
-    trend: trendBody,
-    prose: proseBody,
-    facts: factsBody,
-    links: linksBody,
-    linkGroups: linkGroupsBody,
-  }[module.kind];
+  const body = BODIES[module.kind];
   if (!body) return '';
   return `
     ${expandHtml(module, index, expanded)}
-    ${labelHtml(module)}
-    ${body(module, index)}
+    ${labelHtml(module, index)}
+    ${body(module, index, expanded)}
     ${noteHtml(module)}
-    ${expanded ? inDepthHtml() : ''}
+    ${expanded ? inDepthHtml(module) : ''}
     ${sourcesHtml(module, index)}`;
 }
 
@@ -84,24 +102,60 @@ function expandHtml(module, index, expanded) {
     </button>`;
 }
 
-/** The in-depth block: what the focus slot is *for*, standing empty until the
- * extended content is written (docs/DATA_TODO.md). It says so in as many words
- * rather than leaving a blank half-card that reads as a rendering fault — an
- * empty shell is honest, an accidental-looking one is not. */
-function inDepthHtml() {
+/** The block the opened card ends on: what stands behind its figures — how they
+ * were collected, what the numbers do and do not say.
+ *
+ * Both halves are the card's own (`impact.detail.modalSplit` and its heading),
+ * and both fall back: a card with nothing written yet keeps the generic heading
+ * and says so in as many words, rather than leaving a blank half-card that reads
+ * as a rendering fault. An empty shell is honest; an accidental-looking one is
+ * not (docs/DATA_TODO.md). */
+function inDepthHtml(module) {
+  const heading =
+    module.detailTitleKey && hasString(module.detailTitleKey)
+      ? t(module.detailTitleKey)
+      : t('module.inDepth');
+  const written = module.detailKey && hasString(module.detailKey);
+  const body = written
+    ? `<p class="module__in-depth-text">${t(module.detailKey)}</p>`
+    : `<p class="module__in-depth-empty">${t('module.inDepth.pending')}</p>`;
   return `
     <section class="module__in-depth">
-      <h3 class="module__in-depth-heading">${t('module.inDepth')}</h3>
-      <p class="module__in-depth-empty">${t('module.inDepth.pending')}</p>
+      <h3 class="module__in-depth-heading">${heading}</h3>
+      ${body}
     </section>`;
 }
 
-/** The card's own heading. `labelCode` fills the `{code}` an SDG-target heading
- * carries; a block that leads with its own text (an intro paragraph) has no
- * label at all rather than a repeated one. */
-function labelHtml(module) {
-  if (!module.labelKey) return '';
-  return `<span class="module__label">${moduleLabel(module, 0)}</span>`;
+/** The card's own heading, and the info point that explains it. `labelCode`
+ * fills the `{code}` an SDG-target heading carries; a block that leads with its
+ * own text (an intro paragraph) has no label at all rather than a repeated one —
+ * but it still carries its info point, on a heading row with nothing else in
+ * it, because a card is no less in need of explaining for having no title. */
+function labelHtml(module, index) {
+  const info = infoHtml(module, index);
+  if (!module.labelKey) {
+    return info ? `<span class="module__label module__label--bare">${info}</span>` : '';
+  }
+  return `<span class="module__label">${moduleLabel(module, index)}${info}</span>`;
+}
+
+/** What this card is, and how to read it — behind an ⓘ beside the title, opened
+ * by hovering it or by reaching it with a keyboard (.link-hint, base.css: the
+ * same mechanism the source chips use for their citation).
+ *
+ * The copy is per card (`impact.info.car`, `adoption.info.cost`, …) and most of
+ * it is not written yet, so a card whose key has nothing behind it says exactly
+ * that rather than showing the raw key — and gains its real text the moment the
+ * entry is added, with nothing here to change. */
+function infoHtml(module, index) {
+  if (!module.infoKey) return '';
+  const id = `module-info-${index}`;
+  const text = hasString(module.infoKey) ? t(module.infoKey) : t('module.info.pending');
+  const label = t('module.info.about').replace('{label}', moduleLabel(module, index));
+  return `<button type="button" class="module__info" data-hint aria-label="${label}" aria-describedby="${id}">
+      <span class="module__info-mark" aria-hidden="true">i</span>
+      <span class="link-hint" role="tooltip" id="${id}">${text}</span>
+    </button>`;
 }
 
 /** What this card is called, for a heading or for a control that names it. The
@@ -165,6 +219,10 @@ function mountChart(root, module, index, children, expanded) {
       unit: module.unit,
       locale: getLocale(),
       compact,
+      // The card states the unit over the chart where it has words for it, so
+      // the axis does not repeat it as a bare symbol. The chart keeps the unit
+      // either way — its tooltips and its spoken summary are built from it.
+      unitLabel: !module.unitKey,
     }),
   });
 }
@@ -239,13 +297,13 @@ function costDisclaimer(module, locale) {
  * sentence rather than the second donut it used to be: at ~310px wide a module
  * fits one ring stack, and the target's content is a comparison, which reads
  * better as the comparison than as a shape to eyeball against another shape. */
-function donutBody(module, index) {
+function donutBody(module, index, expanded) {
   return `
     <div class="module__split">
       <div class="module__donut" data-chart="${index}"></div>
       ${matrixHtml(module)}
     </div>
-    ${targetHtml(module)}`;
+    ${targetHtml(module, expanded)}`;
 }
 
 /** The donut's legend, as the table it wants to be: a row per mode, a column
@@ -284,10 +342,24 @@ function linesBody(module, index) {
     label: t(`impact.series.${line.key}`),
     value: formatNumber(line.points[line.points.length - 1].value, getLocale()),
   }));
+  // A single line states its unit beside its own latest figure. Several lines
+  // have no such figure — the legend carries one number per series and none of
+  // them says what it is measured in — so the unit is stated once, above the
+  // chart, for all of them.
   return `
-    ${single ? headlineHtml(module.latest.value, module.unit, module.latest.year) : ''}
+    ${single ? headlineHtml(module.latest.value, module.unit, module.latest.year) : unitHtml(module)}
     <div class="module__chart" data-chart="${index}"></div>
     ${single ? '' : legendHtml(items)}`;
+}
+
+/** The unit a chart's values are read in, above the chart. Spelled out where
+ * the module names copy for it (`unitKey`) — a symbol is only a reminder to
+ * someone who already knows it — with the symbol itself filled in from the
+ * data, so the words and what they describe cannot drift apart. */
+function unitHtml({ unit, unitKey }) {
+  if (!unit) return '';
+  const text = unitKey ? t(unitKey).replace('{unit}', unit) : unit;
+  return `<p class="module__series-unit">${text}</p>`;
 }
 
 /** Parts of one whole, as a stacked bar sized by the parts themselves. The
@@ -331,7 +403,7 @@ function trendBody(module) {
     )
     .join('<span class="module__trend-step" aria-hidden="true"></span>');
   return `
-    <p class="module__trend-unit">${module.unit}</p>
+    <p class="module__series-unit">${module.unit}</p>
     <div class="module__trend">${points}</div>`;
 }
 
@@ -404,7 +476,7 @@ function linkItems(links) {
     .map(
       (link) => `
       <li class="module__link-item">
-        <a class="module__link" href="${encodeURI(link.url)}" target="_blank" rel="noopener noreferrer">${t(link.textKey)}<span class="link-hint" aria-hidden="true">${formatHostname(link.url)}</span></a>
+        <a class="module__link" data-hint href="${encodeURI(link.url)}" target="_blank" rel="noopener noreferrer">${t(link.textKey)}<span class="link-hint" aria-hidden="true">${formatHostname(link.url)}</span></a>
       </li>`,
     )
     .join('');
@@ -443,10 +515,13 @@ function legendHtml(items) {
  * should never be the one holding a number. */
 function noteHtml(module) {
   if (!module.note) return '';
-  const text = t(`impact.note.${module.note.key}`).replace(
-    '{planned}',
-    formatNumber(module.planned ?? null, getLocale()),
-  );
+  const text = t(`impact.note.${module.note.key}`)
+    .replace('{planned}', formatNumber(module.planned ?? null, getLocale()))
+    // How far the line has moved, and from when (selectors.js#seriesChange).
+    // Derived from the series at render time, so a sentence quoting it says what
+    // the chart above it shows rather than what it said when it was written.
+    .replace('{change}', formatNumber(module.change?.percent ?? null, getLocale()))
+    .replace('{since}', String(module.change?.since ?? ''));
   return `<p class="module__note">${text}</p>`;
 }
 
@@ -476,8 +551,8 @@ function sourcesHtml(module, index) {
  * still to close. When the target is not measuring the same thing as the actual
  * data (`comparable: false`, e.g. Paris's different survey population), it says
  * so instead of a gap that would imply a comparison the sources do not support. */
-function targetHtml(module) {
-  const { target, modes, rings } = module;
+function targetHtml(module, expanded) {
+  const { target, modes, rings, latestYear } = module;
   const latest = rings[rings.length - 1];
   const primary = target?.segments[0];
   if (!latest || !primary?.actualModes) return '';
@@ -490,13 +565,26 @@ function targetHtml(module) {
     return `<p class="module__target">${text}</p>`;
   }
   const gap = primary.share - actual;
-  const key = gap <= 0 ? 'impact.modalSplitProgress.met' : 'impact.modalSplitProgress.gap';
-  const text = t(key)
+  const text = t(progressKey(gap, target, expanded))
     .replace('{actual}', String(actual))
+    .replace('{latest}', String(latestYear ?? latest.year))
     .replace('{target}', targetShare(primary))
     .replace('{year}', String(target.year))
-    .replace('{gap}', String(Math.abs(gap)));
+    .replace('{gap}', String(Math.abs(gap)))
+    .replace('{period}', target.periodKey ? t(target.periodKey) : String(target.year))
+    .replace('{strategy}', target.strategyKey ? t(target.strategyKey) : '');
   return `<p class="module__target">${text}</p>`;
+}
+
+/** Which reading of the sentence to state. The opened card has room for the one
+ * that names the plan the target comes from and the period it runs over, so it
+ * gets it — but only where the target says what those are. A city whose target
+ * has no such wording keeps the short sentence at both sizes rather than being
+ * given a longer one with holes in it. */
+function progressKey(gap, target, expanded) {
+  if (gap > 0) return 'impact.modalSplitProgress.gap';
+  const full = expanded && target.periodKey && target.strategyKey;
+  return full ? 'impact.modalSplitProgress.metLong' : 'impact.modalSplitProgress.met';
 }
 
 /** How the target's own source words it. Cologne's strategy paper sets the goal

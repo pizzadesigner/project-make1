@@ -278,6 +278,22 @@ describe('filling the modules', () => {
   const open = () => stack.update({ ...props, activeCriterion: 'impact', impactModules: filled });
   const card = (index) => region().querySelectorAll('.widget-detail__card')[index];
 
+  // The L1 widget used to headline with a bare figure, which read as a different
+  // thing from the card it opened into. It now stands on that card — the same
+  // body, minus the sentence and the chips that belong to the reading below it.
+  it('stands the impact widget on the card it opens into', () => {
+    stack.update({ ...props, impactModules: filled });
+    const widget = container.querySelector('.widget--impact');
+    expect(widget.querySelectorAll('.module__bar-part')).toHaveLength(3);
+    expect(widget.querySelectorAll('.module__legend-item')).toHaveLength(3);
+    expect(widget.textContent).toContain('2.48');
+    // Everything that belongs to the card and not to the widget standing on it.
+    expect(widget.querySelector('.module__note')).toBeNull();
+    expect(widget.querySelector('.module__sources')).toBeNull();
+    expect(widget.querySelector('.module__info')).toBeNull();
+    expect(widget.querySelector('.module__expand')).toBeNull();
+  });
+
   it('gives each module the shape its kind calls for', () => {
     open();
     expect(card(0).querySelector('svg.modal-split')).not.toBeNull();
@@ -287,6 +303,76 @@ describe('filling the modules', () => {
     // measurements five years apart.
     expect(card(3).querySelector('svg')).toBeNull();
     expect(card(3).querySelectorAll('.module__trend-point')).toHaveLength(2);
+  });
+
+  // The target sentence has two readings, like the card it sits on: the short one
+  // in a column, and — where the target says what plan it comes from — the one
+  // naming that plan in the room the opened card has. A city whose target has no
+  // such wording keeps the short sentence at both sizes rather than being handed
+  // a longer one with holes in it, which is what the fallbacks below check.
+  describe('the target sentence', () => {
+    const reached = {
+      key: 'modalSplit',
+      kind: 'donut',
+      labelKey: 'impact.modalSplit',
+      infoKey: 'impact.info.modalSplit',
+      detailKey: 'impact.detail.modalSplit',
+      detailTitleKey: 'impact.detailTitle.modalSplit',
+      modes: ['transit', 'bike'],
+      rings: [
+        { year: 2017, values: [30, 20] },
+        { year: 2022, values: [40, 35] },
+      ],
+      latestYear: 2022,
+      source,
+      target: {
+        year: 2025,
+        comparable: true,
+        segments: [
+          {
+            mode: 'umweltverbund',
+            share: 67,
+            shareKey: 'twoThirds',
+            actualModes: ['transit', 'bike'],
+          },
+        ],
+        periodKey: 'impact.modalSplitTarget.period',
+        strategyKey: 'impact.modalSplitTarget.strategy',
+      },
+    };
+    const openWith = (module, activeModule = null) =>
+      stack.update({
+        ...props,
+        activeCriterion: 'impact',
+        impactModules: [module],
+        activeModule,
+      });
+    const sentence = () => region().querySelector('.module__target').textContent.trim();
+
+    it('states the short reading in a column', () => {
+      openWith(reached);
+      // 40 + 35, and the year the newest ring was measured in.
+      expect(sentence()).toBe(
+        'In 2022, sustainable modes were already at 75 %, above the two-thirds target for 2025.',
+      );
+    });
+
+    it('names the plan and its period once the card is opened', () => {
+      openWith(reached);
+      openWith(reached, 'modalSplit');
+      expect(sentence()).toContain('2025/2030');
+      expect(sentence()).toContain('Köln mobil 2025');
+    });
+
+    it('keeps the short reading for a target with no wording of its own', () => {
+      const bare = { ...reached, target: { ...reached.target } };
+      delete bare.target.periodKey;
+      delete bare.target.strategyKey;
+      openWith(bare);
+      openWith(bare, 'modalSplit');
+      expect(sentence()).not.toContain('2025/2030');
+      expect(sentence()).toContain('for 2025.');
+    });
   });
 
   // Two rings, two modes: the ring stack and the table beside it are the same
@@ -478,10 +564,30 @@ describe('the focus slot at L3', () => {
     };
   }
 
+  // `infoKey` is attached in the data layer (selectors.js#withInfoKeys) and
+  // arrives here like any other field — the component renders what it is handed.
   const modulesOf = (city) => [
-    { key: 'cost', kind: 'facts', labelKey: 'adoption.context', facts: [] },
-    { key: 'context', kind: 'prose', labelKey: null, text: `adoption.${city}.recommendation` },
-    { key: 'departments', kind: 'prose', labelKey: null, text: 'adoption.koeln.recommendation' },
+    {
+      key: 'cost',
+      kind: 'facts',
+      labelKey: 'adoption.context',
+      infoKey: 'adoption.info.cost',
+      facts: [],
+    },
+    {
+      key: 'context',
+      kind: 'prose',
+      labelKey: null,
+      infoKey: 'adoption.info.context',
+      text: `adoption.${city}.recommendation`,
+    },
+    {
+      key: 'departments',
+      kind: 'prose',
+      labelKey: null,
+      infoKey: 'adoption.info.departments',
+      text: 'adoption.koeln.recommendation',
+    },
     { key: 'partners', kind: null },
     { key: 'recommendation', kind: null },
     { key: 'funding', kind: null },
@@ -630,6 +736,50 @@ describe('the focus slot at L3', () => {
   // way out, which took that state with it: the boxes were handed straight back
   // to the columns in the same tick and the flight never happened at all. Every
   // end-state assertion still passed.
+  // The info point: what a card is, behind an ⓘ beside its title. Most of the
+  // copy is not written yet, so what is tested here is the plumbing — that every
+  // card with content offers one, that an empty shell does not, and that it is
+  // wired for a screen reader rather than being a hover-only affordance.
+  describe('the info point', () => {
+    it('gives every card with content one, and every empty shell none', () => {
+      openL2();
+      expect(region().querySelectorAll('.module__info')).toHaveLength(3);
+      const shells = [...region().querySelectorAll('.widget-detail__card')].filter(
+        (card) => !card.dataset.module,
+      );
+      expect(shells.every((card) => card.querySelector('.module__info') === null)).toBe(true);
+    });
+
+    it('names the card it explains, and points at the text that explains it', () => {
+      openL2();
+      const control = cardFor('cost').querySelector('.module__info');
+      expect(control.getAttribute('aria-label')).toBe('About The city it was built in');
+      const hint = cardFor('cost').querySelector('.module__info .link-hint');
+      expect(control.getAttribute('aria-describedby')).toBe(hint.id);
+      expect(hint.getAttribute('role')).toBe('tooltip');
+    });
+
+    // Until the copy exists a card says so, rather than showing the raw key —
+    // which is what t() answers a missing string with.
+    it('says the explanation is unwritten rather than showing its key', () => {
+      openL2();
+      const hint = cardFor('cost').querySelector('.module__info .link-hint');
+      expect(hint.textContent).toContain('has not been written yet');
+      expect(hint.textContent).not.toContain('adoption.info');
+    });
+
+    // It sits inside a card that answers a click by opening. Reaching for the
+    // explanation must not be the same gesture as opening the card.
+    it('does not open the card it sits on', () => {
+      const onSelectModule = vi.fn();
+      stack.destroy();
+      stack = render(container, { ...props, onSelectModule });
+      openL2({ onSelectModule });
+      cardFor('cost').querySelector('.module__info').click();
+      expect(onSelectModule).not.toHaveBeenCalled();
+    });
+  });
+
   describe('flying back to the arrangement', () => {
     beforeEach(() => {
       document.documentElement.style.setProperty('--module-focus-duration', '520ms');

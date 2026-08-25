@@ -294,34 +294,47 @@ a:hover {
   color: var(--color-danger);
 }
 
-/* The label an outbound link shows on hover and on keyboard focus: what the
-   link is (a citation) or where it goes (a host). Shared by all three kinds of
-   outbound link — the source chip, a module's link list, a peer city — because
-   they want the same thing and one implementation cannot drift from itself.
+/* The text a hover hint carries: what an outbound link is (a citation) or where
+   it goes (a host), and what a card's info point explains. Shared by all of
+   them, because they want the same thing and one implementation cannot drift
+   from itself.
 
-   Out of the layout, so it cannot move the card's footer or reflow a list when
-   it appears. Not a hit target either: the pointer is on the link, and a label
-   that could itself be hovered would flicker as the cursor crossed it. */
+   This element is the *content*, not the box. It is visually hidden and stays
+   in the DOM as the accessible description its anchor points at
+   (aria-describedby); what the reader sees is drawn by hintLayer.js, in one
+   floating box outside every scroll container on the page. It used to be the
+   box too, positioned inside the card it belonged to, and the region and the
+   opened card both scroll — so it was clipped, by up to 204px, depending only
+   on where the card happened to sit.
+
+   Hidden by clip rather than by `display: none`: a screen reader has to be able
+   to read it, and a box with no size cannot add to what an ancestor scrolls. */
 .link-hint {
   position: absolute;
-  bottom: calc(100% + var(--space-1));
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 
-  /* Anchored to the link's left edge rather than centred on it, so it opens
-     *into* the layout instead of straddling the thing it belongs to. Centring
-     cost half the hint's width on either side, and the module region clips
-     (.widget-detail scrolls, so it has no choice): a chip in the leftmost
-     column lost 74px of its citation off the region's edge. Every anchor here
-     sits near the left of its card and the hint is no wider than a card, so
-     opening rightwards keeps it inside. */
-  left: 0;
-  z-index: 40;
+/* The one box every hint is drawn in. Fixed to the viewport, so no ancestor's
+   overflow can reach it, and placed against its anchor by hintLayer.js#place. */
+.hint-layer {
+  position: fixed;
+  z-index: 200;
   display: grid;
   gap: 1px;
   width: max-content;
 
-  /* Long enough for a citation, short enough to stay on the stage. Past this it
-     wraps rather than running off the edge of a card near the screen's side. */
-  max-width: 15rem;
+  /* Wide enough for a paragraph, and never wider than the window. A citation is
+     two lines and fits in anything; an info point's explanation is a hundred
+     words, and at the citation's width it came out thirteen lines tall and one
+     phrase wide. */
+  max-width: min(22rem, calc(100vw - 2 * var(--space-4)));
   padding: var(--space-1) var(--space-2);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
@@ -329,32 +342,52 @@ a:hover {
   color: var(--color-text);
   font-size: var(--font-size-xs);
   line-height: var(--line-tight);
-  text-align: center;
+
+  /* Ranged left, because some of these are prose. Centring suited a two-line
+     citation and nothing longer: every line of a centred paragraph starts in a
+     different place, which is precisely what the eye uses to find the next one. */
+  text-align: left;
   text-decoration: none;
   white-space: normal;
-  opacity: 0;
-  visibility: hidden;
+
+  /* Never a hit target: the pointer is on the anchor, and a box that could
+     itself be hovered would flicker as the cursor crossed it. */
   pointer-events: none;
-  transition:
-    opacity var(--motion-fast) var(--ease-standard),
-    visibility var(--motion-fast) var(--ease-standard);
+  animation: hint-in var(--motion-fast) var(--ease-standard) both;
+}
+
+.hint-layer.is-leaving {
+  animation: hint-out var(--motion-fast) var(--ease-standard) both;
+}
+
+@keyframes hint-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes hint-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
 }
 
 .link-hint__note {
   color: var(--color-text-muted);
 }
 
-/* Shown by whatever carries it, on hover and on focus alike — a keyboard must
-   reach everything a mouse does (CLAUDE.md: accessibility). */
-:hover > .link-hint,
-:focus-visible > .link-hint {
-  opacity: 1;
-  visibility: visible;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .link-hint {
-    transition: none;
+  .hint-layer,
+  .hint-layer.is-leaving {
+    animation: none;
   }
 }
 

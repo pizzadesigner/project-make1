@@ -45,7 +45,7 @@ import { t, getLocale } from '../lib/i18n.js';
 import { formatNumber } from '../lib/format.js';
 import { motionMs } from '../lib/a11y.js';
 import * as connector from './connector.js';
-import { moduleHtml, mountModuleExtras, mountModule } from './detailContent.js';
+import { moduleHtml, modulePreviewHtml, mountModuleExtras, mountModule } from './detailContent.js';
 
 const WIDGETS = ['problemFit', 'impact', 'adoption'];
 
@@ -54,7 +54,14 @@ const WIDGETS = ['problemFit', 'impact', 'adoption'];
 // right-hand widgets; STACK_MARGIN insets each column from its edge.
 const STACK_TOP = 72;
 const STACK_MARGIN = 16;
+// The rhythm between the two right-hand widgets, and the clear space kept below
+// the first of them. STACK_STEP is where Adoption starts before anything has
+// been measured; once Impact has been laid out, Adoption follows its actual
+// height instead — Impact now stands on a card whose content decides how tall it
+// is, and a step written down here would either overlap it or leave a hole
+// (see restackRightColumn).
 const STACK_STEP = 140;
+const STACK_GAP = 16;
 const WIDGET_WIDTH = '320px';
 // Problem Fit carries the SDG explanations as prose, so rather than a fixed width
 // it sizes to its content (fit-content) clamped between a min and max: a short
@@ -172,6 +179,7 @@ export function render(container, props) {
       widget.node.style.pointerEvents = inert ? 'none' : 'auto';
       widget.node.setAttribute('aria-hidden', String(inert));
     }
+    restackRightColumn(widgets);
     detail.sync(active, modulesFor(active, next), next.activeModule ?? null);
   }
 
@@ -184,6 +192,21 @@ export function render(container, props) {
       root.remove();
     },
   };
+}
+
+/** Put Adoption below Impact, by however tall Impact has turned out.
+ *
+ * Impact stands on its cycle-network card, so its height is that card's content
+ * — three legend rows for a city that has them, an empty shell for one that does
+ * not. Measured rather than declared, for the same reason every other distance
+ * in this file is: what it depends on is a fact about the running page. Nothing
+ * laid out yet (jsdom, or the stack still hidden) leaves the fallback step in
+ * place, which is what the stylesheet already put there. */
+function restackRightColumn(widgets) {
+  const impact = widgets.find((widget) => widget.kind === 'impact')?.node;
+  const adoption = widgets.find((widget) => widget.kind === 'adoption')?.node;
+  if (!impact || !adoption || impact.offsetHeight === 0) return;
+  adoption.style.top = `${STACK_TOP + impact.offsetHeight + STACK_GAP}px`;
 }
 
 function buildWidget(kind, onSelectCriterion) {
@@ -293,11 +316,11 @@ function buildDetail(sourceNodeFor, onSelectModule) {
     focusedKey = nextFocus;
     node.className = detailClass(activeCriterion, settled, nextFocus);
     node.setAttribute('aria-label', t(`criteria.${activeCriterion}`));
-    node.innerHTML = detailHeader(activeCriterion) + moduleScaffold(modules);
+    node.innerHTML = detailHeader(activeCriterion) + moduleScaffold(modules, activeCriterion);
     node.hidden = false;
     mountModuleExtras(node, modules, contents);
     setFlightOrigin(node, sourceNodeFor(activeCriterion));
-    arrows = mountArrows(node);
+    arrows = mountArrows(node, activeCriterion);
     // Rebuilt while a module was open: it goes straight back to the focus slot
     // rather than flying there a second time. The scaffold above is built small
     // either way, so the boxes measured here are the arrangement's own — a card
@@ -616,6 +639,12 @@ const MODULE_ARROWS = [
   [1, 4],
 ];
 
+// Impact's six cards are six separate measurements — a modal split and a count
+// of cyclists are not two ends of a line — so an arrow between any two of them
+// claims a relationship the data does not have. The other criteria's cards do
+// follow on from one another, and keep theirs.
+const ARROWLESS = new Set(['impact']);
+
 /** Which module payloads a criterion opens into. Impact unpacks into the city's
  * six data topics, Problem Fit into its narrative blocks, Adoption into what it
  * takes to run the project somewhere else; all three come from the data layer
@@ -635,22 +664,40 @@ function modulesFor(activeCriterion, props) {
  * whole arrangement — they carry the entrance order and the nudges. */
 const MODULE_COLUMNS = [3, 2, 1];
 
+/** Impact stands its six in two columns of three instead. The 3/2/1 stagger
+ * leaves the sixth card alone in a column of its own, which reads as a leftover
+ * rather than as the last of a set — and with two columns there is room for the
+ * cards to be wider, which the charts in this criterion are the ones that want.
+ * Only Impact: the other two have not been looked at yet, and an arrangement
+ * changed underneath them would be a change nobody asked for. */
+const CRITERION_COLUMNS = { impact: [3, 3] };
+
+function columnsFor(criterion) {
+  return CRITERION_COLUMNS[criterion] ?? MODULE_COLUMNS;
+}
+
 /** The six modules. A module with content gets it; one without stays an empty
  * shell, which is the honest stand-in for a topic this city has no sourced
  * rows for — never a box of invented figures. */
-function moduleScaffold(modules = []) {
+function moduleScaffold(modules = [], criterion = null) {
   let slot = 0;
-  const columns = MODULE_COLUMNS.map((count, column) => {
-    const boxes = Array.from({ length: Math.min(count, MODULE_SLOTS - slot) }, () => {
-      const index = slot;
-      slot += 1;
-      return `<div class="widget-detail__module widget-detail__module--${index + 1}">
+  const layout = columnsFor(criterion);
+  const columns = layout
+    .map((count, column) => {
+      const boxes = Array.from({ length: Math.min(count, MODULE_SLOTS - slot) }, () => {
+        const index = slot;
+        slot += 1;
+        return `<div class="widget-detail__module widget-detail__module--${index + 1}">
          ${cardHtml(modules[index], index)}
        </div>`;
-    }).join('');
-    return `<div class="widget-detail__column widget-detail__column--${column + 1}">${boxes}</div>`;
-  }).join('');
-  return `<div class="widget-detail__modules">${columns}</div>`;
+      }).join('');
+      return `<div class="widget-detail__column widget-detail__column--${column + 1}">${boxes}</div>`;
+    })
+    .join('');
+  // The count is on the element because it decides how wide a column may be:
+  // two columns have room to be wider than three, and the surplus goes back to
+  // the canvas rather than into the cards (see .widget-detail__modules--2).
+  return `<div class="widget-detail__modules widget-detail__modules--${layout.length}">${columns}</div>`;
 }
 
 /** One card, always at its small reading — a card that opens is re-rendered
@@ -716,13 +763,15 @@ function round(value, places = 0) {
 }
 
 /** Mount the arrows between modules: a layer inside the region carrying one
- * curve per pair in MODULE_ARROWS (connector.js). The layer is inset to the
+ * curve per pair in MODULE_ARROWS (connector.js), for the criteria whose cards
+ * follow on from one another — see ARROWLESS. The layer is inset to the
  * region's padding box, which is the box every module is measured against, so
  * an arrow can only ever be drawn inside the region and never across the map
  * half beside it.
  * @returns {{ update(props: object): void, destroy(): void } | null}
  */
-function mountArrows(node) {
+function mountArrows(node, criterion) {
+  if (ARROWLESS.has(criterion)) return null;
   const layer = document.createElement('div');
   layer.className = 'widget-detail__connectors';
   node.append(layer);
@@ -830,6 +879,20 @@ function widgetContent(criterion, metric, problemFit, modules) {
   if (criterion === 'adoption') {
     const filled = modules.filter((module) => module?.kind);
     if (filled.length > 0) return widgetHeader(label, null) + adoptionTopicsHtml(filled);
+  }
+  // Impact stands on the card it opens into: the cycle-network module, drawn
+  // exactly as it is at L2 apart from the sentence and the chips underneath it.
+  // The widget used to show a bare figure, which read as a separate thing from
+  // the card it turned into — this is one card at two sizes.
+  if (criterion === 'impact') {
+    const preview = modules.find((module) => module?.key === 'cycleNetwork' && module.kind);
+    if (preview) {
+      return (
+        widgetHeader(label, null) +
+        `<span class="widget__submetric">${t(preview.labelKey)}</span>` +
+        modulePreviewHtml(preview)
+      );
+    }
   }
   if (!metric) {
     return widgetHeader(label, null) + `<div class="widget__bar widget__bar--empty"></div>`;

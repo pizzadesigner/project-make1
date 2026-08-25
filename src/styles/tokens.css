@@ -217,11 +217,40 @@
    *
    * --module-focus-duration is read in JS as well (widgetStack.js#motionMs), to
    * know when the modules have arrived and their inline boxes can come off. */
+
+  /* How wide a column may get where there is room for it. Impact's six cards
+   * stand in two columns rather than three (widgetStack.js#CRITERION_COLUMNS),
+   * and two columns splitting the region between them would come out at 488px
+   * apiece — a card that wide stops being a card. Capped here, the cards take a
+   * step up from the 309px three columns give them and the surplus goes back to
+   * the canvas the city is drawn on. */
+  --module-column-max: 400px;
   --module-rail-width: 176px;
   --module-rail-gap: 14px;
   --module-focus-gap: 28px;
   --module-rail-min-scale: 0.62;
   --module-focus-duration: 520ms;
+
+  /* The opened card is read at arm's length rather than glanced at, so its small
+   * print steps up about a quarter: 12px → 15px, 14px → 17px. Stated as the two
+   * sizes the module rules already ask for by name (--font-size-xs / -sm), which
+   * is what lets widgets.css raise everything inside the card by redefining
+   * those two on the card itself rather than restating a dozen rules.
+   *
+   * --module-focus-measure is the other half of readability: at that size the
+   * card is around 90 characters a line, well past where the eye loses its
+   * place coming back to the left edge. Only the blocks that are *read* take
+   * it; a table or a link list is scanned down, not across. */
+  --module-focus-font-xs: 0.9375rem;
+  --module-focus-font-sm: 1.0625rem;
+  --module-focus-measure: 68ch;
+
+  /* The other measure the opened card needs. A row that pairs a label with a
+   * number — a cost line, a legend, the modal-split table — is read across, and
+   * at the card's full width the two ends are 700px apart with nothing in
+   * between to carry the eye. Narrower than the reading measure, because the
+   * pair is the unit here rather than the sentence. */
+  --module-focus-rows: 48ch;
 
   /* One easing per axis — that difference is what bends a module's path (see
    * .widget-detail__module). Across: away quickly, settled early. Down: slower

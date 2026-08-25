@@ -183,6 +183,8 @@ describe('carDensitySeriesForCity', () => {
       ],
       unit: 'per 1000 residents',
       source: CAR_DENSITY_SOURCE,
+      // Both rows are the same document, so there is no second one to name.
+      sources: [],
     });
   });
 
@@ -191,7 +193,56 @@ describe('carDensitySeriesForCity', () => {
       series: [],
       unit: null,
       source: null,
+      sources: [],
     });
+  });
+
+  // A series is one row per year and the years need not share a document:
+  // Cologne's car density is the statistical yearbook up to 2023 and the
+  // registration page after it. Citing the earliest row alone would leave the
+  // newest points — the ones the figure at the top of the card is taken from —
+  // resting on a document the card never names.
+  it('names every document the line is drawn from, once each', () => {
+    const yearbook = {
+      url: 'https://www.stadt-koeln.de/mediaasset/content/pdf15/statistik-jahrbuch/jahrbuch.pdf',
+      label: 'Stadt Köln – Statistisches Jahrbuch',
+      accessed: '2026-08-23',
+    };
+    const mixed = [
+      {
+        citySlug: 'koeln',
+        indicatorKey: 'car_density',
+        value: 356,
+        year: 2016,
+        unit: 'x',
+        sourceUrl: yearbook.url,
+        sourceLabel: yearbook.label,
+        sourceAccessed: yearbook.accessed,
+      },
+      {
+        citySlug: 'koeln',
+        indicatorKey: 'car_density',
+        value: 370,
+        year: 2023,
+        unit: 'x',
+        sourceUrl: yearbook.url,
+        sourceLabel: yearbook.label,
+        sourceAccessed: yearbook.accessed,
+      },
+      {
+        citySlug: 'koeln',
+        indicatorKey: 'car_density',
+        value: 373,
+        year: 2025,
+        unit: 'x',
+        sourceUrl: CAR_DENSITY_SOURCE.url,
+        sourceLabel: CAR_DENSITY_SOURCE.label,
+        sourceAccessed: CAR_DENSITY_SOURCE.accessed,
+      },
+    ];
+    const { source, sources } = carDensitySeriesForCity(mixed, 'koeln');
+    expect(source).toEqual(yearbook);
+    expect(sources).toEqual([CAR_DENSITY_SOURCE]);
   });
 });
 
@@ -354,6 +405,11 @@ describe('modalSplitTargetForCity', () => {
         },
         { mode: 'car', share: 33 },
       ],
+      // How the strategy words its own goal, for the sentence the opened card
+      // states in full. The share stays a number; the period and the plan's name
+      // are the document's wording and are resolved through i18n.
+      periodKey: 'impact.modalSplitTarget.period',
+      strategyKey: 'impact.modalSplitTarget.strategy',
       source: {
         url: 'https://www.stadt-koeln.de/mediaasset/content/pdf66/dritter-nahverkehrsplan-12-2017.pdf',
         label: 'Stadt Köln – 3. Nahverkehrsplan (2017), zitiert „Köln mobil 2025“',
@@ -555,6 +611,22 @@ describe('impactModules', () => {
     });
   });
 
+  // The info point's copy is keyed off the module it belongs to. Attached in one
+  // place for all three criteria (withInfoKeys), so what is worth checking is
+  // that it reaches every card that has something to explain and no card that
+  // has not — an empty shell would otherwise offer an explanation of nothing.
+  it('gives every card with content a key for its own explanation', () => {
+    const modules = impactModules(rows, 'koeln');
+    const withInfo = modules.filter((module) => module.infoKey);
+    expect(withInfo.map((module) => module.infoKey)).toEqual([
+      'impact.info.airQuality',
+      'impact.info.cycleNetwork',
+      'impact.info.roadSafety',
+    ]);
+    expect(withInfo.every((module) => module.kind)).toBe(true);
+    expect(modules.filter((module) => !module.kind).every((module) => !module.infoKey)).toBe(true);
+  });
+
   it('draws only the pollutants it has rows for, from 2015 on', () => {
     const air = impactModules(rows, 'koeln')[2];
     expect(air.lines).toEqual([
@@ -573,13 +645,15 @@ describe('impactModules', () => {
   });
 
   // A sentence about the figures needs a document as much as the figures do.
-  // Road safety reads its note off the same one; the air module's comes from
-  // somewhere else and so carries its own.
-  it('attaches a source to every note that needs its own', () => {
+  // A note that rests on the card's own rows carries no second chip (OWN_SOURCE);
+  // one drawn from somewhere else names where it came from. Cologne's three
+  // written notes all read off their own figures today, so none of them adds a
+  // chip — the card cites the document its numbers came from, once.
+  it('gives a note no second chip when it rests on the card\u2019s own figures', () => {
     const modules = impactModules(rows, 'koeln');
+    expect(modules[2].note).toEqual({ key: 'koeln.airQuality', source: null });
     expect(modules[3].note).toEqual({ key: 'koeln.cycleNetwork', source: null });
     expect(modules[5].note).toEqual({ key: 'koeln.roadSafety', source: null });
-    expect(modules[2].note.source.url).toContain('lanuk.nrw.de');
   });
 
   it('is six empty slots with no city focused', () => {

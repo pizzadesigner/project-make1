@@ -71,7 +71,13 @@ test('opening a widget stands its modules in the freed half', async ({ page }) =
   await page.waitForSelector('.marker');
   await page.locator(`.marker[aria-label*="${sourced.city_display}"]`).click({ force: true });
 
-  const widget = page.locator('.widget--impact');
+  // Adoption rather than Impact, which has since been given an arrangement of
+  // its own: two columns of three and no arrows (widgetStack.js#CRITERION_COLUMNS,
+  // #ARROWLESS). What this test is about — the modules standing in the half the
+  // map gave up, staggered, with the arrows drawn only once they have landed —
+  // is the arrangement the other two criteria still use. Impact's own layout has
+  // its own test in module-fit.spec.js.
+  const widget = page.locator('.widget--adoption');
   await expect(widget).toBeVisible();
   await widget.click();
 
@@ -122,11 +128,11 @@ test('opening a widget stands its modules in the freed half', async ({ page }) =
     );
   });
   const box = async (n) => modules.nth(n).boundingBox();
-  const [one, two, three, four, six] = await Promise.all([box(0), box(1), box(2), box(3), box(5)]);
+  const [one, four, six] = await Promise.all([box(0), box(3), box(5)]);
 
   // Which way "along the columns" runs depends on the side the region is on: a
   // right-hand region mirrors, so its first column is the rightmost one and the
-  // arrangement reads right to left (see .widget-detail--right). Impact is a
+  // arrangement reads right to left (see .widget-detail--right). Adoption is a
   // right-hand widget, so asserting a left-to-right order here was asserting
   // the mirror away.
   const rightHanded = await region.evaluate((node) =>
@@ -137,9 +143,15 @@ test('opening a widget stands its modules in the freed half', async ({ page }) =
   along(one, four);
   along(four, six);
 
+  // The middle column starts half a step below the outer one, and the third
+  // bottom-aligns to the arrangement. Both stated against the arrangement rather
+  // than against a neighbouring card: where module 4 falls relative to module 2
+  // is a question about how tall module 1 happens to be, which is a fact about
+  // this criterion's content and not about the layout.
   expect(four.y).toBeGreaterThan(one.y);
-  expect(four.y).toBeLessThan(two.y);
-  expect(Math.abs(six.y - three.y)).toBeLessThanOrEqual(NUDGE_TOLERANCE);
+  const arrangement = await page.locator('.widget-detail__modules').boundingBox();
+  const lastGap = arrangement.y + arrangement.height - (six.y + six.height);
+  expect(Math.abs(lastGap)).toBeLessThanOrEqual(NUDGE_TOLERANCE);
 
   // And no two of them sit on exactly the same line, which is the point of the
   // nudge — a perfectly ruled column would put these three at one x.
@@ -253,13 +265,18 @@ test('a shared deep link loads the city cold, silhouette and sourced budget', as
   // It names its destination without being opened, hovered or clicked.
   await expect(chip).toHaveAttribute('aria-label', new RegExp(sourced.source_label, 'i'));
 
-  // The citation is on the chip, hidden until it is wanted, and shown by a
-  // keyboard focus as readily as by a pointer.
-  const hint = chip.locator('.link-hint');
-  await expect(hint).toHaveText(new RegExp(sourced.source_label, 'i'));
-  await expect(hint).toBeHidden();
+  // The citation travels with the chip and is drawn, when it is wanted, in the
+  // one floating box outside every scroll container on the page (hintLayer.js).
+  // The chip's own copy of it stays put as the accessible description — visually
+  // hidden, which is why it is read rather than seen.
+  await expect(chip.locator('.link-hint')).toHaveText(new RegExp(sourced.source_label, 'i'));
+
+  const box = page.locator('.hint-layer');
+  await expect(box).toBeHidden();
+  // A keyboard opens it as readily as a pointer.
   await chip.focus();
-  await expect(hint).toBeVisible();
+  await expect(box).toBeVisible();
+  await expect(box).toHaveText(new RegExp(sourced.source_label, 'i'));
 });
 
 test('the list view is a sortable equivalent of the map', async ({ page }) => {

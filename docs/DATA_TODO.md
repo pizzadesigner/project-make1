@@ -397,14 +397,24 @@ They are almost certainly from the Statistisches Jahrbuch's Verkehr chapter,
 but "almost certainly" is not a citation. With a source they would give the
 road-safety module a real series instead of the two points it states today.
 
-### Note copy that quotes a figure the source line does not link
+### Note copy that quotes figures no source line links
 
-`impact.note.koeln.airQuality` states the EU annual limits and that they drop
-to 10 / 20 / 20 µg/m³ from 2030. The odt states this without a link; the chip
-beside it points at [LANUV's Bilanz zur Luftqualität](https://www.lanuk.nrw.de/article/bilanz-zur-luftqualitaet-2025-in-nordrhein-westfalen),
-which is the document the odt's own source line names. **Worth one check
-against that page before this is treated as settled** — the 2030 values in
-particular.
+`impact.note.koeln.airQuality` and `impact.info.airQuality` now carry **nine**
+threshold figures between them — the EU limits in force (NO₂ 40, PM10 40,
+PM2,5 25 µg/m³), the WHO recommendations (10 / 15 / 5) and the 2030 EU values
+(20 / 20 / 10) — and the card links only the LANUV measurement page the *series*
+comes from. None of those thresholds is a row in `cities.csv`, so none carries a
+`source_url`, and the chip beside them stands for the measurements rather than
+for the limits they are compared against.
+
+That is the widest gap between this project's own rule ("every numeric claim
+carries its own source") and what is on screen. The card previously cited
+[LANUV's Bilanz zur Luftqualität](https://www.lanuk.nrw.de/article/bilanz-zur-luftqualitaet-2025-in-nordrhein-westfalen)
+beside the note, which is at least the document the research odt named for the
+2030 values; that chip was dropped when the card was reworked to the one link it
+was specified with. **Either the thresholds need a source of their own — ideally
+rows, so the comparison could be drawn rather than asserted — or that chip needs
+to come back.**
 
 ### A benchmark, at last
 
@@ -435,3 +445,39 @@ not what it means for the modal-split donut (the years outside the two-ring
 display window, which `cities.csv` still holds). Every figure it introduces
 carries its own `source_url` like every other, and anything unresearched stays
 marked `TODO(data)` rather than being written as prose.
+
+## The info point copy — placeholder, no text yet
+
+Every L2/L3 card with content carries an ⓘ beside its title, opened on hover or
+keyboard focus, and every opened card ends on a block of its own
+(`impact.detail.<key>`, with its heading at `impact.detailTitle.<key>`). Both
+are keyed off the card, and almost none of it is written: a key with nothing behind it shows `module.info.pending`
+("An explanation of this card has not been written yet.") rather than the raw
+key, and gains its real text the moment the entry is added to
+`strings.{en,de}.json` — no code change needed.
+
+**Written so far:** Impact `modalSplit`, `car`, `cycleNetwork`, `airQuality` and
+`cyclists` — their info points, and their closing blocks, all titled "Sources"
+(`impact.detailTitle.*`) because what they hold is the survey, the register, the
+geodata set, the measuring station and the counting network behind the figures
+rather than a second reading of them. Only `roadSafety` is still empty.
+
+`cyclists` is the one card whose two blocks hold the same text, because the
+counting method is both what the figure means and where it comes from. If they
+should diverge later, they are already separate keys.
+
+The keys that want copy, one per card that has content today:
+
+- **Impact** — `modalSplit`, `car`, `airQuality`, `cycleNetwork`, `cyclists`,
+  `roadSafety`
+- **Adoption** — `cost`, `context`, `departments`, `partners`,
+  `recommendation`, `funding`
+- **Problem Fit** — `target-11.2`, `target-11.6`, and the city's own body
+  blocks (`intro`, `ringsBody`, `routesBody`, `goalBody` for Cologne;
+  `overview` for Paris)
+
+What belongs there is what the card *is* and how to read it — which survey the
+modal split comes from and who it counts, what "car density" registers, which
+measuring station the air figures are from. It is not a second place to state a
+figure: anything numeric written here needs its own `source_url` like every
+other claim, and the card's own chips are the place for provenance.

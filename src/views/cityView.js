@@ -9,6 +9,7 @@ import { SDG11_TARGETS } from '../lib/sdg11.js';
 import { projectByCitySlug, metricsForProject, peersForProject } from '../data/selectors.js';
 import { loadCityOutline } from '../data/load.js';
 import * as sourceChip from '../components/sourceChip.js';
+import * as hintLayer from '../components/hintLayer.js';
 import * as lineChart from '../components/lineChart.js';
 import * as citySilhouette from '../components/citySilhouette.js';
 
@@ -21,6 +22,10 @@ export function render(container, props) {
   `;
   container.append(root);
   const content = root.querySelector('[data-content]');
+
+  // The floating box every hover hint on this page is drawn in — the source
+  // chips and the peer-city links (hintLayer.js).
+  const hints = hintLayer.render(root);
 
   const children = [];
   let renderedSlug = null;
@@ -86,6 +91,7 @@ export function render(container, props) {
     update,
     destroy() {
       clearChildren();
+      hints.destroy();
       root.remove();
     },
   };
@@ -195,7 +201,7 @@ function peersCard(project, peers) {
     .slice(0, 4)
     .map(
       (peer) => `
-      <a class="peer" href="${encodeURI(peer.peerUrl)}" target="_blank" rel="noopener noreferrer">
+      <a class="peer" data-hint href="${encodeURI(peer.peerUrl)}" target="_blank" rel="noopener noreferrer">
         <span class="link-hint" aria-hidden="true">${formatHostname(peer.peerUrl)}</span>
         <span class="peer__city">${escapeHtml(peer.peerCity)}</span>
         <span class="peer__country">${escapeHtml(peer.peerCountry)}</span>

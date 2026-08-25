@@ -31,8 +31,21 @@ async function moduleFit(page) {
 
       // Anything scrolling inside the card is content the reader cannot see
       // without finding a scrollbar, which is the same failure as a clip.
+      //
+      // Only boxes that can actually scroll count. An element whose overflow is
+      // visible has no scrollbar for anything to hide behind — its content
+      // simply paints outside it.
+      //
+      // Nor does a box of a single pixel, which is the visually-hidden idiom
+      // rather than a viewport onto anything: every .link-hint is one, holding
+      // the citation a screen reader reads while the floating box draws it.
       const scrolling = [...card.querySelectorAll('*')]
-        .filter((el) => el.clientHeight > 0 && el.scrollHeight - el.clientHeight > 1)
+        .filter((el) => el.clientHeight > 1 && el.clientWidth > 1)
+        .filter((el) => el.scrollHeight - el.clientHeight > 1)
+        .filter((el) => {
+          const { overflowY, overflowX } = getComputedStyle(el);
+          return overflowY !== 'visible' || overflowX !== 'visible';
+        })
         .map((el) => String(el.className).split(' ')[0]);
 
       const before = card.getAttribute('style') ?? '';
@@ -60,6 +73,30 @@ async function openWidget(page, criterion) {
   await page.locator(`.widget--${criterion}`).click({ force: true });
   await page.waitForTimeout(SETTLED);
   await expect(page.locator('.widget-detail__module')).toHaveCount(6);
+  await waitForLanded(page);
+}
+
+/** Wait for the entrance to be over, not merely for the clock to run out.
+ *
+ * A module flies in from the clicked widget at that widget's width and shrinks
+ * to its own, so a card measured mid-flight is a card measured at the wrong
+ * size — and under a parallel run the fixed waits above are not always enough.
+ * Asked of the animations themselves, filtered by name: the idle drift on the
+ * same elements never finishes. (Same wait as smoke.spec.js, for the same
+ * reason.) */
+async function waitForLanded(page) {
+  await page.waitForFunction(() => {
+    const parts = [...document.querySelectorAll('.widget-detail__module, .widget-detail__card')];
+    return (
+      parts.length > 0 &&
+      parts.every((part) =>
+        part
+          .getAnimations()
+          .filter((each) => String(each.animationName).startsWith('module-fly'))
+          .every((each) => each.playState === 'finished'),
+      )
+    );
+  });
 }
 
 for (const criterion of CRITERIA) {
@@ -93,7 +130,8 @@ test('modules still fit their content on a narrower window', async ({ page }) =>
 // carry it now that no two modules share a row band.
 test('the three columns hold 3, 2 and 1 modules and stay staggered', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await openWidget(page, 'impact');
+  // Adoption keeps the staggered arrangement; Impact has its own, below.
+  await openWidget(page, 'adoption');
 
   const columns = page.locator('.widget-detail__column');
   await expect(columns).toHaveCount(3);
@@ -106,5 +144,43 @@ test('the three columns hold 3, 2 and 1 modules and stay staggered', async ({ pa
     nodes.slice(0, 2).map((node) => node.getBoundingClientRect().top),
   );
   // The middle column sits below the outer one by --module-column-offset.
+  expect(second - first).toBeGreaterThan(50);
+});
+
+// Impact stands its six in two columns of three instead. The 3/2/1 stagger left
+// the sixth card alone in a column, which read as a leftover rather than as the
+// last of a set — and two columns leave room for the cards to be wider, which
+// the charts in this criterion are the ones that want.
+test('impact stands its six in two columns of three, wider and without arrows', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await openWidget(page, 'impact');
+
+  const columns = page.locator('.widget-detail__column');
+  await expect(columns).toHaveCount(2);
+  const counts = await columns.evaluateAll((nodes) =>
+    nodes.map((node) => node.querySelectorAll('.widget-detail__module').length),
+  );
+  expect(counts).toEqual([3, 3]);
+
+  // Wider than the three-column arrangement gives, and capped well short of the
+  // 488px two columns would take if they split the region between them — the
+  // strip they do not need goes back to the map.
+  const width = await page
+    .locator('.widget-detail__card')
+    .first()
+    .evaluate((card) => card.getBoundingClientRect().width);
+  expect(width).toBeGreaterThan(320);
+  expect(width).toBeLessThanOrEqual(400);
+
+  // Six separate measurements: a modal split and a count of cyclists are not two
+  // ends of a line, so nothing is drawn between them.
+  await expect(page.locator('.connector__line')).toHaveCount(0);
+
+  // The middle column keeps its half step down.
+  const [first, second] = await columns.evaluateAll((nodes) =>
+    nodes.map((node) => node.getBoundingClientRect().top),
+  );
   expect(second - first).toBeGreaterThan(50);
 });

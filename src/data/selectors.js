@@ -233,14 +233,36 @@ export function carDensitySeriesForCity(cityIndicators, citySlug, indicatorKey =
       (indicator) => indicator.indicatorKey === indicatorKey,
     ),
   );
-  const [first] = rows;
+  const [first, ...rest] = rows;
   return {
     series: rows.map((row) => ({ year: row.year, value: row.value })),
     unit: first?.unit ?? null,
-    source: first
-      ? { url: first.sourceUrl, label: first.sourceLabel, accessed: first.sourceAccessed }
-      : null,
+    source: first ? sourceOfRow(first) : null,
+    // Every other document the line is drawn from. A series is one row per year
+    // and the years need not share a source — Cologne's car density is the
+    // statistical yearbook up to 2023 and the registration page after it — so
+    // citing the earliest row alone would leave the newest points, the ones the
+    // figure at the top of the card is taken from, resting on a document the
+    // card never names.
+    sources: distinctSources(rest, first),
   };
+}
+
+function sourceOfRow(row) {
+  return { url: row.sourceUrl, label: row.sourceLabel, accessed: row.sourceAccessed };
+}
+
+/** The sources among `rows` that `first` does not already stand for, once each.
+ * A chip per row would be eleven chips for one line. */
+function distinctSources(rows, first) {
+  const seen = new Set([first?.sourceUrl]);
+  const sources = [];
+  for (const row of rows) {
+    if (seen.has(row.sourceUrl)) continue;
+    seen.add(row.sourceUrl);
+    sources.push(sourceOfRow(row));
+  }
+  return sources;
 }
 
 // The Impact "car" slot is one of two genuinely different indicators depending
@@ -256,12 +278,12 @@ const CAR_SLOT_INDICATORS = [
  * tagged with the metric key that names it. Null when the city has neither. */
 function carSlotForCity(cityIndicators, citySlug) {
   for (const { indicatorKey, metric } of CAR_SLOT_INDICATORS) {
-    const { series, unit, source } = carDensitySeriesForCity(
+    const { series, unit, source, sources } = carDensitySeriesForCity(
       cityIndicators,
       citySlug,
       indicatorKey,
     );
-    if (series.length > 0) return { metric, series, unit, source };
+    if (series.length > 0) return { metric, series, unit, source, sources };
   }
   return null;
 }
@@ -333,6 +355,12 @@ const MODAL_SPLIT_TARGETS = {
       },
       { mode: 'car', share: 33 },
     ],
+    // How the strategy names its own goal. The share is a number and comes from
+    // the data above; the period it runs over and the plan it belongs to are
+    // wording, and belong to the document rather than to a translator — the same
+    // split `shareKey` already makes for "two-thirds" against 67.
+    periodKey: 'impact.modalSplitTarget.period',
+    strategyKey: 'impact.modalSplitTarget.strategy',
     source: {
       url: 'https://www.stadt-koeln.de/mediaasset/content/pdf66/dritter-nahverkehrsplan-12-2017.pdf',
       label: 'Stadt Köln – 3. Nahverkehrsplan (2017), zitiert „Köln mobil 2025“',
@@ -530,6 +558,36 @@ function subMetric(key, value, unit, source) {
 //   null        no sourced rows for this city — an empty card
 const MODULE_ORDER = ['modalSplit', 'car', 'airQuality', 'cycleNetwork', 'cyclists', 'roadSafety'];
 
+/** The three pieces of copy a card carries besides its own data, keyed by the
+ * module they belong to: the info point beside its title (`impact.info.car`),
+ * the block the opened card ends on (`impact.detail.car`) and that block's
+ * heading (`impact.detailTitle.car`).
+ *
+ * Assigned in one place rather than in each builder: they are the same facts
+ * about every card — what this one is, and what stands behind it — and a builder
+ * that forgot them would be a card that quietly lost half its explanation. An
+ * empty shell gets none, because a topic with no rows has nothing to explain.
+ *
+ * Only the keys are attached, never the copy: which of them have anything
+ * written behind them is a question for the bundles, and a card whose key is
+ * empty says so (detailContent.js). That is what lets copy arrive one card at a
+ * time with no change here.
+ * @param {{ key: string, kind: string|null }[]} modules
+ * @param {string} prefix
+ */
+function withCardCopy(modules, prefix) {
+  return modules.map((module) =>
+    module.kind
+      ? {
+          ...module,
+          infoKey: `${prefix}.info.${module.key}`,
+          detailKey: `${prefix}.detail.${module.key}`,
+          detailTitleKey: `${prefix}.detailTitle.${module.key}`,
+        }
+      : module,
+  );
+}
+
 /** A city's year series for one indicator, inside the display window. */
 function indicatorSeries(cityIndicators, citySlug, indicatorKey) {
   const rows = withinWindow(
@@ -563,16 +621,8 @@ const NOTE_SOURCES = {
   koeln: {
     cycleNetwork: OWN_SOURCE,
     roadSafety: OWN_SOURCE,
-    car: {
-      url: 'https://www.stadt-koeln.de/mediaasset/content/pdf15/vlr_koeln_de_2023.pdf',
-      label: 'Stadt Köln – Verkehrsentwicklung (VLR 2023)',
-      accessed: '2026-08-23',
-    },
-    airQuality: {
-      url: 'https://www.lanuk.nrw.de/article/bilanz-zur-luftqualitaet-2025-in-nordrhein-westfalen',
-      label: 'LANUV NRW – Bilanz zur Luftqualität 2025',
-      accessed: '2026-08-23',
-    },
+    car: OWN_SOURCE,
+    airQuality: OWN_SOURCE,
     cyclists: {
       url: 'https://www.stadt-koeln.de/politik-und-verwaltung/presseservice/mobilitaetswende-auf-den-ringen',
       label: 'Stadt Köln – Mobilitätswende auf den Ringen',
@@ -608,8 +658,11 @@ export function impactModules(cityIndicators = [], citySlug = null) {
     cyclists: cyclistsModule,
     roadSafety: roadSafetyModule,
   };
-  return MODULE_ORDER.map((key) =>
-    citySlug ? builders[key](cityIndicators, citySlug) : { key, kind: null },
+  return withCardCopy(
+    MODULE_ORDER.map((key) =>
+      citySlug ? builders[key](cityIndicators, citySlug) : { key, kind: null },
+    ),
+    'impact',
   );
 }
 
@@ -652,8 +705,26 @@ function carModule(cityIndicators, citySlug) {
     lines: [{ key: 'car', points: car.series }],
     unit: car.unit,
     latest: car.series[car.series.length - 1],
+    // How far the line has travelled, and from when. Derived rather than
+    // written down (CLAUDE.md), so the sentence that quotes it cannot drift
+    // from the series it is quoting.
+    change: seriesChange(car.series),
     source: car.source,
+    sources: car.sources,
     note: noteFor(citySlug, 'car'),
+  };
+}
+
+/** A series' move from its first year to its last, as a whole percent and the
+ * year it is counted from. Null for a series with nothing to compare — one
+ * point has not moved, and a first value of zero has no percentage. */
+function seriesChange(series) {
+  const [first] = series;
+  const last = series[series.length - 1];
+  if (!first || first === last || !first.value) return null;
+  return {
+    percent: Math.round(((last.value - first.value) / first.value) * 100),
+    since: first.year,
   };
 }
 
@@ -675,6 +746,11 @@ function airQualityModule(cityIndicators, citySlug) {
     labelKey: 'impact.airQuality',
     lines: drawn.map(({ key, points }) => ({ key, points })),
     unit: drawn[0].unit,
+    // The chart carries three series and so has no headline figure to hang a
+    // unit off. `unitKey` is the sentence that spells the symbol out above the
+    // chart; the symbol itself still comes from the rows (`unit`), so the copy
+    // cannot drift from what the data says it is measuring.
+    unitKey: 'impact.unit.airQuality',
     source: drawn[0].source,
     note: noteFor(citySlug, 'airQuality'),
   };
@@ -767,8 +843,11 @@ export function problemFitModules(problemFit) {
       text: `problemFit.${slug}.${block.text}`,
     })),
   ];
-  return MODULE_ORDER.map((key, index) =>
-    blocks[index] ? { kind: 'prose', ...blocks[index] } : { key, kind: null },
+  return withCardCopy(
+    MODULE_ORDER.map((key, index) =>
+      blocks[index] ? { kind: 'prose', ...blocks[index] } : { key, kind: null },
+    ),
+    'problemFit',
   );
 }
 
@@ -917,7 +996,10 @@ export function adoptionModules(cityIndicators = [], citySlug = null) {
     recommendation: () => recommendationModule(citySlug, entry?.recommendation),
     funding: () => fundingModule(entry),
   };
-  return ADOPTION_ORDER.map((key) => (entry ? builders[key]() : { key, kind: null }));
+  return withCardCopy(
+    ADOPTION_ORDER.map((key) => (entry ? builders[key]() : { key, kind: null })),
+    'adoption',
+  );
 }
 
 /** What it cost, and — the reason this card needs a disclaimer rather than a

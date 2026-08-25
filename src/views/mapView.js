@@ -22,6 +22,7 @@ import {
 import { loadCityOutline, loadCityDistricts, loadCityInfrastructure } from '../data/load.js';
 import * as europeMap from '../components/europeMap.js';
 import * as widgetStack from '../components/widgetStack.js';
+import * as hintLayer from '../components/hintLayer.js';
 
 /** The map cuts to the side opposite the active widget's data panel. */
 function citySideFor(activeCriterion) {
@@ -49,6 +50,10 @@ function overviewInset(width) {
  */
 export function render(container, props) {
   const refs = buildShell(container, props);
+  // One floating box for every hover hint under this view — the source chips,
+  // the link hostnames, the cards' info points. It lives outside the region so
+  // that nothing which scrolls can clip it (hintLayer.js).
+  const hints = hintLayer.render(refs.root);
   let mapHandle = null;
   let widgetHandle = null;
   let legendNode = null;
@@ -235,6 +240,7 @@ export function render(container, props) {
     update,
     destroy() {
       document.removeEventListener('keydown', handleKeydown);
+      hints.destroy();
       teardownMap();
       refs.root.remove();
     },

@@ -360,14 +360,23 @@
   min-width: 0;
 }
 
-/* One column. `stretch` above gives all three the tallest one's height, which
-   is what the third column measures its bottom alignment against. */
+/* One column. `stretch` above gives all of them the tallest one's height, which
+   is what a bottom-aligned column measures itself against. */
 .widget-detail__column {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+/* Two columns instead of three (Impact — see widgetStack.js#CRITERION_COLUMNS).
+   Splitting the region between them would make each 488px, so they are capped
+   and the arrangement keeps to the side its widget is on, handing the strip it
+   does not need back to the map. The mirror below reverses the direction, so
+   `flex-start` is the widget's side either way. */
+.widget-detail__modules--2 .widget-detail__column {
+  max-width: var(--module-column-max);
 }
 
 /* The half step. See --module-column-offset in tokens.css for why it is stated
@@ -450,22 +459,6 @@
   transform-origin: top left;
   animation: module-fly-x var(--module-fly-duration) var(--ease-module-x) both;
   animation-delay: calc(var(--module-index, 0) * var(--module-stagger));
-}
-
-/* The one column that cannot open its hints rightwards: the one standing
-   against the region's outer edge. A hint is wider than a column is on a
-   smaller window (15rem against 192px at 1280), so it always reaches into its
-   neighbour — harmless between columns, but off the edge of a scrolling region
-   it is simply cut. Anchoring that column's hints to the right means they open
-   back across the arrangement instead, where there is always room.
-
-   Which column that is depends on the side, because the arrangement mirrors:
-   the deck of three stands nearest the widget it came from, so it is column one
-   on the right and column three on the left. */
-.widget-detail--right .widget-detail__column--1 .link-hint,
-.widget-detail--left .widget-detail__column--3 .link-hint {
-  left: auto;
-  right: 0;
 }
 
 /* A module carrying an open hint stands above its neighbours.
@@ -713,6 +706,53 @@
   padding-right: 1.75rem;
 }
 
+/* The info point beside the title: what this card is and how to read it. A real
+   button, so a keyboard reaches it in the card's own reading order; it opens
+   nothing on click: what it carries is the .link-hint inside it, which is the
+   text drawn in the floating hint box on hover and on focus (hintLayer.js).
+
+   Circle and stem drawn rather than set as ⓘ: the glyph is a font's own idea of
+   the shape, and across the fallbacks it ranges from a hairline ring to a solid
+   disc, at a size nothing here can control. */
+.module__info {
+  display: inline-grid;
+  place-items: center;
+  width: 1.05em;
+  height: 1.05em;
+  margin-left: 0.4em;
+  padding: 0;
+  border: 1px solid currentcolor;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85em;
+  line-height: 1;
+  vertical-align: baseline;
+  cursor: help;
+  opacity: 0.65;
+  transition: opacity var(--motion-fast) var(--ease-standard);
+}
+
+.module__info:hover,
+.module__info:focus-visible {
+  opacity: 1;
+}
+
+.module__info-mark {
+  /* Optically centred: a lowercase i sits high in its own em box, so centring
+     the box leaves the letter riding above the middle of the ring. */
+  font-style: normal;
+  font-weight: 600;
+  transform: translateY(0.02em);
+}
+
+/* A heading row holding nothing but the info point — a card that leads with its
+   own prose has no title to sit beside. */
+.module__label--bare {
+  display: block;
+}
+
 /* The module's own figure: the number large, its unit and year alongside at
    text weight — a unit is not data, and it must not compete with the value. */
 .module__value {
@@ -875,7 +915,10 @@
   gap: var(--space-3);
 }
 
-.module__trend-unit {
+/* The unit a chart's values are read in, above the chart. Shared by the trend
+   card, which has no axis to label, and by a multi-series line chart, whose
+   legend carries a number per series and no unit for any of them. */
+.module__series-unit {
   margin: 0;
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
@@ -1155,10 +1198,6 @@
    funding programmes, and half of "Junge Generation Fahrrad – aktiv mobil" is
    not something anyone can look up. */
 .module__link {
-  /* The anchor is what .link-hint hangs off, so it has to be the positioning
-     context — otherwise the hint would find the region and appear somewhere
-     else entirely. */
-  position: relative;
   color: var(--color-text);
   text-decoration: underline;
   text-decoration-color: var(--color-border);
@@ -1320,6 +1359,15 @@
   overflow-y: auto;
   gap: var(--space-3);
   padding: var(--space-4);
+
+  /* The card's own type scale. Every piece of small print in a module asks for
+     one of these two names — the label, the legend, the matrix, the cost lines,
+     the link lists, the prose — so redefining them here raises all of it at
+     once, and every size relationship inside the card survives unchanged.
+     The headline figure is --font-size-xl and is deliberately left out: it is
+     already the largest thing on the card and has nothing to gain. */
+  --font-size-xs: var(--module-focus-font-xs);
+  --font-size-sm: var(--module-focus-font-sm);
 }
 
 /* A card open in the slot is being read, not glanced at: its own hover lift is
@@ -1399,6 +1447,28 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   text-align: center;
+}
+
+/* What is read across rather than scanned down takes a measure. Without it the
+   card's full width is the line length, and the wider the window the worse the
+   card reads — which is the opposite of what opening it is for. */
+.widget-detail__card.is-expanded .module__prose,
+.widget-detail__card.is-expanded .module__lead,
+.widget-detail__card.is-expanded .module__note,
+.widget-detail__card.is-expanded .module__target,
+.widget-detail__card.is-expanded .module__in-depth-empty {
+  max-width: var(--module-focus-measure);
+}
+
+/* And the rows that pair a label with a number, which are read across too — a
+   cost line, a chart's legend, the modal-split table. Left at the card's width
+   the label sits at one edge and its figure at the other, and the row stops
+   being a pair. A long label wraps instead, which costs a line and keeps the
+   two ends together. */
+.widget-detail__card.is-expanded .module__cost-items,
+.widget-detail__card.is-expanded .module__legend,
+.widget-detail__card.is-expanded .module__matrix {
+  max-width: var(--module-focus-rows);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -44,6 +44,9 @@ export function render(container, props) {
   // The hint repeats it visually and so is hidden from the accessibility tree —
   // otherwise the citation would be announced twice.
   link.setAttribute('aria-label', `${t('city.source')}: ${props.label}`);
+  // Opts this link into the floating hint box (hintLayer.js); the .link-hint
+  // inside stays as the text that box draws.
+  link.dataset.hint = '';
   link.innerHTML = `
     <span class="link-hint" aria-hidden="true">
       <span class="link-hint__name">${escapeHtml(props.label)}</span>

@@ -29,3 +29,15 @@ export function getLocale() {
 export function t(key) {
   return bundles[activeLocale][key] ?? bundles.en[key] ?? key;
 }
+
+/**
+ * Whether a key has copy behind it in either bundle. Callers that have a
+ * fallback of their own need this: t() answers a missing key with the key
+ * itself, which is the right thing on screen for a string that was meant to
+ * exist, and the wrong thing for one that is known not to be written yet.
+ * @param {string} key
+ * @returns {boolean}
+ */
+export function hasString(key) {
+  return Boolean(bundles[activeLocale][key] ?? bundles.en[key]);
+}

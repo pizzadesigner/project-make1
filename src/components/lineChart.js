@@ -38,7 +38,7 @@ function linesOf(props) {
 
 /**
  * @param {HTMLElement} container
- * @param {{ series?: {year: number, value: number}[], lines?: {key: string, points: {year: number, value: number}[]}[], unit: string|null, locale: 'en'|'de', compact?: boolean }} props
+ * @param {{ series?: {year: number, value: number}[], lines?: {key: string, points: {year: number, value: number}[]}[], unit: string|null, locale: 'en'|'de', compact?: boolean, unitLabel?: boolean }} props
  * @returns {{ update(): void, destroy(): void }}
  */
 export function render(container, props) {
@@ -119,7 +119,10 @@ function drawAxes(svg, x, y, points, props) {
   for (const year of new Set(points.map((point) => point.year))) {
     svg.append(text(x(year), H - MARGIN.bottom + 20, formatYear(year), 'line-chart__x-label'));
   }
-  if (props.unit) {
+  // Only where nothing above the chart has said it already. A card that states
+  // the unit in words over the chart (detailContent.js#unitHtml) would otherwise
+  // say it twice, once spelled out and once as the bare symbol.
+  if (props.unit && props.unitLabel !== false) {
     svg.append(text(MARGIN.left, MARGIN.top - 4, props.unit, 'line-chart__unit'));
   }
 }
