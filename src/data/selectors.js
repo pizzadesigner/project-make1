@@ -417,39 +417,29 @@ export function modalSplitTargetForCity(citySlug) {
 // The Problem Fit widget's content, per city. Only structure lives here; the
 // prose is translated copy in i18n keyed by slug (`problemFit.<slug>.*`), the
 // same division modalSplitProgress keeps between data and text. Two pieces:
-//  - `targets`: the SDG 11 codes (L1), each with a one-line explanation keyed
-//    `problemFit.<slug>.target.<code>`.
-//  - `body`: the L2 narrative, as ordered blocks. A `{ text }` block is a plain
-//    paragraph (i18n suffix in `text`); a `{ term, text }` block is a bold
-//    lead-in term + description; `goal: true` marks the closing block for its
-//    divider styling. Cities differ in shape — Cologne breaks into two named
-//    components + a goal, Paris is a single overview paragraph — so the block
-//    list carries that shape rather than the renderer assuming one.
+//  - `targets`: the SDG 11 codes the project addresses, each with a one-line
+//    explanation keyed `problemFit.<slug>.target.<code>`.
+//  - `summary`: the block ids of the Problem Fit card's paragraphs, in reading
+//    order, each keyed `problemFit.<slug>.summary.<id>`. Ids rather than a
+//    count, so a paragraph can be reordered or dropped without silently
+//    renumbering the three after it — and so the key says what it holds.
 // Cities absent here show an empty Problem Fit widget and the L2 placeholder —
 // the same graceful-null pattern as MODAL_SPLIT_TARGETS.
 const PROBLEM_FIT = {
   koeln: {
     targets: ['11.2', '11.6'],
-    body: [
-      { text: 'intro' },
-      { term: 'ringsTerm', text: 'ringsBody' },
-      { term: 'routesTerm', text: 'routesBody' },
-      { term: 'goalTerm', text: 'goalBody', goal: true },
-    ],
+    summary: ['intro', 'completion', 'counts', 'ebertplatz'],
   },
-  'paris-marne-la-vallee': {
-    targets: ['11.2', '11.6'],
-    body: [{ text: 'overview' }],
-  },
+  'paris-marne-la-vallee': { targets: ['11.2', '11.6'] },
 };
 
 /**
- * A city's Problem Fit content: its SDG 11 target list, the L2 body blocks, and
- * the slug keying the prose in i18n (`problemFit.<slug>.*`). Null for every city
+ * A city's Problem Fit content: its SDG 11 target list, its summary block ids,
+ * and the slug keying the prose in i18n (`problemFit.<slug>.*`). Null for every city
  * without researched Problem Fit content, so widgetStack.js renders its empty
  * widget and L2 placeholder unchanged.
  * @param {string|null} citySlug
- * @returns {{ slug: string, targets: string[], body: { term?: string, text: string, goal?: boolean }[] } | null}
+ * @returns {{ slug: string, targets: string[], summary?: string[] } | null}
  */
 export function problemFitForCity(citySlug) {
   if (!citySlug || !PROBLEM_FIT[citySlug]) return null;
@@ -832,25 +822,31 @@ function roadSafetyModule(cityIndicators, citySlug) {
  * @returns {{ key: string, kind: string|null }[]}
  */
 export function problemFitModules(problemFit) {
-  if (!problemFit) return MODULE_ORDER.map((key) => ({ key, kind: null }));
-  const { slug, targets, body } = problemFit;
-  const blocks = [
-    ...targets.map((code) => ({
-      key: `target-${code}`,
-      labelKey: 'problemFit.targetHeading',
-      labelCode: code,
-      text: `problemFit.${slug}.target.${code}`,
-    })),
-    ...body.map((block) => ({
-      key: block.text,
-      labelKey: block.term ? `problemFit.${slug}.${block.term}` : null,
-      text: `problemFit.${slug}.${block.text}`,
-    })),
-  ];
+  const named = (key, kind, extra = {}) => ({
+    key,
+    kind,
+    labelKey: `problemFit.card.${key}`,
+    ...extra,
+  });
+  const targets = (problemFit?.targets ?? []).map((code) => ({
+    code,
+    textKey: `problemFit.${problemFit.slug}.target.${code}`,
+  }));
+  const summary = (problemFit?.summary ?? []).map(
+    (block) => `problemFit.${problemFit.slug}.summary.${block}`,
+  );
   return withCardCopy(
-    MODULE_ORDER.map((key, index) =>
-      blocks[index] ? { kind: 'prose', ...blocks[index] } : { key, kind: null },
-    ),
+    [
+      // The card is the project in four paragraphs and closes there: it is
+      // already the overview a closing block would summarise, so `detail: false`
+      // spares it a "More detail" heading with nothing left to put under it.
+      summary.length > 0
+        ? named('problemFit', 'prose', { paragraphs: summary, detail: false })
+        : named('problemFit', 'placeholder'),
+      targets.length > 0 ? named('sdgs', 'targets', { targets }) : { key: 'sdgs', kind: null },
+      named('plan', 'placeholder'),
+      named('milestones', 'placeholder'),
+    ],
     'problemFit',
   );
 }
@@ -873,7 +869,7 @@ export function problemFitModules(problemFit) {
 //   'facts'      a small grid of sourced figures about the city itself
 //   'links'      an optional lead sentence and a list of outbound links
 //   'linkGroups' the same, grouped under headings (the funding levels)
-//   'prose'      one quoted paragraph, with the document it is quoted from
+//   'prose'      one or more paragraphs of plain copy
 //   null         not researched for this city — an empty card
 // Down the near column first, then the far one, then the card spanning both:
 // what it costs and where the money comes from together, the city it was built

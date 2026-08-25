@@ -246,13 +246,14 @@
    * is what lets widgets.css raise everything inside the card by redefining
    * those two on the card itself rather than restating a dozen rules.
    *
-   * --module-focus-measure is the other half of readability: at that size the
-   * card is around 90 characters a line, well past where the eye loses its
-   * place coming back to the left edge. Only the blocks that are *read* take
-   * it; a table or a link list is scanned down, not across. */
+   * There is deliberately no reading measure to go with them. One was tried at
+   * 68ch and then 58ch, and the cards it applied to are narrow enough — 748px
+   * at 1920, less below — that capping the line cost more than it bought: the
+   * copy ended short of the card's own edge and the card looked half-filled.
+   * The card's padding is the measure. If these cards are ever given a much
+   * wider slot, that trade flips and a cap belongs here again. */
   --module-focus-font-xs: 0.9375rem;
   --module-focus-font-sm: 1.0625rem;
-  --module-focus-measure: 68ch;
 
   /* The other measure the opened card needs. A row that pairs a label with a
    * number — a cost line, a legend, the modal-split table — is read across, and
@@ -267,24 +268,6 @@
    * single unbroken curves, so neither axis changes velocity mid-flight. */
   --ease-module-x: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-module-y: cubic-bezier(0.45, 0, 0.25, 1);
-
-  /* The arrows between modules (connector.js, connector.css). They are drawn
-   * only once every module has landed, which is what --arrow-draw-delay adds up
-   * to: the flight itself, plus the stagger of all six modules ahead of it. It
-   * follows the entrance rather than being timed against it by hand, so
-   * retuning the entrance carries the arrows with it. --arrow-breathe-duration
-   * is the resting state of a drawn pair, and never ends — see the
-   * reduced-motion block, which switches it off rather than shortening it. */
-  --arrow-draw-delay: calc(var(--module-fly-duration) + var(--module-stagger) * 6);
-  --arrow-draw-duration: 700ms;
-  --arrow-stagger: 160ms;
-  --arrow-breathe-duration: 4.2s;
-  --arrow-width: 1.5px;
-
-  /* Eased at both ends rather than thrown and coasting: the head is visible for
-   * the whole draw, so the curve it travels has to look considered the entire
-   * way rather than only where it stops. */
-  --ease-arrow: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* The step between the cards stacked behind a widget that has an L2 to open
    * (see .widget--problemFit). Small enough to read as a deck rather than as
@@ -322,8 +305,5 @@
     --module-stagger: 0ms;
     --module-leave-duration: 0ms;
     --module-focus-duration: 0ms;
-    --arrow-draw-delay: 0ms;
-    --arrow-draw-duration: 0ms;
-    --arrow-stagger: 0ms;
   }
 }

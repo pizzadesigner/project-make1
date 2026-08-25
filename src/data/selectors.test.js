@@ -447,20 +447,16 @@ describe('modalSplitTargetForCity', () => {
 });
 
 describe('problemFitForCity', () => {
-  it("exposes Cologne's SDG 11 targets, L2 body blocks, and the slug keying its i18n", () => {
+  it("exposes a city's SDG 11 targets and the slug keying its i18n", () => {
     const pf = problemFitForCity('koeln');
     expect(pf.slug).toBe('koeln');
     expect(pf.targets).toEqual(['11.2', '11.6']);
-    // Cologne's L2 breaks into named components + a goal block.
-    expect(pf.body.length).toBeGreaterThan(1);
-    expect(pf.body.at(-1)).toMatchObject({ goal: true });
   });
 
-  it('exposes Paris as a single overview body block', () => {
+  it('exposes the same for a city whose narrative is not written', () => {
     expect(problemFitForCity('paris-marne-la-vallee')).toEqual({
       slug: 'paris-marne-la-vallee',
       targets: ['11.2', '11.6'],
-      body: [{ text: 'overview' }],
     });
   });
 
@@ -662,37 +658,79 @@ describe('impactModules', () => {
 });
 
 describe('problemFitModules', () => {
-  it("lays a city's targets and narrative out one block per card", () => {
+  // Four cards now, not six: the project summary leads, the SDG targets share
+  // one, and the last two are named placeholders waiting on copy.
+  it('lays the four problem-fit cards out in order', () => {
     const modules = problemFitModules(problemFitForCity('koeln'));
-    expect(modules.map((module) => module.kind)).toEqual(Array(6).fill('prose'));
-    expect(modules[0]).toMatchObject({
-      labelKey: 'problemFit.targetHeading',
-      labelCode: '11.2',
-      text: 'problemFit.koeln.target.11.2',
-    });
-    // A block with a lead-in term takes it as the card's heading; the intro
-    // paragraph has none and leads with its own text instead.
-    expect(modules[2].labelKey).toBeNull();
-    expect(modules[3]).toMatchObject({
-      labelKey: 'problemFit.koeln.ringsTerm',
-      text: 'problemFit.koeln.ringsBody',
-    });
-  });
-
-  it('leaves the cards a shorter city does not fill empty', () => {
-    const modules = problemFitModules(problemFitForCity('paris-marne-la-vallee'));
+    expect(modules.map((module) => module.key)).toEqual([
+      'problemFit',
+      'sdgs',
+      'plan',
+      'milestones',
+    ]);
     expect(modules.map((module) => module.kind)).toEqual([
       'prose',
-      'prose',
-      'prose',
-      null,
-      null,
-      null,
+      'targets',
+      'placeholder',
+      'placeholder',
+    ]);
+    expect(modules[1].targets).toEqual([
+      { code: '11.2', textKey: 'problemFit.koeln.target.11.2' },
+      { code: '11.6', textKey: 'problemFit.koeln.target.11.6' },
     ]);
   });
 
-  it('is six empty slots for a city with no Problem Fit content', () => {
-    expect(problemFitModules(null).every((module) => module.kind === null)).toBe(true);
+  // The summary is block ids, not a paragraph count, so the keys say what they
+  // hold and reordering one does not renumber the rest.
+  it('keys the summary paragraphs by block, in reading order', () => {
+    const [summary] = problemFitModules(problemFitForCity('koeln'));
+    expect(summary.paragraphs).toEqual([
+      'problemFit.koeln.summary.intro',
+      'problemFit.koeln.summary.completion',
+      'problemFit.koeln.summary.counts',
+      'problemFit.koeln.summary.ebertplatz',
+    ]);
+  });
+
+  // The card is already the overview a closing block would summarise, so it
+  // opts out of one rather than opening a "More detail" heading over nothing.
+  it('gives the summary card no closing block', () => {
+    const [summary] = problemFitModules(problemFitForCity('koeln'));
+    expect(summary.infoKey).toBe('problemFit.info.problemFit');
+    expect(summary.detailKey).toBeUndefined();
+    expect(summary.detailTitleKey).toBeUndefined();
+  });
+
+  // A city with no summary written falls back to the placeholder rather than a
+  // prose card with no paragraphs in it.
+  it('falls back to the placeholder for a city with no summary', () => {
+    const [summary] = problemFitModules(problemFitForCity('paris-marne-la-vallee'));
+    expect(summary.kind).toBe('placeholder');
+    expect(summary.paragraphs).toBeUndefined();
+  });
+
+  // A city with no targets researched gets an empty shell there, not a
+  // placeholder: a shell is a topic *this city* has nothing for, which is a
+  // different thing from one nobody has written for anywhere.
+  it('leaves the SDGs card an empty shell for a city with no targets', () => {
+    const modules = problemFitModules(null);
+    expect(modules[1]).toEqual({ key: 'sdgs', kind: null });
+    expect(modules.map((module) => module.kind)).toEqual([
+      'placeholder',
+      null,
+      'placeholder',
+      'placeholder',
+    ]);
+  });
+
+  it('still names its cards for a city with no Problem Fit content', () => {
+    const modules = problemFitModules(null);
+    expect(modules.map((module) => module.key)).toEqual([
+      'problemFit',
+      'sdgs',
+      'plan',
+      'milestones',
+    ]);
   });
 });
 

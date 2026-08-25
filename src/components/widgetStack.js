@@ -44,7 +44,6 @@
 import { t, getLocale } from '../lib/i18n.js';
 import { formatNumber } from '../lib/format.js';
 import { motionMs } from '../lib/a11y.js';
-import * as connector from './connector.js';
 import { moduleHtml, modulePreviewHtml, mountModuleExtras, mountModule } from './detailContent.js';
 
 const WIDGETS = ['problemFit', 'impact', 'adoption'];
@@ -256,7 +255,6 @@ function buildDetail(sourceNodeFor, onSelectModule) {
   // was picked out of — a re-render of one card needs the module behind it.
   let focusedKey = null;
   let shownModules = [];
-  let arrows = null;
   let contents = [];
   // The six resting boxes, measured the moment before the first of them moves,
   // and the area they stand in. Null whenever no module is pinned: the boxes are
@@ -272,8 +270,6 @@ function buildDetail(sourceNodeFor, onSelectModule) {
     clearTimeout(focusTimer);
     leaveTimer = null;
     focusTimer = null;
-    arrows?.destroy();
-    arrows = null;
     for (const child of contents) child.handle.destroy();
     contents = [];
     resting = null;
@@ -320,7 +316,6 @@ function buildDetail(sourceNodeFor, onSelectModule) {
     node.hidden = false;
     mountModuleExtras(node, modules, contents);
     setFlightOrigin(node, sourceNodeFor(activeCriterion));
-    arrows = mountArrows(node, activeCriterion);
     // Rebuilt while a module was open: it goes straight back to the focus slot
     // rather than flying there a second time. The scaffold above is built small
     // either way, so the boxes measured here are the arrangement's own — a card
@@ -647,22 +642,6 @@ function detailHeader(criterion) {
 // order are here because the order is also the order they fly out in.
 const MODULE_SLOTS = 6;
 
-// Which modules the arrows join, as indices into the scaffold: both leave the
-// second module of the first column, one into each of the second column's two.
-// Pairs rather than a from/to list, so an arrow that points somewhere else later
-// is a change here and nowhere else.
-const MODULE_ARROWS = [
-  [1, 3],
-  [1, 4],
-];
-
-// Impact's cards are six separate measurements — a modal split and a count of
-// cyclists are not two ends of a line — and Adoption's are five separate things
-// another city needs, in no particular order. An arrow between any two of them
-// claims a relationship the data does not have. Problem Fit's blocks do follow
-// on from one another, and keep theirs.
-const ARROWLESS = new Set(['impact', 'adoption']);
-
 /** Which module payloads a criterion opens into. Impact unpacks into the city's
  * six data topics, Problem Fit into its narrative blocks, Adoption into what it
  * takes to run the project somewhere else; all three come from the data layer
@@ -682,13 +661,12 @@ function modulesFor(activeCriterion, props) {
  * whole arrangement — they carry the entrance order and the nudges. */
 const MODULE_COLUMNS = [3, 2, 1];
 
-/** Impact stands its six in two columns of three instead. The 3/2/1 stagger
- * leaves the sixth card alone in a column of its own, which reads as a leftover
- * rather than as the last of a set — and with two columns there is room for the
- * cards to be wider, which the charts in this criterion are the ones that want.
- * Only Impact: the other two have not been looked at yet, and an arrangement
- * changed underneath them would be a change nobody asked for. */
-const CRITERION_COLUMNS = { impact: [3, 3], adoption: [2, 2] };
+/** How many cards stand in each column, per criterion. Impact's six go in two
+ * columns of three; Adoption's four and Problem Fit's four go two and two. The
+ * 3/2/1 stagger every criterion started on left the last card alone in a column
+ * of its own, which read as a leftover rather than as the last of a set — and
+ * two columns leave room for the cards to be wider, which the charts want. */
+const CRITERION_COLUMNS = { impact: [3, 3], adoption: [2, 2], problemFit: [2, 2] };
 
 // How many of a criterion's cards stand below the columns rather than inside
 // one, spanning the whole arrangement. Adoption's timeline is the only one so
@@ -795,27 +773,6 @@ function setFlightOrigin(node, sourceNode) {
 function round(value, places = 0) {
   const factor = 10 ** places;
   return Math.round(value * factor) / factor;
-}
-
-/** Mount the arrows between modules: a layer inside the region carrying one
- * curve per pair in MODULE_ARROWS (connector.js), for the criteria whose cards
- * follow on from one another — see ARROWLESS. The layer is inset to the
- * region's padding box, which is the box every module is measured against, so
- * an arrow can only ever be drawn inside the region and never across the map
- * half beside it.
- * @returns {{ update(props: object): void, destroy(): void } | null}
- */
-function mountArrows(node, criterion) {
-  if (ARROWLESS.has(criterion)) return null;
-  const layer = document.createElement('div');
-  layer.className = 'widget-detail__connectors';
-  node.append(layer);
-  const modules = [...node.querySelectorAll('.widget-detail__module')];
-  const links = MODULE_ARROWS.filter(([from, to]) => modules[from] && modules[to]).map(
-    ([from, to]) => ({ source: moduleRect(modules[from]), target: moduleRect(modules[to]) }),
-  );
-  if (links.length === 0) return null;
-  return connector.render(layer, { links });
 }
 
 /** A module's resting place, in the layer's coordinates.

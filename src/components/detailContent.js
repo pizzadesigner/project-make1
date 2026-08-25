@@ -50,6 +50,7 @@ const BODIES = {
   linkGroups: linkGroupsBody,
   policy: policyBody,
   timeline: timelineBody,
+  targets: targetsBody,
   placeholder: placeholderBody,
 };
 
@@ -397,6 +398,23 @@ function timelineBody(module, index) {
   return `<div class="module__timeline" data-timeline="${index}"></div>`;
 }
 
+/** The SDGs card: every SDG 11 target the project addresses, each with the line
+ * saying how. The same copy the L1 widget headlines with — one card holding
+ * both, rather than a card each, which is what the six-card arrangement used to
+ * spend two of its slots on. */
+function targetsBody(module) {
+  const items = module.targets
+    .map(
+      (target) => `
+      <li class="module__target-item">
+        <span class="module__target-code">${t('problemFit.targetHeading').replace('{code}', target.code)}</span>
+        <p class="module__prose">${t(target.textKey)}</p>
+      </li>`,
+    )
+    .join('');
+  return `<ul class="module__targets">${items}</ul>`;
+}
+
 /** A card that is named but not yet researched — Politik, Timeline. It says so
  * in as many words rather than standing blank, which is what an *empty shell*
  * does: a shell is a topic this city has no rows for and may never have, while
@@ -547,8 +565,14 @@ function trendBody(module) {
 /** A Problem Fit block. The block's lead-in term — "The Rings", "Goal" — is the
  * card's own label, so what is left here is the paragraph under it; the copy is
  * the same i18n entries the L1 widget's targets already use. */
+/** Plain copy: one paragraph (`text`) or several (`paragraphs`, in reading
+ * order). Kept as separate <p>s rather than one block with breaks, because the
+ * measure and the paragraph spacing are what make four paragraphs readable at
+ * L3 — and because a screen reader announces them as four things to move
+ * between rather than one long run. */
 function proseBody(module) {
-  return `<p class="module__prose">${t(module.text)}</p>`;
+  const keys = module.paragraphs ?? [module.text];
+  return keys.map((key) => `<p class="module__prose">${t(key)}</p>`).join('');
 }
 
 /** A small grid of the figures that describe the city itself — what another

@@ -76,14 +76,12 @@ test('opening a widget stands its modules in the freed half', async ({ page }) =
   await page.waitForSelector('.marker');
   await page.locator(`.marker[aria-label*="${sourced.city_display}"]`).click({ force: true });
 
-  // Problem Fit rather than Impact or Adoption, both of which have since been
-  // given arrangements of their own — two columns, and no arrows between cards
-  // that do not follow on from one another (widgetStack.js#CRITERION_COLUMNS,
-  // #ARROWLESS). What this test is about — the modules standing in the half the
-  // map gave up, staggered, with the arrows drawn only once they have landed —
-  // is the arrangement Problem Fit still uses. The other two have their own
-  // tests in module-fit.spec.js.
-  const widget = page.locator('.widget--problemFit');
+  // Impact, whose six cards fill both columns — the arrangement every criterion
+  // now uses, in the shape that exercises most of it. What this test is about is
+  // the modules standing in the half the map gave up, offset from one another
+  // and landed; the per-criterion card counts have their own tests in
+  // module-fit.spec.js.
+  const widget = page.locator('.widget--impact');
   await expect(widget).toBeVisible();
   await widget.click();
 
@@ -106,9 +104,8 @@ test('opening a widget stands its modules in the freed half', async ({ page }) =
     true,
   );
 
-  // Three staggered columns: the second column's boxes sit between the first
-  // column's, and the third column's single box is level with the last of the
-  // first. Read once everything has landed.
+  // Two columns, the second offset below the first. Read once everything has
+  // landed.
   //
   // "Level" is deliberately approximate. Each module sits up to --module-nudge
   // off the line the grid put it on so the arrangement does not read as ruled,
@@ -138,27 +135,23 @@ test('opening a widget stands its modules in the freed half', async ({ page }) =
 
   // Which way "along the columns" runs depends on the side the region is on: a
   // right-hand region mirrors, so its first column is the rightmost one and the
-  // arrangement reads right to left (see .widget-detail--right). Problem Fit is
-  // a left-hand widget and so does not mirror, but the check stays written for
-  // both: which side a criterion sits on is a layout decision, not this test's
-  // subject.
+  // arrangement reads right to left (see .widget-detail--right). Impact is a
+  // right-hand widget; the check stays written for both, because which side a
+  // criterion sits on is a layout decision and not this test's subject.
   const rightHanded = await region.evaluate((node) =>
     node.classList.contains('widget-detail--right'),
   );
   const along = (near, far) =>
     rightHanded ? expect(far.x).toBeLessThan(near.x) : expect(far.x).toBeGreaterThan(near.x);
+  // The fourth card opens the second column, and the sixth stays in it.
   along(one, four);
-  along(four, six);
+  expect(Math.abs(six.x - four.x)).toBeLessThanOrEqual(NUDGE_TOLERANCE);
 
-  // The middle column starts half a step below the outer one, and the third
-  // bottom-aligns to the arrangement. Both stated against the arrangement rather
-  // than against a neighbouring card: where module 4 falls relative to module 2
-  // is a question about how tall module 1 happens to be, which is a fact about
-  // this criterion's content and not about the layout.
+  // The second column starts a step below the first. Stated against the first
+  // column's own top rather than against a neighbouring card: where module 4
+  // falls relative to module 2 is a question about how tall module 1 happens to
+  // be, which is a fact about this criterion's content and not about the layout.
   expect(four.y).toBeGreaterThan(one.y);
-  const arrangement = await page.locator('.widget-detail__modules').boundingBox();
-  const lastGap = arrangement.y + arrangement.height - (six.y + six.height);
-  expect(Math.abs(lastGap)).toBeLessThanOrEqual(NUDGE_TOLERANCE);
 
   // And no two of them sit on exactly the same line, which is the point of the
   // nudge — a perfectly ruled column would put these three at one x.
@@ -177,39 +170,6 @@ test('opening a widget stands its modules in the freed half', async ({ page }) =
   // decoration. Whether an arrangement fits its region at all is checked per
   // criterion in module-fit.spec.js, where the criteria that do fit are.
   expect(overflow.x).toBeLessThanOrEqual(0);
-
-  // The arrows wait for the modules. They are drawn only once every module has
-  // landed — the whole point of hanging their delay off the entrance — so a
-  // line that is already on screen mid-flight means that timing has come apart.
-  const arrows = page.locator('.connector__line');
-  await expect(arrows).toHaveCount(2);
-  await expect
-    .poll(async () => arrows.first().evaluate((node) => getComputedStyle(node).strokeDashoffset), {
-      timeout: 5000,
-    })
-    .toBe('0px');
-  const heads = page.locator('.connector__head');
-  await expect(heads).toHaveCount(2);
-  await expect(heads.first()).toHaveCSS('opacity', '1');
-  await expect(heads.nth(1)).toHaveCSS('opacity', '1');
-
-  // The head is what draws the line, so once the draw is over it has to be
-  // sitting on the tip — not near it, and not still on its way there. Measured
-  // against the line's own end point, which is the thing it is supposed to
-  // track; the tolerance is the head's own size, since a bounding box centre is
-  // not quite the point the path carries it by.
-  const offTip = await page.evaluate(() => {
-    const line = document.querySelector('.connector__line');
-    const head = document.querySelector('.connector__head');
-    const tip = line.getPointAtLength(line.getTotalLength());
-    const svg = line.ownerSVGElement.getBoundingClientRect();
-    const box = head.getBoundingClientRect();
-    return Math.hypot(
-      svg.x + tip.x - (box.x + box.width / 2),
-      svg.y + tip.y - (box.y + box.height / 2),
-    );
-  });
-  expect(offTip).toBeLessThan(8);
 
   // The map keeps clear of the modules rather than running under them. Before
   // the L2 anchor was pulled towards the edge the two overlapped by ~90px on

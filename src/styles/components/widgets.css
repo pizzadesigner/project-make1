@@ -419,23 +419,6 @@
   justify-content: flex-end;
 }
 
-/* The arrows layer: behind the modules, so an arrow runs out from under one
-   card and in under the next rather than across their faces. Inset to the
-   region's padding box, which is the box widgetStack.js measures every module
-   against. */
-.widget-detail__connectors {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-
-  /* The fade the layer leaves and returns on (see .is-pinned below). Stated
-     here rather than beside the `opacity: 0`, because a transition declared on
-     the class being removed is removed with it — the arrows would fade out and
-     then snap back on at full strength. */
-  transition: opacity var(--module-focus-duration) var(--ease-standard);
-}
-
 /* One module, in two parts. A curved path needs its two axes eased differently,
    and one element can only carry one timing function — so the outer element
    flies the horizontal half and the card inside it the vertical half, and the
@@ -1231,6 +1214,25 @@
   color: var(--color-text);
 }
 
+/* The SDGs card: one entry per SDG 11 target the project addresses — the code,
+   and the line saying how. A list rather than a card each, which is what the
+   six-card arrangement used to spend two of its slots on. */
+.module__targets {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.module__target-code {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
 /* Problem Fit's blocks. Prose is the whole card here. It used to scroll when a
    translation ran long, on the reasoning that clipping a sentence would change
    what it says — true, and a scrollbar hid it just as well. The card grows
@@ -1483,15 +1485,6 @@
   transition: none;
 }
 
-/* The arrows join two modules in the columns arrangement, and they are drawn
-   from those resting places (widgetStack.js#moduleRect). Once the modules have
-   moved the pair means nothing, so the layer steps out for as long as they are
-   away rather than being redrawn between two cards that are no longer talking
-   to each other. */
-.widget-detail.is-pinned .widget-detail__connectors {
-  opacity: 0;
-}
-
 /* The opened card. The slot it stands in is as tall as the rail beside it; the
    card takes only the height its content needs and no more, so a short card
    reads as a card rather than as a mostly empty panel — and one with more than
@@ -1592,17 +1585,6 @@
   text-align: center;
 }
 
-/* What is read across rather than scanned down takes a measure. Without it the
-   card's full width is the line length, and the wider the window the worse the
-   card reads — which is the opposite of what opening it is for. */
-.widget-detail__card.is-expanded .module__prose,
-.widget-detail__card.is-expanded .module__lead,
-.widget-detail__card.is-expanded .module__note,
-.widget-detail__card.is-expanded .module__target,
-.widget-detail__card.is-expanded .module__in-depth-empty {
-  max-width: var(--module-focus-measure);
-}
-
 /* And the rows that pair a label with a number, which are read across too — a
    cost line, a chart's legend, the modal-split table. Left at the card's width
    the label sits at one edge and its figure at the other, and the row stops
@@ -1623,15 +1605,13 @@
      the pulse travelling along a drawn arrow. Switched off outright, the modules
      sit where they belong and the arrows are simply drawn. */
   .widget-detail__module,
-  .widget-detail__card,
-  .connector {
+  .widget-detail__card {
     animation: none;
   }
 
   /* The focus slot opens and closes with no travel either — the duration token
      is already zeroed, and this is the transition that would otherwise still be
      interpolating opacity behind the modules. */
-  .widget-detail__connectors,
   .module__expand {
     transition: none;
   }

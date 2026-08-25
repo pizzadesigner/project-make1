@@ -16,9 +16,9 @@ import { test, expect } from '@playwright/test';
 
 const CITY = '.marker[aria-label*="Köln"], .marker[aria-label*="Cologne"]';
 const CRITERIA = ['problemFit', 'impact', 'adoption'];
-// How many cards each criterion opens into. Adoption is five: four in two
-// columns and the timeline spanning both below them.
-const CARDS = { problemFit: 6, impact: 6, adoption: 5 };
+// How many cards each criterion opens into. Adoption is five — four in two
+// columns and the timeline spanning both below them — and Problem Fit four.
+const CARDS = { problemFit: 4, impact: 6, adoption: 5 };
 // Both zoom transitions, then the module flight and its stagger.
 const FOCUSED = 2500;
 const SETTLED = 3200;
@@ -147,31 +147,11 @@ test('modules still fit their content on a narrower window', async ({ page }) =>
   }
 });
 
-// Problem Fit is the last criterion on the staggered arrangement — three
-// columns holding 3, 2 and 1. Impact and Adoption have their own, below.
-test('the three columns hold 3, 2 and 1 modules and stay staggered', async ({ page }) => {
-  await page.setViewportSize({ width: 1920, height: 1080 });
-  await openWidget(page, 'problemFit');
-
-  const columns = page.locator('.widget-detail__column');
-  await expect(columns).toHaveCount(3);
-  const counts = await columns.evaluateAll((nodes) =>
-    nodes.map((node) => node.querySelectorAll('.widget-detail__module').length),
-  );
-  expect(counts).toEqual([3, 2, 1]);
-
-  const [first, second] = await columns.evaluateAll((nodes) =>
-    nodes.slice(0, 2).map((node) => node.getBoundingClientRect().top),
-  );
-  // The middle column sits below the outer one by --module-column-offset.
-  expect(second - first).toBeGreaterThan(50);
-});
-
 // Impact stands its six in two columns of three instead. The 3/2/1 stagger left
 // the sixth card alone in a column, which read as a leftover rather than as the
 // last of a set — and two columns leave room for the cards to be wider, which
 // the charts in this criterion are the ones that want.
-test('impact stands its six in two columns of three, wider and without arrows', async ({
+test('impact stands its six in two columns of three, wider than three would be', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -193,10 +173,6 @@ test('impact stands its six in two columns of three, wider and without arrows', 
     .evaluate((card) => card.getBoundingClientRect().width);
   expect(width).toBeGreaterThan(320);
   expect(width).toBeLessThanOrEqual(400);
-
-  // Six separate measurements: a modal split and a count of cyclists are not two
-  // ends of a line, so nothing is drawn between them.
-  await expect(page.locator('.connector__line')).toHaveCount(0);
 
   // And the whole arrangement fits its region, decoration included — the nudge
   // and the idle drift both reach past the cells the columns measured.
@@ -233,8 +209,6 @@ test('adoption stands four in two columns with the timeline spanning below', asy
   expect(spanBox.width).toBeGreaterThan(columnBox.width * 1.8);
   expect(spanBox.y).toBeGreaterThan(columnBox.y + columnBox.height - 1);
 
-  // Five separate requirements in no particular order: nothing joins them.
-  await expect(page.locator('.connector__line')).toHaveCount(0);
   // Sideways only: the Politik card's recommendations make this arrangement
   // taller than the region, which it scrolls for.
   await expectFits(page, { vertical: false });

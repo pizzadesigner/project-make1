@@ -176,17 +176,6 @@ describe('entering L2', () => {
   // The modules are empty shells until content is moved into them
   // (detailContent.js), and an empty shell must not be announced as if it held
   // a figure.
-  // Problem Fit's blocks follow on from one another and keep their arrows.
-  // Impact's six measurements and Adoption's five requirements do not, so an
-  // arrow between any two of them would claim a relationship the data has not
-  // got — see widgetStack.js#ARROWLESS.
-  it('draws the arrows only where the cards follow on from one another', () => {
-    stack.update({ ...props, activeCriterion: 'problemFit' });
-    expect(region().querySelectorAll('.connector__line')).toHaveLength(2);
-    stack.update({ ...props, activeCriterion: null });
-    stack.update({ ...props, activeCriterion: 'adoption' });
-    expect(region().querySelectorAll('.connector__line')).toHaveLength(0);
-  });
 
   // The widgets left standing on the map's side are context at L2. They are
   // already inert and dimmed; stepping them down in size is what stops them
@@ -448,7 +437,9 @@ describe('filling the modules', () => {
 describe('the flight out of the widget', () => {
   it('starts every module on the clicked widget, at the widget\u2019s width', () => {
     undoLayout = stubLayout();
-    stack.update({ ...props, activeCriterion: 'problemFit' });
+    // Impact, which stands its six in two columns — the flight is measured the
+    // same way whatever the arrangement, and six modules exercise more of it.
+    stack.update({ ...props, activeCriterion: 'impact' });
 
     const starts = [...modules()].map((module, index) => ({
       x: module.style.getPropertyValue('--from-x'),
@@ -679,10 +670,7 @@ describe('the focus slot at L3', () => {
     expect(rail.map((node) => node.style.top)).toEqual(['0px', '88px', '177px', '265px']);
   });
 
-  // The arrows join two cards in the columns arrangement. Once the six have
-  // moved that pair means nothing, so the layer steps out rather than being
-  // redrawn between two cards that are no longer talking to each other.
-  it('takes the arrows out while the modules are away', () => {
+  it('lifts the cards out of their columns while they are away', () => {
     openL2();
     expect(region().classList.contains('is-pinned')).toBe(false);
     openL3('context');

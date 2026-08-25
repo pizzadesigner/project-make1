@@ -37,11 +37,11 @@ const reduced = customProperties(reducedBlock);
 // zero — a 0s animation that repeats forever is not "no motion", it is a
 // nonsense declaration. widgets.css switches that one off outright, which the
 // last test here checks instead.
-const PERPETUAL = ['--module-idle-duration', '--arrow-breathe-duration'];
+const PERPETUAL = ['--module-idle-duration'];
 
 const animated = Object.keys(base).filter(
   (name) =>
-    /^--(module|arrow)-/.test(name) &&
+    /^--module-/.test(name) &&
     /duration|drift|stagger|-fly$|-idle$/.test(name) &&
     !PERPETUAL.includes(name),
 );
@@ -77,6 +77,5 @@ describe('the L2 entrance under prefers-reduced-motion', () => {
     const widgets = readFileSync(resolve(here, 'components/widgets.css'), 'utf8');
     const [, block] = /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{([\s\S]*)\}/.exec(widgets);
     expect(block).toMatch(/\.widget-detail__card[\s\S]*animation:\s*none/);
-    expect(block).toMatch(/\.connector[\s\S]*animation:\s*none/);
   });
 });

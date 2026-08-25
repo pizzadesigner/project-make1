@@ -509,9 +509,25 @@ The keys that want copy, one per card that has content today:
   its info point are all copy (`adoption.koeln.politics.*`); three of the seven
   organisations carry a link, and the other four are named without one rather
   than given one that points nowhere in particular.
-- **Problem Fit** — `target-11.2`, `target-11.6`, and the city's own body
-  blocks (`intro`, `ringsBody`, `routesBody`, `goalBody` for Cologne;
-  `overview` for Paris)
+- **Problem Fit** — the four cards are `problemFit`, `sdgs`, `plan` and
+  `milestones`. Two have content: `sdgs` holds the two SDG 11 targets
+  (`problemFit.<slug>.target.<code>`), and `problemFit` holds Cologne's
+  four-paragraph project summary (`problemFit.koeln.summary.{intro,completion,counts,ebertplatz}`,
+  listed in `PROBLEM_FIT.koeln.summary`). `plan` (the 10-Punkte-Plan) and
+  `milestones` are still placeholders waiting on copy. No card here has an info
+  point written yet.
+
+  The summary card carries **no closing block** (`detail: false`) — it is
+  already the overview such a block would summarise. That leaves three figures
+  in it with no source line anywhere on the card: the ~10 km of continuous
+  route, the December 2024 Barbarossaplatz completion, and the 11,256 : 10,585
+  count on Hohenzollernring on 12 May 2025. The count is sourced on Impact's
+  `cyclists` card, so it is traceable elsewhere in the app but not from here;
+  the other two are not sourced anywhere. **Decide whether this card gets its
+  own chips.** Paris has no summary written and falls back to the placeholder.
+
+  The English bundle carries a translation of all four paragraphs; the German is
+  the copy as supplied, with one spelling fix (`seperates` → `separates`).
 
 What belongs there is what the card *is* and how to read it — which survey the
 modal split comes from and who it counts, what "car density" registers, which

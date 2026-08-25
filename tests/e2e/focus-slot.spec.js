@@ -37,14 +37,17 @@ function boxes(page) {
   });
 }
 
-async function openFirstModule(page, criterion) {
+async function openFirstModule(page, criterion, module = null) {
   await page.goto('/');
   await page.waitForSelector('.marker');
   await page.locator(CITY).first().click({ force: true });
   await page.waitForTimeout(FOCUSED);
   await page.locator(`.widget--${criterion}`).click({ force: true });
   await page.waitForTimeout(SETTLED);
-  await page.locator('.widget-detail__card[data-module]').first().click({ force: true });
+  const card = module
+    ? page.locator(`.widget-detail__card[data-module="${module}"]`)
+    : page.locator('.widget-detail__card[data-module]').first();
+  await card.click({ force: true });
   await page.waitForTimeout(OPENED);
 }
 
@@ -77,35 +80,47 @@ for (const criterion of ['problemFit', 'impact']) {
 // at in a column — so its small print steps up with it. Only a browser can say
 // whether it did: the sizes come from two custom properties redefined on the
 // card, and everything inside asks for them by name.
-test('the opened card reads larger than the ones beside it', async ({ page }) => {
+test('a card reads larger opened than it does in a column', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await openFirstModule(page, 'problemFit');
+  // The SDGs card: the one in this criterion whose body is prose, which is what
+  // the measure below is about. Its neighbours are named placeholders, so the
+  // comparison is this card against itself at the two sizes — which is the
+  // claim anyway, and a stronger one than against whatever sits beside it.
+  await page.goto('/');
+  await page.waitForSelector('.marker');
+  await page.locator(CITY).first().click({ force: true });
+  await page.waitForTimeout(FOCUSED);
+  await page.locator('.widget--problemFit').click({ force: true });
+  await page.waitForTimeout(SETTLED);
 
-  const type = await page.evaluate(() => {
-    const px = (node, sel) => {
-      const found = node.querySelector(sel);
-      return found ? Number.parseFloat(getComputedStyle(found).fontSize) : null;
-    };
-    const opened = document.querySelector('.widget-detail__card.is-expanded');
-    const beside = [...document.querySelectorAll('.widget-detail__card[data-module]')].find(
-      (card) => card !== opened,
-    );
-    const prose = opened.querySelector('.module__prose');
-    return {
-      openedLabel: px(opened, '.module__label'),
-      besideLabel: px(beside, '.module__label'),
-      openedProse: px(opened, '.module__prose'),
-      besideProse: px(beside, '.module__prose'),
-      proseWidth: prose.getBoundingClientRect().width,
-      cardWidth: opened.getBoundingClientRect().width,
-    };
-  });
+  const sizes = (sel) =>
+    page.evaluate((s) => {
+      const card = document.querySelector(s);
+      const px = (inner) => {
+        const found = card.querySelector(inner);
+        return found ? Number.parseFloat(getComputedStyle(found).fontSize) : null;
+      };
+      const prose = card.querySelector('.module__prose');
+      return {
+        label: px('.module__label'),
+        prose: px('.module__prose'),
+        proseWidth: prose ? prose.getBoundingClientRect().width : null,
+        cardWidth: card.getBoundingClientRect().width,
+      };
+    }, sel);
 
-  expect(type.openedLabel).toBeGreaterThan(type.besideLabel);
-  expect(type.openedProse).toBeGreaterThan(type.besideProse);
-  // And the line length is held back, or the card would read worse the wider the
-  // window got — which is the opposite of what opening it is for.
-  expect(type.proseWidth).toBeLessThan(type.cardWidth * 0.95);
+  const inColumn = await sizes('.widget-detail__card[data-module="sdgs"]');
+  await page.locator('.widget-detail__card[data-module="sdgs"]').click({ force: true });
+  await page.waitForTimeout(OPENED);
+  const opened = await sizes('.widget-detail__card.is-expanded');
+
+  expect(opened.label).toBeGreaterThan(inColumn.label);
+  expect(opened.prose).toBeGreaterThan(inColumn.prose);
+  // And the copy runs the full width it is given rather than stopping short of
+  // the card's own edge. There used to be a reading measure here; at this card
+  // width it only made the card look half-filled, so what is guarded now is the
+  // opposite — that nothing has quietly capped the line again.
+  expect(opened.proseWidth).toBeGreaterThan(opened.cardWidth * 0.85);
 });
 
 test('closing the slot hands the six back to their columns', async ({ page }) => {
