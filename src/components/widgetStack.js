@@ -772,18 +772,27 @@ function cardHtml(module, index) {
 function setFlightOrigin(node, sourceNode) {
   if (!sourceNode) return;
   const source = sourceNode.getBoundingClientRect();
-  // Nothing laid out yet (jsdom, or a widget still hidden): leave the fallbacks
-  // in place, which put the module on its own cell at its own size.
   if (source.width === 0) return;
   const region = node.getBoundingClientRect();
-  for (const module of node.querySelectorAll('.widget-detail__module')) {
+
+  // Alle Maße zuerst in einem Array sammeln (lesen)
+  const modules = node.querySelectorAll('.widget-detail__module');
+  const measures = [];
+  for (const module of modules) {
     if (module.offsetWidth === 0) continue;
-    module.style.setProperty(
-      '--from-x',
-      `${round(source.left - region.left - module.offsetLeft)}px`,
-    );
-    module.style.setProperty('--from-y', `${round(source.top - region.top - module.offsetTop)}px`);
-    module.style.setProperty('--from-scale', String(round(source.width / module.offsetWidth, 3)));
+    measures.push({
+      element: module,
+      offsetLeft: module.offsetLeft,
+      offsetTop: module.offsetTop,
+      offsetWidth: module.offsetWidth,
+    });
+  }
+
+  // Dann in einem zweiten Durchlauf schreiben (vermeidet Layout-Thrashing)
+  for (const { element, offsetLeft, offsetTop, offsetWidth } of measures) {
+    element.style.setProperty('--from-x', `${round(source.left - region.left - offsetLeft)}px`);
+    element.style.setProperty('--from-y', `${round(source.top - region.top - offsetTop)}px`);
+    element.style.setProperty('--from-scale', String(round(source.width / offsetWidth, 3)));
   }
 }
 

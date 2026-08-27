@@ -125,57 +125,76 @@ export function render(container, props) {
 
   /** Redraw the focused city's three layers and re-measure its fit. Called on
    * every layer change and again whenever the stage resizes. */
+  /**
+   * Redraw the focused city's three layers and re-measure its fit. Called on
+   * every layer change and again whenever the stage resizes.
+   */
   function drawCityLayers() {
-    // Districts get one path per feature — they read as separate areas. The
-    // outline and the cycle network are each a single path; the network
-    // deliberately so, one animated element regardless of route count.
+    // ---------- Distrikte ----------
     const districts = select(dom.districts);
-    districts.selectAll('*').remove();
-    if (cityLayers.districts) {
-      districts
-        .selectAll('.europe-map__district')
-        .data(cityLayers.districts.features)
-        .join('path')
-        .attr('class', 'europe-map__district')
-        .attr('d', path);
-    }
-    drawSinglePath(dom.cityHighlight, cityLayers.outline, 'europe-map__city-highlight-shape', path);
+    const districtData = cityLayers.districts?.features || [];
+    districts
+      .selectAll('.europe-map__district')
+      .data(districtData)
+      .join('path')
+      .attr('class', 'europe-map__district')
+      .attr('d', path);
 
-    //drawSinglePath(dom.infrastructure, cityLayers.infrastructure, 'europe-map__cycle-path', path);
+    // ---------- Stadt-Umriss (Highlight) ----------
+    const outline = select(dom.cityHighlight);
+    outline
+      .selectAll('.europe-map__city-highlight-shape')
+      .data(cityLayers.outline ? [cityLayers.outline] : [])
+      .join('path')
+      .attr('class', 'europe-map__city-highlight-shape')
+      .attr('d', path);
+
+    // ---------- Infrastruktur (Radwege) ----------
     const infra = select(dom.infrastructure);
-    infra.selectAll('*').remove();
+
+    // Alle Features aus allen Layern in ein flaches Array sammeln
+    const features = [];
     if (cityLayers.infrastructure) {
       const layers = Array.isArray(cityLayers.infrastructure)
         ? cityLayers.infrastructure
-        : [{ data: cityLayers.infrastructure, className: 'europe-map_cycle-path' }];
+        : [{ data: cityLayers.infrastructure, className: 'europe-map__cycle-path' }];
+
       for (const layer of layers) {
         if (!layer.data) continue;
-        // Wenn es ein FeatureCollection ist, in einzelne Features zerlegen
-        const features = layer.data.features || [layer.data];
-        for (const feature of features) {
-          infra
-            .append('path')
-            .attr('class', layer.className || 'europe-map__cycle-path')
-            .attr('d', path(feature));
+        const layerFeatures = layer.data.features || [layer.data];
+        for (const feature of layerFeatures) {
+          features.push({
+            ...feature,
+            // Klasse aus dem Layer übernehmen, oder Fallback
+            className: layer.className || 'europe-map__cycle-path',
+          });
         }
       }
     }
 
+    // Daten-Join mit eindeutigem Key (falls vorhanden, sonst Geometrie)
+    infra
+      .selectAll(
+        '.europe-map__cycle-path, .europe-map__cycle-path--mixed, .europe-map__cycle-path--separated, .europe-map__cycle-path--offstreet',
+      )
+      .data(features, (d) => d.id || JSON.stringify(d.geometry))
+      .join('path')
+      .attr('class', (d) => d.className)
+      .attr('d', path);
+
+    // ---------- Clip-Path für Infrastruktur (unverändert) ----------
     const clipId = `clip-${cityLayers.slug}`;
-    // Alten Clip‑Path entfernen (falls vorhanden)
     dom.defs.selectAll(`#${clipId}`).remove();
 
     if (cityLayers.outline) {
-      // Neuen Clip‑Path aus der Outline erstellen
       const clipPath = dom.defs.append('clipPath').attr('id', clipId);
       clipPath.append('path').attr('d', path(cityLayers.outline));
-      // Clip‑Path auf die Infrastruktur‑Gruppe anwenden
       infra.attr('clip-path', `url(#${clipId})`);
     } else {
-      // Keine Outline vorhanden → Clip entfernen
       infra.attr('clip-path', null);
     }
 
+    // Fit-Info für die Kartenansicht aktualisieren (für Zoom/Framing)
     cityFit = cityLayers.districts ? cityFitInfo(path, size, cityLayers.districts) : null;
   }
 
@@ -625,15 +644,6 @@ function setZoom(svg, behavior, transform, duration) {
 
 function animateZoom(svg, behavior, transform) {
   setZoom(svg, behavior, transform, motionMs('--motion-slow'));
-}
-
-/** Replace a layer's contents with one path for the whole geometry, or clear it
- * when there is none. */
-function drawSinglePath(node, geometry, className, path) {
-  const layer = select(node);
-  layer.selectAll('*').remove();
-  if (!geometry) return;
-  layer.append('path').attr('class', className).attr('d', path(geometry));
 }
 
 /** Dim every country but the focused project's own, which stays at its plain
