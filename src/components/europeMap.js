@@ -242,10 +242,14 @@ export function render(container, props) {
   }
 
   layout();
+  let resizeTimeout = null;
   let resizeFrame = 0;
   const resizeObserver = new ResizeObserver(() => {
-    cancelAnimationFrame(resizeFrame);
-    resizeFrame = requestAnimationFrame(handleResize);
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(handleResize);
+    }, 150);
   });
   resizeObserver.observe(container);
 
