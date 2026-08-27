@@ -434,7 +434,7 @@ function buildDetail(sourceNodeFor, onSelectModule) {
  * it by clicking to place the cursor. */
 function clickTarget(event, focusedKey) {
   const card = event.target.closest('.widget-detail__card[data-module]');
-  if (!card) return undefined;
+  if (!card) return focusedKey ? null : undefined;
   const key = card.dataset.module;
   if (event.target.closest('[data-expand]')) return key === focusedKey ? null : key;
   if (event.target.closest('a, button')) return undefined;
