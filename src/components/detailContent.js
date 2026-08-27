@@ -131,7 +131,7 @@ function expandHtml(module, index, expanded) {
   );
   return `
     <button type="button" class="module__expand" data-expand aria-expanded="${expanded}" aria-label="${label}">
-      <span aria-hidden="true">${expanded ? '\u2921' : '\u2922'}</span>
+      <span aria-hidden="true">${expanded ? '_' : '\u26F6'}</span>
     </button>`;
 }
 
