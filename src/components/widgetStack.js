@@ -306,12 +306,28 @@ function buildDetail(sourceNodeFor, onSelectModule) {
     teardown();
     shownModules = modules;
     focusedKey = nextFocus;
+
+    const isNewOpen = !settled || node.hidden;
     node.className = detailClass(activeCriterion, settled, nextFocus);
     node.setAttribute('aria-label', t(`criteria.${activeCriterion}`));
     node.innerHTML = detailHeader(activeCriterion) + moduleScaffold(modules, activeCriterion);
     node.hidden = false;
+
     mountModuleExtras(node, modules, contents);
     setFlightOrigin(node, sourceNodeFor(activeCriterion));
+
+    if (isNewOpen) {
+      node.classList.add('is-animating');
+      const duration = motionMs('--module-fly-duration');
+      if (duration > 0) {
+        setTimeout(() => {
+          node.classList.remove('is-animating');
+        }, duration + 50); // kurzer Puffer nach der Animation
+      } else {
+        node.classList.remove('is-animating');
+      }
+    }
+
     // Rebuilt while a module was open: it goes straight back to the focus slot
     // rather than flying there a second time. The scaffold above is built small
     // either way, so the boxes measured here are the arrangement's own — a card

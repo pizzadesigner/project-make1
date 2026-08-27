@@ -438,6 +438,9 @@
   transform-origin: top left;
   animation: module-fly-x var(--module-fly-duration) var(--ease-module-x) both;
   animation-delay: calc(var(--module-index, 0) * var(--module-stagger));
+
+  will-change: transform, opacity;
+  contain: layout style paint;
 }
 
 /* A module carrying an open hint stands above its neighbours.
@@ -636,6 +639,11 @@
   100% {
     translate: var(--idle-x) var(--idle-y);
   }
+}
+
+/* backdrop-filter während der Flug-Animation deaktivieren */
+.widget-detail.is-animating .widget-detail__card {
+  backdrop-filter: none !important;
 }
 
 /* A locale switch at L2 rewrites this content; it should reappear where it was
