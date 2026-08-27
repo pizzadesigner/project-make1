@@ -501,7 +501,6 @@ function setupZoom(dom, markers, onTransform) {
       // rest), so the swap happens before the deep-zoom range is reached.
       isDeepZoom = setDeepZoom(dom, event.transform.k >= DEEP_ZOOM_THRESHOLD, isDeepZoom);
     });
-  select(dom.svg).call(behavior);
   return behavior;
 }
 
