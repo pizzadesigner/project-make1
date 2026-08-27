@@ -285,6 +285,14 @@
   --l2-region-share: 0.55;
   --l2-region-gap: 40px;
   --l2-region-margin: var(--space-4);
+
+  /* Cycle network styles. */
+  --stroke-width-cycle-separated: 1.7px;
+  --stroke-width-cycle-mixed: 1.7px;
+  --stroke-width-cycle-offstreet: 1.7px;
+  --chart-label-size: 12px;
+  --modal-split-year-size: 11px;
+  --widget-padding: 18px 20px;
 }
 
 @media (prefers-reduced-motion: reduce) {

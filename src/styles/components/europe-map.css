@@ -189,7 +189,7 @@
 .europe-map__cycle-path--mixed {
   fill: none;
   stroke: var(--color-cycle-mixed);
-  stroke-width: 2;
+  stroke-width: var(--stroke-width-cycle-mixed);
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
@@ -199,7 +199,7 @@
 .europe-map__cycle-path--separated {
   fill: none;
   stroke: var(--color-cycle-separated);
-  stroke-width: 2.5; /* etwas dicker für Hauptstraßen */
+  stroke-width: var(--stroke-width-cycle-separated); /* etwas dicker für Hauptstraßen */
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
@@ -209,7 +209,7 @@
 .europe-map__cycle-path--offstreet {
   fill: none;
   stroke: var(--color-cycle-offstreet);
-  stroke-width: 2;
+  stroke-width: var(--stroke-width-cycle-offstreet);
   stroke-dasharray: 6 4; /* gestrichelt für straßenunabhängig */
   stroke-linecap: round;
   stroke-linejoin: round;
