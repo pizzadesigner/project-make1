@@ -6,4 +6,5 @@ export const UNIT_KEYS = {
   'µg/m³': 'impact.unit.ugm3',
   people: 'impact.unit.people',
   'km²': 'impact.unit.km2',
+  'per site and day': 'impact.unit.perSiteAndDay',
 };

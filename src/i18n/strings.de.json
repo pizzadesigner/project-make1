@@ -42,6 +42,7 @@
   "impact.unit.ugm3": "µg/m³",
   "impact.unit.people": "Einwohner",
   "impact.unit.km2": "km²",
+  "impact.unit.perSiteAndDay": "je Zählstelle und Tag",
   "impact.series.car": "Pkw",
   "impact.series.cyclists": "Radfahrende",
   "impact.cycleNetwork.mixed": "Mischverkehr, Nebenstraßen",
