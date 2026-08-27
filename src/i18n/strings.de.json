@@ -260,5 +260,13 @@
   "problemFit.card.problemFit": "Problem Fit",
   "problemFit.card.sdgs": "SDGs",
   "problemFit.card.plan": "10-Punkte-Plan für die Kölner Ringe",
-  "problemFit.card.milestones": "Meilensteine im Überblick"
+  "problemFit.card.milestones": "Meilensteine im Überblick",
+  "city.koeln": "Köln",
+  "city.paris-marne-la-vallee": "Paris",
+  "city.lisboa": "Lissabon",
+  "city.helsinki-region": "Helsinki",
+  "country.DE": "Deutschland",
+  "country.FR": "Frankreich",
+  "country.PT": "Portugal",
+  "country.FI": "Finnland"
 }

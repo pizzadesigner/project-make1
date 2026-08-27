@@ -41,3 +41,33 @@ export function t(key) {
 export function hasString(key) {
   return Boolean(bundles[activeLocale][key] ?? bundles.en[key]);
 }
+
+/**
+ * Translate a city slug to the current locale's name.
+ * Falls back to the provided default if no translation exists.
+ * @param {string} slug
+ * @param {string} fallback
+ * @returns {string}
+ */
+export function translateCity(slug, fallback) {
+  const key = 'city.' + slug;
+  if (bundles[activeLocale][key]) {
+    return t(key);
+  }
+  return fallback;
+}
+
+/**
+ * Translate a country ISO2 code to the current locale's name.
+ * Falls back to the provided default if no translation exists.
+ * @param {string} iso2
+ * @param {string} fallback
+ * @returns {string}
+ */
+export function translateCountry(iso2, fallback) {
+  const key = 'country.' + iso2.toUpperCase();
+  if (bundles[activeLocale][key]) {
+    return t(key);
+  }
+  return fallback;
+}

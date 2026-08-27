@@ -17,7 +17,7 @@ import { geoPath, select, zoom, zoomIdentity } from 'd3';
 import { feature, mesh } from 'topojson-client';
 import { createEuropeProjection, fitToViewport } from '../lib/projection.js';
 import { motionMs, prefersReducedMotion } from '../lib/a11y.js';
-import { t } from '../lib/i18n.js';
+import { t, translateCity, translateCountry } from '../lib/i18n.js';
 import { renderTooltip } from './tooltip.js';
 
 const MARKER_ARROWS = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
@@ -50,6 +50,7 @@ const DEEP_ZOOM_THRESHOLD = 15;
 
 export function render(container, props) {
   let size = measure(container);
+  let locale = props.locale;
   // The committed TopoJSON has a single object; take it by value rather than a
   // fixed key so a re-simplified or hand-edited file (which may name the layer
   // differently) still loads.
@@ -87,6 +88,12 @@ export function render(container, props) {
     onHover: (project) => applyCountryHover(dom, project.country),
     onHoverEnd: () => applyCountryHover(dom, null),
   });
+
+  function updateMarkerLabels() {
+    for (const marker of markers) {
+      marker.node.setAttribute('aria-label', markerLabel(marker.project));
+    }
+  }
 
   const zoomBehavior = setupZoom(dom, markers, (transform) => {
     viewTransform = transform;
@@ -228,6 +235,13 @@ export function render(container, props) {
       const nextFocused = next.focusedCity ?? null;
       const nextSide = next.citySide ?? null;
       const nextDeepZoom = next.deepZoom ?? false;
+      const nextLocale = next.locale ?? locale;
+      if (nextLocale !== locale) {
+        locale = nextLocale;
+        updateMarkerLabels();
+        const focused = markers.find((m) => m.project.citySlug === focusedCity)?.project ?? null;
+        if (focused) applyFocusHeader(dom, focused);
+      }
       if (nextFocused === focusedCity && nextSide === citySide && nextDeepZoom === deepZoom) {
         return;
       }
@@ -627,20 +641,23 @@ function drawSinglePath(node, geometry, className, path) {
  * setCityHighlight); no-op when nothing is focused. */
 function applyCountryFocus(dom, focused) {
   const home = focused?.country ?? null;
-  dom.countries
-    .selectAll('path')
-    .classed('is-focus-dim', (d) => home != null && countryName(d) !== home);
+  dom.countries.selectAll('path').classed('is-focus-dim', (d) => {
+    const name = d.properties.name ?? d.properties.NAME ?? null;
+    return home != null && name !== home;
+  });
 }
 
 /** Highlight the one country a hovered marker sits in (its fill lightens);
  * pass null to clear. */
 function applyCountryHover(dom, country) {
-  dom.countries
-    .selectAll('path')
-    .classed('is-hover-home', (d) => country != null && countryName(d) === country);
+  dom.countries.selectAll('path').classed('is-hover-home', (d) => {
+    const name = d.properties.name ?? d.properties.NAME ?? null;
+    return country != null && name === country;
+  });
 }
 
 /** Natural Earth's name lives in `name`; some exports use `NAME`. */
+// eslint-disable-next-line no-unused-vars
 function countryName(d) {
   return d.properties.name ?? d.properties.NAME ?? null;
 }
@@ -673,21 +690,26 @@ function applyFocusHeader(dom, focused) {
     dom.focusHeader.replaceChildren();
     return;
   }
+  const cityName = translateCity(focused.citySlug, focused.cityDisplay);
+  const countryName = translateCountry(focused.countryIso2, focused.country);
   dom.focusHeader.hidden = false;
   dom.focusHeader.innerHTML = `
-    <span class="europe-map__focus-name">${escapeHtml(focused.cityDisplay)}</span>
-    <span class="europe-map__focus-country">${escapeHtml(focused.country)}</span>
+    <span class="europe-map__focus-name">${escapeHtml(cityName)}</span>
+    <span class="europe-map__focus-country">${escapeHtml(countryName)}</span>
   `;
 }
 
 function markerLabel(project) {
   const title = t(`sdg.target.${project.sdg11Target}`);
-  return `${project.cityDisplay}: ${project.projectTitle} — ${project.sdg11Target} ${title}`;
+  const cityName = translateCity(project.citySlug, project.cityDisplay);
+  //const countryName = translateCountry(project.countryIso2, project.country);
+  return `${cityName}: ${project.projectTitle} — ${project.sdg11Target} ${title}`;
 }
 
 function tooltipHtml(project) {
+  const cityName = translateCity(project.citySlug, project.cityDisplay);
   const count = t('map.markerCountOne').replace('{count}', '1');
-  return `<strong>${escapeHtml(project.cityDisplay)}</strong><span>${escapeHtml(count)}</span>`;
+  return `<strong>${escapeHtml(cityName)}</strong><span>${escapeHtml(count)}</span>`;
 }
 
 function escapeHtml(value) {

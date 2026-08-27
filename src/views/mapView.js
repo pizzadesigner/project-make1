@@ -212,6 +212,7 @@ export function render(container, props) {
       focusedCity: next.focusedCity,
       citySide: citySideFor(next.activeCriterion),
       deepZoom: next.activeCriterion === 'impact',
+      locale: next.locale,
     });
     syncCityLayers(next.focusedCity);
     widgetHandle.update(widgetProps);
