@@ -14,6 +14,7 @@ import { formatNumber, formatYear } from '../lib/format.js';
 import { t } from '../lib/i18n.js';
 import { motionMs, prefersReducedMotion } from '../lib/a11y.js';
 import { renderTooltip } from './tooltip.js';
+import { formatUnit } from './detailContent.js';
 
 const W = 640;
 const H = 260;
@@ -123,7 +124,7 @@ function drawAxes(svg, x, y, points, props) {
   // the unit in words over the chart (detailContent.js#unitHtml) would otherwise
   // say it twice, once spelled out and once as the bare symbol.
   if (props.unit && props.unitLabel !== false) {
-    svg.append(text(MARGIN.left, MARGIN.top - 4, props.unit, 'line-chart__unit'));
+    svg.append(text(MARGIN.left, MARGIN.top - 4, formatUnit(props.unit), 'line-chart__unit'));
   }
 }
 

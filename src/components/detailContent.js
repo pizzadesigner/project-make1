@@ -31,6 +31,7 @@ import {
   formatNumber,
   formatHostname,
 } from '../lib/format.js';
+import { UNIT_KEYS } from '../lib/units.js';
 import * as lineChart from './lineChart.js';
 import * as timelineChart from './timelineChart.js';
 import * as milestoneChart from './milestoneChart.js';
@@ -596,8 +597,17 @@ function linesBody(module, index) {
  * data, so the words and what they describe cannot drift apart. */
 function unitHtml({ unit, unitKey }) {
   if (!unit) return '';
-  const text = unitKey ? t(unitKey).replace('{unit}', unit) : unit;
+  const key = unitKey || UNIT_KEYS[unit];
+  const text = key ? t(key).replace('{unit}', unit) : unit;
   return `<p class="module__series-unit">${text}</p>`;
+}
+
+export function formatUnit(unit) {
+  if (!unit) return '';
+  const key = UNIT_KEYS[unit];
+  if (key) return t(key);
+  // Fallback: rohe Einheit, wenn kein Mapping existiert
+  return unit;
 }
 
 /** Parts of one whole, as a stacked bar sized by the parts themselves. The
@@ -641,7 +651,7 @@ function trendBody(module) {
     )
     .join('<span class="module__trend-step" aria-hidden="true"></span>');
   return `
-    <p class="module__series-unit">${module.unit}</p>
+    <p class="module__series-unit">${formatUnit(module.unit)}</p>
     <div class="module__trend">${points}</div>`;
 }
 
@@ -757,7 +767,7 @@ function outboundLink(url, text) {
 
 /** The module's own figure: value, unit, and the year it was measured. */
 function headlineHtml(value, unit, year) {
-  const suffix = unit ? `<span class="module__unit">${unit}</span>` : '';
+  const suffix = unit ? `<span class="module__unit">${formatUnit(unit)}</span>` : '';
   const when = year ? `<span class="module__year">${year}</span>` : '';
   return `
     <p class="module__value">

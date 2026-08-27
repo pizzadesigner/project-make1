@@ -30,7 +30,6 @@
 /** @type {AppState} */
 const state = {
   status: 'idle',
-  route: { name: 'map', params: {} },
   projects: [],
   metrics: [],
   peers: [],
