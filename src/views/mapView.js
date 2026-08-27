@@ -8,7 +8,7 @@
 // Back and Escape step back one layer at a time via stepBack(). #/city/:slug and #/list stay
 // reachable only as cold/shared links; nothing here navigates to them.
 
-import { t } from '../lib/i18n.js';
+import { getLocale, t } from '../lib/i18n.js';
 import {
   widgetMetricsForProject,
   impactSubMetrics,
@@ -131,6 +131,9 @@ export function render(container, props) {
     focusedCity = next.focusedCity ?? null;
     activeCriterion = next.activeCriterion ?? null;
     activeModule = next.activeModule ?? null;
+
+    refs.updateOverview();
+
     // Reset and the language toggle are always available (top-right). Back
     // appears once a city is focused (L1); the overview panel shows only at L0.
     const atOverview = !(focusedCity || activeCriterion);
@@ -248,27 +251,56 @@ function buildShell(container, props) {
   root.innerHTML = `
     <div class="map-stage" data-stage></div>
     <aside class="map-overview" data-overview hidden>
-      <h1 class="map-overview__title">${t('overview.title')}</h1>
-      <p class="map-overview__lead">${t('overview.lead')}</p>
-      <p class="map-overview__hint">${t('overview.hint')}</p>
+      <h1 class="map-overview__title"></h1>
+      <p class="map-overview__lead"></p>
+      <p class="map-overview__hint"></p>
     </aside>
     <div class="map-controls map-controls--top-left">
-      <button type="button" class="map-float button" data-back hidden>← ${t('detail.back')}</button>
+      <button type="button" class="map-float button" data-back hidden></button>
     </div>
     <div class="map-controls map-controls--top-right">
-      <button type="button" class="map-float button" data-reset>${t('map.resetView')}</button>
+      <button type="button" class="map-float button" data-reset></button>
       <button type="button" class="map-float button" data-lang-toggle>${props.locale === 'en' ? 'DE' : 'EN'}</button>
     </div>
   `;
   container.append(root);
-  root.querySelector('[data-lang-toggle]').addEventListener('click', props.toggleLocale);
+
+  //root.querySelector('[data-lang-toggle]').addEventListener('click', props.toggleLocale);
+
+  // Referenzen für den Overlay-Text
+  const stage = root.querySelector('[data-stage]');
+  const overview = root.querySelector('[data-overview]');
+  const back = root.querySelector('[data-back]');
+  const reset = root.querySelector('[data-reset]');
+  const langToggle = root.querySelector('[data-lang-toggle]');
+
+  langToggle.addEventListener('click', props.toggleLocale);
+
+  function updateOverview() {
+    const title = overview.querySelector('.map-overview__title');
+    const lead = overview.querySelector('.map-overview__lead');
+    const hint = overview.querySelector('.map-overview__hint');
+    title.textContent = t('overview.title');
+    lead.textContent = t('overview.lead');
+    hint.textContent = t('overview.hint');
+    back.textContent = `← ${t('detail.back')}`;
+    reset.textContent = t('map.resetView');
+
+    const currentLocale = getLocale(); // oder props.locale? Besser aus i18n holen
+    langToggle.textContent = currentLocale === 'en' ? 'DE' : 'EN';
+  }
+
+  // Einmalig initial setzen
+  updateOverview();
+
   return {
     root,
-    stage: root.querySelector('[data-stage]'),
-    overview: root.querySelector('[data-overview]'),
-    back: root.querySelector('[data-back]'),
-    reset: root.querySelector('[data-reset]'),
-    langToggle: root.querySelector('[data-lang-toggle]'),
+    stage,
+    overview,
+    back,
+    reset,
+    langToggle,
+    updateOverview,
   };
 }
 
