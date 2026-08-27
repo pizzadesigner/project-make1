@@ -5,7 +5,6 @@
 /**
  * @typedef {Object} AppState
  * @property {'idle'|'loading'|'ready'|'error'} status
- * @property {{ name: string, params: Record<string, string> }} route
  * @property {import('./data/types.js').Project[]} projects
  * @property {import('./data/types.js').Metric[]} metrics
  * @property {import('./data/types.js').PeerCity[]} peers
