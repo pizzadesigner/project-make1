@@ -133,7 +133,27 @@ export function render(container, props) {
         .attr('d', path);
     }
     drawSinglePath(dom.cityHighlight, cityLayers.outline, 'europe-map__city-highlight-shape', path);
-    drawSinglePath(dom.infrastructure, cityLayers.infrastructure, 'europe-map__cycle-path', path);
+
+    //drawSinglePath(dom.infrastructure, cityLayers.infrastructure, 'europe-map__cycle-path', path);
+    const infra = select(dom.infrastructure);
+    infra.selectAll('*').remove();
+    if (cityLayers.infrastructure) {
+      const layers = Array.isArray(cityLayers.infrastructure)
+        ? cityLayers.infrastructure
+        : [{ data: cityLayers.infrastructure, className: 'europe-map_cycle-path' }];
+      for (const layer of layers) {
+        if (!layer.data) continue;
+        // Wenn es ein FeatureCollection ist, in einzelne Features zerlegen
+        const features = layer.data.features || [layer.data];
+        for (const feature of features) {
+          infra
+            .append('path')
+            .attr('class', layer.className || 'europe-map__cycle-path')
+            .attr('d', path(feature));
+        }
+      }
+    }
+
     cityFit = cityLayers.districts ? cityFitInfo(path, size, cityLayers.districts) : null;
   }
 

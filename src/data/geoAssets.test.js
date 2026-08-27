@@ -18,7 +18,20 @@ import { CITY_GEO } from './load.js';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
 const entries = Object.entries(CITY_GEO).flatMap(([slug, layers]) =>
-  Object.entries(layers).map(([layer, path]) => ({ slug, layer, path })),
+  Object.entries(layers).flatMap(([layer, value]) => {
+    if (Array.isArray(value)) {
+      // Für jeden Eintrag im Array einen Testfall erzeugen
+      return value.map((item) => ({
+        slug,
+        layer,
+        path: item.path,
+        id: item.id || null,
+      }));
+    } else {
+      // Alter Fall: String
+      return [{ slug, layer, path: value, id: null }];
+    }
+  }),
 );
 
 describe('committed city geometry', () => {
@@ -26,8 +39,9 @@ describe('committed city geometry', () => {
     expect(entries.length).toBeGreaterThan(0);
   });
 
-  for (const { slug, layer, path } of entries) {
-    it(`${slug} · ${layer} → ${path} exists`, () => {
+  for (const { slug, layer, path, id } of entries) {
+    const label = id !== null ? `${layer} (${id})` : layer;
+    it(`${slug} · ${label} → ${path} exists`, () => {
       expect(existsSync(resolve(root, 'public', path))).toBe(true);
     });
   }

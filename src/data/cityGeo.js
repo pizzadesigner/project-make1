@@ -15,7 +15,26 @@ export const CITY_GEO = {
   koeln: {
     outline: 'geo/cities/cities_cologne.geojson',
     districts: 'geo/districts/districts_cologne.topo.json',
-    infrastructure: 'geo/infrastructure/infrastructure_cologne.geojson',
+    infrastructure: [
+      {
+        id: 'separated',
+        path: 'geo/infrastructure/gelbes_netz_4326.geojson',
+        className: 'europe-map__cycle-path--separated',
+        colorVar: '--color-cycle-separated',
+      },
+      {
+        id: 'mixed',
+        path: 'geo/infrastructure/gruenes_netz_4326.geojson',
+        className: 'europe-map__cycle-path--mixed',
+        colorVar: '--color-cycle-mixed',
+      },
+      {
+        id: 'offstreet',
+        path: 'geo/infrastructure/strassenunabhaengige_verbindungen_4326.geojson',
+        className: 'europe-map__cycle-path--offstreet',
+        colorVar: '--color-cycle-offstreet',
+      },
+    ],
   },
   'paris-marne-la-vallee': {
     outline: 'geo/cities/paris-marne-la-vallee.geojson',

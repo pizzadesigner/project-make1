@@ -127,5 +127,18 @@ export async function loadCityDistricts(citySlug) {
  */
 export function loadCityInfrastructure(citySlug) {
   const entry = CITY_GEO[citySlug];
-  return entry?.infrastructure ? json(geoUrl(entry.infrastructure)) : Promise.resolve(null);
+  if (!entry?.infrastructure) return Promise.resolve(null);
+
+  // Wenn es ein Array ist, lade alle Dateien parallel
+  if (Array.isArray(entry.infrastructure)) {
+    return Promise.all(
+      entry.infrastructure.map(async (layer) => {
+        const data = await json(geoUrl(layer.path));
+        return { ...layer, data };
+      }),
+    );
+  }
+
+  // Fallback: alte einzelne Datei
+  return json(geoUrl(entry.infrastructure));
 }

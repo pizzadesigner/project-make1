@@ -185,3 +185,34 @@
     animation: none;
   }
 }
+
+.europe-map__cycle-path--mixed {
+  fill: none;
+  stroke: var(--color-cycle-mixed);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.europe-map__cycle-path--separated {
+  fill: none;
+  stroke: var(--color-cycle-separated);
+  stroke-width: 2.5; /* etwas dicker für Hauptstraßen */
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.europe-map__cycle-path--offstreet {
+  fill: none;
+  stroke: var(--color-cycle-offstreet);
+  stroke-width: 2;
+  stroke-dasharray: 6 4; /* gestrichelt für straßenunabhängig */
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
