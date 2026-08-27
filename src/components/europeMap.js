@@ -13,7 +13,7 @@
 // markers and the city layers whenever it changes, so the map is sized by the
 // window rather than by whatever the window happened to be at mount.
 
-import { select, geoPath, zoom, zoomIdentity } from 'd3';
+import { geoPath, select, zoom, zoomIdentity } from 'd3';
 import { feature, mesh } from 'topojson-client';
 import { createEuropeProjection, fitToViewport } from '../lib/projection.js';
 import { motionMs, prefersReducedMotion } from '../lib/a11y.js';
@@ -152,6 +152,21 @@ export function render(container, props) {
             .attr('d', path(feature));
         }
       }
+    }
+
+    const clipId = `clip-${cityLayers.slug}`;
+    // Alten Clip‑Path entfernen (falls vorhanden)
+    dom.defs.selectAll(`#${clipId}`).remove();
+
+    if (cityLayers.outline) {
+      // Neuen Clip‑Path aus der Outline erstellen
+      const clipPath = dom.defs.append('clipPath').attr('id', clipId);
+      clipPath.append('path').attr('d', path(cityLayers.outline));
+      // Clip‑Path auf die Infrastruktur‑Gruppe anwenden
+      infra.attr('clip-path', `url(#${clipId})`);
+    } else {
+      // Keine Outline vorhanden → Clip entfernen
+      infra.attr('clip-path', null);
     }
 
     cityFit = cityLayers.districts ? cityFitInfo(path, size, cityLayers.districts) : null;
@@ -297,6 +312,9 @@ function buildDom(container, size) {
     .attr('role', 'group')
     .attr('aria-label', t('map.heading'));
 
+  // Defs für Clip‑Paths und Gradienten
+  const defs = svg.append('defs');
+
   // Gradient the cycle-route lines are stroked with (colours in the stylesheet).
   // It repeats across the network and slowly translates by one period, so the
   // brighter band runs through the lines — unless the user prefers reduced motion.
@@ -358,6 +376,7 @@ function buildDom(container, size) {
   return {
     root,
     svg: svg.node(),
+    defs,
     zoomLayer: zoomLayer.node(),
     backdrop,
     countries,
@@ -490,7 +509,7 @@ function focusNeighbour(markers, current, step) {
  * inside the map. `onTransform` mirrors the live transform back to the caller. */
 function setupZoom(dom, markers, onTransform) {
   let isDeepZoom = false;
-  const behavior = zoom()
+  return zoom()
     .scaleExtent([MIN_ZOOM, MAX_ZOOM])
     .on('zoom', (event) => {
       onTransform(event.transform);
@@ -501,7 +520,6 @@ function setupZoom(dom, markers, onTransform) {
       // rest), so the swap happens before the deep-zoom range is reached.
       isDeepZoom = setDeepZoom(dom, event.transform.k >= DEEP_ZOOM_THRESHOLD, isDeepZoom);
     });
-  return behavior;
 }
 
 /** Zoom transform that centres (x, y) in the viewport at the given scale. */
