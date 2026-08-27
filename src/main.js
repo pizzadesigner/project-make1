@@ -58,10 +58,17 @@ function viewProps(state) {
 }
 
 function render(state) {
-  // Nur noch die mapView rendern – keine Routen mehr
-  if (mounted) mounted.handle.destroy();
+  if (mounted) {
+    mounted.update(viewProps(state));
+    return;
+  }
+
   root.replaceChildren();
-  mounted = { handle: mapView.render(root, viewProps(state)) };
+  const handle = mapView.render(root, viewProps(state));
+  mounted = {
+    update: handle.update,
+    destroy: handle.destroy,
+  };
 }
 
 async function loadData() {
