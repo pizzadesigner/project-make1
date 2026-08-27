@@ -11,20 +11,9 @@ import './styles/tokens.css';
 import './styles/base.css';
 
 import { getState, setState, subscribe } from './store.js';
-import { startRouter, navigate } from './router.js';
 import { setLocale } from './lib/i18n.js';
 import { loadDataset } from './data/load.js';
 import * as mapView from './views/mapView.js';
-import * as cityView from './views/cityView.js';
-import * as listView from './views/listView.js';
-import * as notFoundView from './views/notFoundView.js';
-
-const views = {
-  map: mapView,
-  list: listView,
-  city: cityView,
-  notFound: notFoundView,
-};
 
 const root = document.querySelector('#app');
 
@@ -61,7 +50,6 @@ function toggleLocale() {
 function viewProps(state) {
   return {
     ...state,
-    navigate,
     setFocusedCity,
     setActiveCriterion,
     setActiveModule,
@@ -70,19 +58,10 @@ function viewProps(state) {
 }
 
 function render(state) {
-  const view = views[state.route.name] ?? views.notFound;
-  const name = state.route.name in views ? state.route.name : 'notFound';
-
-  // Views bake t()-translated strings into HTML once at mount, so a locale
-  // change needs a full remount — update() alone would leave stale text.
-  if (mounted && mounted.name === name && mounted.locale === state.locale) {
-    mounted.handle.update(viewProps(state));
-    return;
-  }
-
+  // Nur noch die mapView rendern – keine Routen mehr
   if (mounted) mounted.handle.destroy();
   root.replaceChildren();
-  mounted = { name, locale: state.locale, handle: view.render(root, viewProps(state)) };
+  mounted = { handle: mapView.render(root, viewProps(state)) };
 }
 
 async function loadData() {
@@ -111,7 +90,6 @@ async function loadData() {
 function boot() {
   setLocale(getState().locale);
   subscribe(render);
-  startRouter((route) => setState({ route }));
   loadData();
 }
 
