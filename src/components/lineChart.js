@@ -53,6 +53,7 @@ export function render(container, props) {
     viewBox: `0 0 ${W} ${height}`,
     role: 'img',
   });
+  const { thresholds } = props;
   svg.setAttribute('aria-label', describe(props));
   container.append(svg);
 
@@ -78,6 +79,8 @@ export function render(container, props) {
     drawDots(svg, x, y, entry, compact, { container, tooltip, props, named });
   }
 
+  drawThresholds(svg, x, y, thresholds, margin);
+
   return {
     update() {},
     destroy() {
@@ -85,6 +88,71 @@ export function render(container, props) {
       svg.remove();
     },
   };
+}
+
+function drawThresholds(svg, x, y, thresholds, margin) {
+  if (!thresholds || thresholds.length === 0) return;
+  const right = x.domain()[1]; // oder wir nehmen den rechten Rand der x-Achse
+
+  for (const entry of thresholds) {
+    const { eu, who, key } = entry;
+    const color =
+      getComputedStyle(document.documentElement).getPropertyValue(`--color-air-${key}`).trim() ||
+      '#888';
+
+    // EU-Grenzwert
+    const euY = y(eu.value);
+    if (isFinite(euY)) {
+      svg
+        .append('line')
+        .attr('class', 'line-chart__threshold')
+        .attr('x1', margin.left)
+        .attr('x2', x(right) || margin.left + 200)
+        .attr('y1', euY)
+        .attr('y2', euY)
+        .style('stroke', color)
+        .style('stroke-dasharray', '4 4')
+        .style('stroke-width', 1.5)
+        .style('opacity', 0.5);
+
+      // Beschriftung am rechten Rand
+      svg
+        .append('text')
+        .attr('x', x(right) || margin.left + 200)
+        .attr('y', euY - 4)
+        .attr('text-anchor', 'end')
+        .style('font-size', '10px')
+        .style('fill', color)
+        .style('opacity', 0.7)
+        .text(`EU ${eu.value}`);
+    }
+
+    // WHO-Empfehlung
+    const whoY = y(who.value);
+    if (isFinite(whoY)) {
+      svg
+        .append('line')
+        .attr('class', 'line-chart__threshold')
+        .attr('x1', margin.left)
+        .attr('x2', x(right) || margin.left + 200)
+        .attr('y1', whoY)
+        .attr('y2', whoY)
+        .style('stroke', color)
+        .style('stroke-dasharray', '2 4')
+        .style('stroke-width', 1.5)
+        .style('opacity', 0.4);
+
+      svg
+        .append('text')
+        .attr('x', x(right) || margin.left + 200)
+        .attr('y', whoY - 4)
+        .attr('text-anchor', 'end')
+        .style('font-size', '10px')
+        .style('fill', color)
+        .style('opacity', 0.7)
+        .text(`WHO ${who.value}`);
+    }
+  }
 }
 
 // The full chart starts at 0 — never exaggerate a trend by cropping the axis

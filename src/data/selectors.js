@@ -756,6 +756,20 @@ function seriesChange(series) {
 const AIR_POLLUTANTS = ['pm25', 'pm10', 'no2'];
 
 function airQualityModule(cityIndicators, citySlug) {
+  const THRESHOLDS = {
+    pm25: {
+      eu: { value: 25, label: 'EU-Grenzwert (25 µg/m³)' },
+      who: { value: 5, label: 'WHO-Empfehlung (5 µg/m³)' },
+    },
+    pm10: {
+      eu: { value: 40, label: 'EU-Grenzwert (40 µg/m³)' },
+      who: { value: 15, label: 'WHO-Empfehlung (15 µg/m³)' },
+    },
+    no2: {
+      eu: { value: 40, label: 'EU-Grenzwert (40 µg/m³)' },
+      who: { value: 10, label: 'WHO-Empfehlung (10 µg/m³)' },
+    },
+  };
   const series = AIR_POLLUTANTS.map((key) => ({
     key,
     ...indicatorSeries(cityIndicators, citySlug, `air_${key}`),
@@ -773,6 +787,11 @@ function airQualityModule(cityIndicators, citySlug) {
     // chart; the symbol itself still comes from the rows (`unit`), so the copy
     // cannot drift from what the data says it is measuring.
     unitKey: 'impact.unit.airQuality',
+    thresholds: drawn.map(({ key }) => ({
+      key,
+      eu: THRESHOLDS[key].eu,
+      who: THRESHOLDS[key].who,
+    })),
     source: drawn[0].source,
     note: noteFor(citySlug, 'airQuality'),
   };

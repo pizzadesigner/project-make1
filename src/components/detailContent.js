@@ -358,7 +358,7 @@ function costBody(module) {
     <p class="module__value">
       <b>${formatCurrencyCompact(module.headline.value, locale)}</b>
       ${costScope(module, locale)}
-      ${module.headline.year ? `<span class="module__year">${module.headline.year}</span>` : ''}
+      ${module.headline.year ? `<span class="module__year">${t('adoption.cost.until')} ${module.headline.year}</span>` : ''}
     </p>
     <p class="module__note">${costDisclaimer(module, locale)}</p>`;
 }
@@ -373,7 +373,7 @@ function costPreview(module) {
     <p class="module__value">
       <b>${formatCurrencyCompact(module.headline.value, locale)}</b>
       ${costScope(module, locale)}
-      ${module.headline.year ? `<span class="module__year">${module.headline.year}</span>` : ''}
+      ${module.headline.year ? `<span class="module__year">${t('adoption.cost.until')} ${module.headline.year}</span>` : ''}
     </p>`;
 }
 
@@ -588,7 +588,7 @@ function linesBody(module, index) {
   return `
     ${single ? headlineHtml(module.latest.value, module.unit, module.latest.year) : unitHtml(module)}
     <div class="module__chart" data-chart="${index}"></div>
-    ${single ? '' : legendHtml(items)}`;
+    ${single ? '' : legendHtml(items, module.unit)}`;
 }
 
 /** The unit a chart's values are read in, above the chart. Spelled out where
@@ -634,7 +634,7 @@ function breakdownBody(module) {
   return `
     ${figure}
     <div class="module__bar" role="presentation">${segments}</div>
-    ${legendHtml(items)}`;
+    ${legendHtml(items, module.unit)}`;
 }
 
 /** Two or three sourced points, stated rather than drawn: a line through two
@@ -680,7 +680,7 @@ function factsBody(module) {
       <div class="module__fact">
         <span class="module__fact-label">${t(`adoption.context.${fact.key}`)}</span>
         <span class="module__fact-value">
-          <b>${formatNumber(fact.value, locale)}</b>${fact.unit ? `<span class="module__unit">${fact.unit}</span>` : ''}
+          <b>${formatNumber(fact.value, locale)}</b>${fact.unit ? `<span class="module__unit">${formatUnit(fact.unit)}</span>` : ''}
         </span>
       </div>`,
     )
@@ -775,16 +775,14 @@ function headlineHtml(value, unit, year) {
     </p>`;
 }
 
-/** Colour is never the only thing telling two series apart: every legend row
- * carries the swatch, the name and that row's own number. */
-function legendHtml(items) {
+function legendHtml(items, unit = '') {
   const rows = items
     .map(
       (item) => `
       <li class="module__legend-item">
         <span class="module__swatch module__swatch--${item.key}"></span>
         <span class="module__legend-label">${item.label}</span>
-        <b>${item.value}</b>
+        <b>${item.value}${unit ? ` ${formatUnit(unit)}` : ''}</b>
       </li>`,
     )
     .join('');
