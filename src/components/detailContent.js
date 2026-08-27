@@ -516,7 +516,7 @@ function costScope(module, locale) {
   if (!module.length) return '';
   const text = t(module.scopeKey).replace(
     '{length}',
-    formatNumber(module.length.value, locale, module.length.unit),
+    formatNumber(module.length.value, locale, formatUnit(module.length.unit)),
   );
   return `<span class="module__unit">${text}</span>`;
 }
@@ -629,7 +629,7 @@ function breakdownBody(module) {
   const items = module.parts.map((part) => ({
     key: part.key,
     label: t(`impact.cycleNetwork.${part.key}`),
-    value: formatNumber(part.value, locale, 'km'),
+    value: formatNumber(part.value, locale, formatUnit('km')),
   }));
   return `
     ${figure}
