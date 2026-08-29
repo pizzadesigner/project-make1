@@ -56,20 +56,6 @@ a:hover {
   outline-offset: 2px;
 }
 
-.skip-link {
-  position: absolute;
-  left: var(--space-2);
-  top: -3rem;
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-sm);
-  transition: top var(--motion-fast) var(--ease-standard);
-}
-
-.skip-link:focus {
-  top: var(--space-2);
-}
-
 /* Cold-link document views (city / list / not-found) keep a readable centred
  * column. The map view overrides this to fill the viewport (see .view--map). */
 .view {
@@ -88,12 +74,6 @@ a:hover {
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
-}
-
-.view__title {
-  font-size: var(--font-size-2xl);
-  line-height: var(--line-tight);
-  margin: 0 0 var(--space-2);
 }
 
 /* Corner control clusters over the fullscreen map. Back sits top-left above the
@@ -192,12 +172,6 @@ a:hover {
   background: var(--color-surface-raised);
 }
 
-.view__nav {
-  display: flex;
-  gap: var(--space-3);
-  margin-block: var(--space-4);
-}
-
 .button {
   display: inline-block;
   padding: var(--space-2) var(--space-4);
@@ -259,11 +233,6 @@ a:hover {
 .skeleton--map {
   width: 100%;
   height: 60vh;
-}
-
-.skeleton--card {
-  width: 100%;
-  height: 12rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -387,51 +356,6 @@ a:hover {
   .hint-layer.is-leaving {
     animation: none;
   }
-}
-
-.project-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: var(--space-4);
-}
-
-.project-table th,
-.project-table td {
-  text-align: left;
-  padding: var(--space-3);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.project-table thead th {
-  padding: 0;
-}
-
-.project-table__sort {
-  width: 100%;
-  text-align: left;
-  padding: var(--space-3);
-  background: none;
-  border: 0;
-  color: var(--color-text-muted);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.project-table__sort:hover {
-  color: var(--color-text);
-}
-
-.project-table th[aria-sort='ascending'] .project-table__sort::after {
-  content: ' ▲';
-}
-
-.project-table th[aria-sort='descending'] .project-table__sort::after {
-  content: ' ▼';
-}
-
-.project-table tbody tr:hover {
-  background: var(--color-surface);
 }
 
 .theme-toggle {
