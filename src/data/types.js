@@ -41,15 +41,6 @@
  */
 
 /**
- * @typedef {Object} PeerCity
- * @property {string} projectId
- * @property {string} peerCity
- * @property {string} peerCountry
- * @property {string} peerUrl
- * @property {string} relationship
- */
-
-/**
  * A researched, city-level indicator (population, area, green-space share, …),
  * keyed by the same citySlug as Project so a focused city can look up its own
  * context. One row per observation, long format like Metric — never widened.

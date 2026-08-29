@@ -14,7 +14,6 @@ const read = (name) => csvParse(readFileSync(resolve(root, 'data', name), 'utf8'
 const { projects, metrics, peers, cityIndicators } = validateDataset({
   projectRows: read('projects.csv'),
   metricRows: read('metrics.csv'),
-  peerRows: read('peer_cities.csv'),
   cityRows: read('cities.csv'),
 });
 

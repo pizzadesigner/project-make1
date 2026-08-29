@@ -7,7 +7,6 @@
  * @property {'idle'|'loading'|'ready'|'error'} status
  * @property {import('./data/types.js').Project[]} projects
  * @property {import('./data/types.js').Metric[]} metrics
- * @property {import('./data/types.js').PeerCity[]} peers
  * @property {import('./data/types.js').CityIndicator[]} cityIndicators  City-level researched context, keyed by citySlug.
  * @property {import('./data/types.js').TimelineEvent[]} timeline  The project's own story, one row per event.
  * @property {import('./data/types.js').Milestone[]} milestones  The dated steps of that story, for the milestone line.
@@ -31,7 +30,6 @@ const state = {
   status: 'idle',
   projects: [],
   metrics: [],
-  peers: [],
   cityIndicators: [],
   timeline: [],
   milestones: [],

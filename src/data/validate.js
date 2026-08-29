@@ -78,13 +78,12 @@ function hasValidCoords(project) {
 }
 
 /**
- * @param {{ projectRows?: object[], metricRows?: object[], peerRows?: object[], cityRows?: object[], timelineRows?: object[], milestoneRows?: object[] }} raw
+ * @param {{ projectRows?: object[], metricRows?: object[], cityRows?: object[], timelineRows?: object[], milestoneRows?: object[] }} raw
  * @returns {{ projects: import('./types.js').Project[], metrics: import('./types.js').Metric[], peers: import('./types.js').PeerCity[], cityIndicators: import('./types.js').CityIndicator[], timeline: import('./types.js').TimelineEvent[], milestones: import('./types.js').Milestone[] }}
  */
 export function validateDataset({
   projectRows = [],
   metricRows = [],
-  peerRows = [],
   cityRows = [],
   timelineRows = [],
   milestoneRows = [],
@@ -123,22 +122,6 @@ export function validateDataset({
       unit: toTextOrNull(row.unit),
       sourceUrl,
       sourceLabel: toText(row.source_label),
-    });
-  }
-
-  const peers = [];
-  for (const row of peerRows) {
-    const projectId = toText(row.project_id);
-    if (!ids.has(projectId)) {
-      issues.push(`Peer city references unknown project_id: "${projectId}"`);
-      continue;
-    }
-    peers.push({
-      projectId,
-      peerCity: toText(row.peer_city),
-      peerCountry: toText(row.peer_country),
-      peerUrl: toText(row.peer_url),
-      relationship: toText(row.relationship),
     });
   }
 
@@ -223,5 +206,5 @@ export function validateDataset({
     );
   }
 
-  return { projects, metrics, peers, cityIndicators, timeline, milestones };
+  return { projects, metrics, cityIndicators, timeline, milestones };
 }
