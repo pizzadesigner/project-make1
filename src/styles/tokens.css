@@ -37,8 +37,12 @@
      -------------------------------------------------------------------------- */
   --color-accent: #c78a2a;
   --color-accent-hover: #e0a040;
+  --color-accent-light: #e8b85a; /* lighter version of accent */
+  --color-accent-subtle: rgba(199, 138, 42, 0.15);
   --color-danger: #e06a63;
   --color-success: #4caf57;
+  --color-info: #5bc8ff; /* from SDG transport, kept for consistency */
+  --color-warning: #ffc07a; /* from SDG policy, kept for consistency */
   --color-focus: #e0a040;
 
   /* --------------------------------------------------------------------------
@@ -239,6 +243,8 @@
   /* Semantics */
   --color-danger: #c94050;
   --color-success: #3a9a4a;
+  --color-info: #4a9acf;
+  --color-warning: #d4a050;
 
   /* Map */
   --color-country-fill: #d8dce4;

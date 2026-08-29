@@ -212,8 +212,12 @@ a:hover {
   color: var(--color-text);
   font-size: var(--font-size-2xl);
   font-weight: 700;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
+  background: var(--color-surface-glass);
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-glass);
 }
 
 /* Loading, error and empty states share this surface so no view ever paints a

@@ -65,6 +65,18 @@
   outline-offset: 2px;
 }
 
+.widget:hover {
+  border-color: var(--color-accent-subtle);
+  background: var(--color-surface-raised);
+}
+
+.widget.is-active {
+  border-color: var(--color-accent);
+  box-shadow:
+    0 0 0 1px var(--color-accent),
+    0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
 .widget__header {
   display: flex;
   justify-content: space-between;
@@ -136,13 +148,7 @@
 }
 
 .widget__bar--empty {
-  background: repeating-linear-gradient(
-    45deg,
-    var(--color-country-outline) 0,
-    var(--color-country-outline) 3px,
-    transparent 3px,
-    transparent 6px
-  );
+  background: var(--color-border-glass);
 }
 
 /* Adoption's L1 body: the cards its L2 opens into, named — the same
