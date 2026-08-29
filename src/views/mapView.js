@@ -132,7 +132,7 @@ export function render(container, props) {
     activeCriterion = next.activeCriterion ?? null;
     activeModule = next.activeModule ?? null;
 
-    refs.updateOverview();
+    refs.updateOverview(next);
 
     // Reset and the language toggle are always available (top-right). Back
     // appears once a city is focused (L1); the overview panel shows only at L0.
@@ -262,22 +262,29 @@ function buildShell(container, props) {
     <div class="map-controls map-controls--top-right">
       <button type="button" class="map-float button" data-reset></button>
       <button type="button" class="map-float button" data-lang-toggle>${props.locale === 'en' ? 'DE' : 'EN'}</button>
+      <button type="button" class="map-float button theme-toggle" data-theme-toggle aria-label="Toggle theme">
+      <span data-theme-icon class="theme-icon">
+        <!-- Wird von updateOverview dynamisch gesetzt -->
+      </span>
+    </button>
     </div>
   `;
   container.append(root);
 
-  //root.querySelector('[data-lang-toggle]').addEventListener('click', props.toggleLocale);
-
-  // Referenzen für den Overlay-Text
   const stage = root.querySelector('[data-stage]');
   const overview = root.querySelector('[data-overview]');
   const back = root.querySelector('[data-back]');
   const reset = root.querySelector('[data-reset]');
   const langToggle = root.querySelector('[data-lang-toggle]');
+  const themeToggle = root.querySelector('[data-theme-toggle]');
+  const themeIcon = root.querySelector('[data-theme-icon]');
 
   langToggle.addEventListener('click', props.toggleLocale);
+  themeToggle.addEventListener('click', () => {
+    props.toggleTheme();
+  });
 
-  function updateOverview() {
+  function updateOverview(nextProps) {
     const title = overview.querySelector('.map-overview__title');
     const lead = overview.querySelector('.map-overview__lead');
     const hint = overview.querySelector('.map-overview__hint');
@@ -287,12 +294,27 @@ function buildShell(container, props) {
     back.textContent = `← ${t('detail.back')}`;
     reset.textContent = t('map.resetView');
 
-    const currentLocale = getLocale(); // oder props.locale? Besser aus i18n holen
+    const currentLocale = getLocale();
     langToggle.textContent = currentLocale === 'en' ? 'DE' : 'EN';
+
+    const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+  <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37a.996.996 0 0 0-1.41 0 .996.996 0 0 0 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0a.996.996 0 0 0 0-1.41l-1.06-1.06zm1.06-10.96a.996.996 0 0 0 0-1.41.996.996 0 0 0-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36a.996.996 0 0 0 0-1.41.996.996 0 0 0-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/>
+</svg>`;
+
+    const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+  <path d="M9.37 5.51A7.35 7.35 0 0 0 9.1 7.5c0 4.08 3.32 7.4 7.4 7.4.68 0 1.35-.09 1.99-.27A7.014 7.014 0 0 1 12 19c-3.86 0-7-3.14-7-7 0-2.93 1.81-5.45 4.37-6.49zM12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/>
+</svg>`;
+
+    if (themeIcon) {
+      const theme = nextProps?.theme ?? props.theme ?? 'dark';
+      // Sonne für Dark Mode (weil Klick zu Light wechselt), Mond für Light Mode
+      const isDark = theme === 'dark';
+      themeIcon.innerHTML = isDark ? sunIcon : moonIcon;
+    }
   }
 
-  // Einmalig initial setzen
-  updateOverview();
+  // Initial update
+  updateOverview(props);
 
   return {
     root,
@@ -301,6 +323,8 @@ function buildShell(container, props) {
     back,
     reset,
     langToggle,
+    themeToggle,
+    themeIcon,
     updateOverview,
   };
 }

@@ -19,6 +19,26 @@ const root = document.querySelector('#app');
 
 let mounted = null; // { name, handle }
 
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('sdg-dashboard-theme', theme);
+}
+
+function initTheme() {
+  const stored = localStorage.getItem('sdg-dashboard-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = stored || (prefersDark ? 'dark' : 'light');
+  setState({ theme });
+  applyTheme(theme);
+}
+
+function toggleTheme() {
+  const current = getState().theme;
+  const next = current === 'dark' ? 'light' : 'dark';
+  setState({ theme: next });
+  applyTheme(next);
+}
+
 function setFocusedCity(citySlug) {
   // Leaving/zooming a city also collapses any expanded Exploration widget — it
   // does not outlive the focused city it belongs to, and neither does the module
@@ -54,6 +74,7 @@ function viewProps(state) {
     setActiveCriterion,
     setActiveModule,
     toggleLocale,
+    toggleTheme,
   };
 }
 
@@ -95,6 +116,7 @@ async function loadData() {
 }
 
 function boot() {
+  initTheme();
   setLocale(getState().locale);
   subscribe(render);
   loadData();

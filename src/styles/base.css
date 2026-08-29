@@ -436,6 +436,21 @@ a:hover {
   background: var(--color-surface);
 }
 
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-3); /* etwas schmaler als var(--space-4) */
+  line-height: 1;
+}
+
+.theme-toggle svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
 @media (max-width: 720px) {
   .view {
     padding: var(--space-5) var(--space-4);

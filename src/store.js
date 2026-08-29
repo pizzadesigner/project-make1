@@ -41,6 +41,7 @@ const state = {
   activeModule: null,
   locale: 'en',
   error: null,
+  theme: 'dark',
 };
 
 /** @type {Set<(state: AppState) => void>} */

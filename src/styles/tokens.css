@@ -295,6 +295,44 @@
   --widget-padding: 18px 20px;
 }
 
+/* Light Mode – überschreibt die Custom Properties */
+[data-theme='light'] {
+  /* Surfaces */
+  --color-canvas: #f4f6f9;
+  --color-surface: #e8ecf2;
+  --color-surface-raised: #d8dee8;
+  --color-surface-glass: rgba(244, 246, 249, 0.88);
+  --color-scrim: rgba(255, 255, 255, 0.62);
+  --color-border: #c8d0dc;
+  --color-border-glass: rgba(0, 0, 0, 0.06);
+
+  /* Text */
+  --color-text: #1a1e26;
+  --color-text-muted: #5a6678;
+  --color-text-faint: #7a8a9e;
+  --color-text-on-accent: #f4f6f9;
+
+  /* Akzente – bleiben gleich (Goldton), aber leicht abgedunkelt für besseren Kontrast */
+  --color-accent: #c47a20;
+  --color-accent-hover: #a86a18;
+  --color-focus: #c47a20;
+
+  /* Semantik */
+  --color-danger: #c94050;
+  --color-success: #3a9a4a;
+
+  /* Karte */
+  --color-country-fill: #d8dce4;
+  --color-city-highlight: #b0b8c8;
+  --color-marker-ring: #f4f6f9;
+
+  /* Modal Split – gleiche Farben, aber auf hellem Hintergrund wirken sie anders
+   * Wir behalten die gleichen Hex-Werte, aber der Kontext ändert sich
+   * (später können wir hier anpassen)
+   * Die restlichen Farben (Chart-Farben) bleiben zunächst unverändert
+   * Sie werden im Light Mode automatisch durch den helleren Hintergrund anders wirken */
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-fast: 0ms;
