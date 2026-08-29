@@ -19,17 +19,37 @@ const root = document.querySelector('#app');
 
 let mounted = null; // { name, handle }
 
+function parseUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    lang: params.get('lang') || null,
+    theme: params.get('theme') || null,
+  };
+}
+
+function initFromUrl() {
+  const { lang, theme } = parseUrlParams();
+
+  // Theme: URL > localStorage > System
+  let finalTheme = theme;
+  if (!finalTheme) {
+    const stored = localStorage.getItem('sdg-dashboard-theme');
+    if (stored) finalTheme = stored;
+    else {
+      finalTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+  }
+  // Sprache: URL > 'en'
+  const finalLocale = lang || 'en';
+
+  setState({ theme: finalTheme, locale: finalLocale });
+  applyTheme(finalTheme);
+  setLocale(finalLocale);
+}
+
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('sdg-dashboard-theme', theme);
-}
-
-function initTheme() {
-  const stored = localStorage.getItem('sdg-dashboard-theme');
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const theme = stored || (prefersDark ? 'dark' : 'light');
-  setState({ theme });
-  applyTheme(theme);
 }
 
 function toggleTheme() {
@@ -114,8 +134,44 @@ async function loadData() {
 }
 
 function boot() {
-  initTheme();
-  setLocale(getState().locale);
+  // 1. URL-Parameter auslesen und State setzen
+  initFromUrl();
+
+  // 2. Auf Navigation im Browser reagieren (Back/Forward)
+  window.addEventListener('popstate', () => {
+    const { lang, theme } = parseUrlParams();
+    const state = getState();
+
+    // Sprache
+    if (lang !== null) {
+      if (lang !== state.locale) {
+        setLocale(lang);
+        setState({ locale: lang });
+      }
+    } else {
+      // Kein lang-Parameter → Standard 'en'
+      if (state.locale !== 'en') {
+        setLocale('en');
+        setState({ locale: 'en' });
+      }
+    }
+
+    // Theme
+    if (theme !== null) {
+      if (theme !== state.theme) {
+        applyTheme(theme);
+        setState({ theme });
+      }
+    } else {
+      // Kein theme-Parameter → Standard 'light'
+      if (state.theme !== 'light') {
+        applyTheme('light');
+        setState({ theme: 'light' });
+      }
+    }
+  });
+
+  // 3. Store abonnieren und Daten laden
   subscribe(render);
   loadData();
 }
