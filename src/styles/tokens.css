@@ -13,22 +13,22 @@
      surface-raised (hover, elevation) → surface-glass (blurred overlays)
      -------------------------------------------------------------------------- */
   --color-canvas: #0d1117;
-  --color-surface: #161d2b;
-  --color-surface-raised: #1f293e;
-  --color-surface-glass: rgba(13, 17, 23, 0.88);
-  --color-scrim: rgba(0, 0, 0, 0.62);
-  --color-border: #33405c;
-  --color-border-glass: rgba(200, 200, 200, 0.07);
+  --color-surface: #262a33;
+  --color-surface-raised: #323742;
+  --color-surface-glass: rgba(26, 29, 36, 0.88);
+  --color-scrim: rgba(0, 0, 0, 0.6);
+  --color-border: #404858; /* Button Borders */
+  --color-border-glass: rgba(200, 200, 200, 0.09);
 
   /* --------------------------------------------------------------------------
      2. TEXT COLOURS
      Three tiers: primary (brightest, most important), muted (labels, descr.),
      faint (sources, years, units). All meet WCAG AA on --color-canvas.
      -------------------------------------------------------------------------- */
-  --color-text: #e8e8e4; /* 13.6:1 */
-  --color-text-muted: #a0a098; /* 7.19:1 */
-  --color-text-faint: #8a8a83; /* 5.45:1 */
-  --color-text-on-accent: #06121f;
+  --color-text: #e8e8e4; /* 14.2 : 1 */
+  --color-text-muted: #a0a098; /* 8.1 : 1 */
+  --color-text-faint: #8a8a83; /* 5.2 : 1 */
+  --color-text-on-accent: #06121f; /* auf Akzent immer lesbar */
 
   /* --------------------------------------------------------------------------
      3. ACCENTS & SEMANTICS
@@ -52,10 +52,10 @@
   --color-country-fill: #2a2d32;
   --color-country-outline: #3a3d42;
   --color-city-highlight: #6e6f75;
-  --color-marker: #c78a2a;
-  --color-marker-ring: #0d1117;
-  --color-cycle-path: #41ba41; /* gradient base for cycle routes */
-  --color-cycle-path-2: #43cc43; /* gradient highlight */
+  --color-marker: var(--color-accent);
+  --color-marker-ring: var(--color-canvas);
+  --color-cycle-path: #6ab04c; /* Start der Radweg‑Gradienten */
+  --color-cycle-path-2: #4caf50; /* Ende der Radweg‑Gradienten */
 
   /* --------------------------------------------------------------------------
      5. CHART COLOURS
@@ -235,12 +235,12 @@
   --color-text-faint: #7a8a9e;
   --color-text-on-accent: #f4f6f9;
 
-  /* Accents (slightly darkened for better contrast) */
+  /* Accents & Semantics  (slightly darkened for better contrast) */
   --color-accent: #c47a20;
   --color-accent-hover: #a86a18;
   --color-focus: #c47a20;
-
-  /* Semantics */
+  --color-accent-light: #f5cf8a;
+  --color-accent-subtle: rgba(214, 138, 46, 0.12);
   --color-danger: #c94050;
   --color-success: #3a9a4a;
   --color-info: #4a9acf;
@@ -248,6 +248,7 @@
 
   /* Map */
   --color-country-fill: #d8dce4;
+  --color-country-outline: #b0b8c8;
   --color-city-highlight: #b0b8c8;
   --color-marker-ring: #f4f6f9;
 
