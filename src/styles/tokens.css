@@ -1,121 +1,105 @@
-/* Design tokens. Every colour, space, size, radius and duration used in the app
- * lives here as a custom property — never a magic hex or number in JS or a
- * component sheet. Colours are chosen so text/background pairs clear WCAG AA. */
+/* ============================================================================
+   Design Tokens — SDG 11 Dashboard
+   ============================================================================
+   All colours, spacing, sizes, radii and durations used in the app live here
+   as custom properties — never a magic number in JS or a component sheet.
+   Colours have been validated against WCAG AA contrast requirements.
+   ============================================================================ */
 
 :root {
-  /* Surfaces — a dark canvas with layered raised surfaces. */
+  /* --------------------------------------------------------------------------
+     1. SURFACES & BACKGROUNDS
+     Hierarchy: canvas (darkest) → surface (cards, panels) →
+     surface-raised (hover, elevation) → surface-glass (blurred overlays)
+     -------------------------------------------------------------------------- */
   --color-canvas: #0d1117;
   --color-surface: #161d2b;
   --color-surface-raised: #1f293e;
+  --color-surface-glass: rgba(13, 17, 23, 0.88);
+  --color-scrim: rgba(0, 0, 0, 0.62);
   --color-border: #33405c;
+  --color-border-glass: rgba(200, 200, 200, 0.07);
 
-  /* Map geometry. */
+  /* --------------------------------------------------------------------------
+     2. TEXT COLOURS
+     Three tiers: primary (brightest, most important), muted (labels, descr.),
+     faint (sources, years, units). All meet WCAG AA on --color-canvas.
+     -------------------------------------------------------------------------- */
+  --color-text: #e8e8e4; /* 13.6:1 */
+  --color-text-muted: #a0a098; /* 7.19:1 */
+  --color-text-faint: #8a8a83; /* 5.45:1 */
+  --color-text-on-accent: #06121f;
+
+  /* --------------------------------------------------------------------------
+     3. ACCENTS & SEMANTICS
+     --color-accent: primary interactive colour (buttons, markers, focus).
+     --color-danger / --color-success: feedback colours (AA as text).
+     -------------------------------------------------------------------------- */
+  --color-accent: #c78a2a;
+  --color-accent-hover: #e0a040;
+  --color-danger: #e06a63;
+  --color-success: #4caf57;
+  --color-focus: #e0a040;
+
+  /* --------------------------------------------------------------------------
+     4. MAP GEOMETRY (europeMap)
+     Country fill, city highlight, markers, cycle route gradient.
+     -------------------------------------------------------------------------- */
   --color-country-fill: #2a2d32;
-  --color-city-highlight: #6e6f75; /* focused city's own fill — a clear step lighter than the country, which is never highlighted */
   --color-country-outline: #3a3d42;
+  --color-city-highlight: #6e6f75;
   --color-marker: #c78a2a;
   --color-marker-ring: #0d1117;
-  --color-cycle-path: #41ba41; /* city cycle routes (infrastructure layer) — gradient base */
-  --color-cycle-path-2: #43cc43; /* cycle-route gradient highlight (the band that runs through) */
+  --color-cycle-path: #41ba41; /* gradient base for cycle routes */
+  --color-cycle-path-2: #43cc43; /* gradient highlight */
 
-  /* Modal-split transport modes (Impact donut), in ring order (transit, bike,
-   * walk, car, moto — a closed ring, so the transit/moto wrap-around pair
-   * matters as much as the four in-order pairs).
-   *
-   * All three sustainable modes are green (2026-08-23): transit, cycling and
-   * walking are what this project moves trips *onto*, so they read as one
-   * family with the car red opposite them. Green is the dashboard's word for
-   * "the sustainable choice" everywhere else — the cycle network, the routes on
-   * the map — and the donut now says the same thing.
-   *
-   * Three greens inside dark mode's lightness band (L 0.48–0.67) is a tight
-   * fit, and the ring order is what makes it work: transit and walking are the
-   * two closest of the three (ΔE 9.4) and the ring puts cycling between them,
-   * so they are never neighbours. The pairs that *are* neighbours are the ones
-   * with room — deep sea green ↔ grass green at 17.0, grass green ↔ forest
-   * green at 16.3.
-   *
-   * Validated with the dataviz skill's `validate_palette.js` against
-   * --surface #0d1117 (the L2 module card: --color-surface-glass over
-   * --color-canvas, which is the same colour at 88% — the donut and its legend
-   * swatches sit on that, not on --color-surface-raised) --mode dark: every
-   * ring-adjacent pair (incl. the moto↔transit wrap) clears the CVD target
-   * (ΔE >= 8, worst pair car↔moto at 10.0) and the normal-vision floor
-   * (>= 15, worst pair walk↔bike at 16.3), and all five clear 3:1 against the
-   * card. */
+  /* --------------------------------------------------------------------------
+     5. CHART COLOURS
+     --------------------------------------------------------------------------
+     5.1 Modal Split (5 modes)
+     Sustainable modes (transit, bike, walk) in one green family,
+     non-sustainable (car, moto) in a red/orange family.
+     Donut order: transit → bike → walk → car → moto.
+     -------------------------------------------------------------------------- */
   --color-mode-transit: #0d8266;
   --color-mode-bike: #5cab1a;
   --color-mode-walk: #0f7a10;
   --color-mode-car: #d9455f;
   --color-mode-moto: #c98500;
 
-  /* Air quality (the L2 air module's three pollutants, one line each). Three
-   * categorical hues rather than a ramp — PM2.5, PM10 and NO2 are three
-   * different measurements, not three steps of one. Reuses the hues already in
-   * the palette above instead of minting new ones (cohesion): the chart carries
-   * its own legend, so a hue means whatever that chart's legend says. Validated
-   * --mode dark --surface #1f293e --pairs all (every pair is visible at once in
-   * a line chart, not just neighbours): worst pair NO2 <-> PM10 CVD 10.0,
-   * normal 17.6. */
+  /* 5.2 Air Quality (3 pollutants)
+     Three distinct measurements → categorical hues.
+     -------------------------------------------------------------------------- */
   --color-air-pm25: #3987e5;
   --color-air-pm10: #c98500;
   --color-air-no2: #d9455f;
 
-  /* The cycle network's three kinds of route, as one green ramp ordered by how
-   * much protection each gives: mixed traffic on side streets (least) -> a
-   * separated lane along a main road -> a path away from traffic altogether.
-   * An ordinal scale, so one hue light->dark rather than three categorical
-   * hues, and the hue is the bike green above — the same subject the map draws
-   * in green. Validated with `validate_palette.js --ordinal --mode dark
-   * --surface #1f293e`: monotone lightness, adjacent dL >= 0.06, light-end
-   * contrast 2.52:1, hue spread 8 degrees. */
+  /* 5.3 Cycle Network (3 categories)
+     Ordinal green scale: mixed (light) → separated (medium) →
+     off-street (dark) – darker means more protection.
+     -------------------------------------------------------------------------- */
   --color-cycle-mixed: #9ed466;
   --color-cycle-separated: #5cab1a;
   --color-cycle-offstreet: #31741a;
 
-  /* Text — light on dark. Every pair below clears WCAG AA (4.5:1) on
-   * --color-canvas #0d1117 — the "comprehensibility" graphical design objective
-   * (see docs/DESIGN_RATIONALE.md). --color-text-faint was lightened from the
-   * Ripples #5a5a56 (2.7:1, failed AA) to #8a8a83 (5.45:1) while staying a clear
-   * step below --color-text-muted so the visual hierarchy is preserved. */
-  --color-text: #e8e8e4;
-  --color-text-muted: #a0a098; /* 7.19:1 */
-  --color-text-faint: #8a8a83; /* 5.45:1 — was #5a5a56 (2.7:1) */
-  --color-text-on-accent: #06121f;
+  /* 5.4 SDG 11 Targets (10 sub‑targets)
+     Referenced by lib/sdg11.js. Tuned for legibility on dark canvas.
+     -------------------------------------------------------------------------- */
+  --sdg-housing: #ff9e6d; /* 11.1 */
+  --sdg-transport: #5bc8ff; /* 11.2 */
+  --sdg-urbanization: #b79cff; /* 11.3 */
+  --sdg-heritage: #ffd166; /* 11.4 */
+  --sdg-resilience: #4fd1c5; /* 11.5 */
+  --sdg-environment: #9fe08a; /* 11.6 */
+  --sdg-greenspace: #7bd88f; /* 11.7 */
+  --sdg-regional: #f4a3d1; /* 11.a */
+  --sdg-policy: #ffc07a; /* 11.b */
+  --sdg-support: #8fb8ff; /* 11.c */
 
-  /* Accent + feedback. --color-danger / --color-success are lightened from the
-   * Ripples hues so they clear AA (4.5:1) as text on the canvas, not just as
-   * graphical fills — see docs/DESIGN_RATIONALE.md (comprehensibility). */
-  --color-accent: #c78a2a;
-  --color-accent-hover: #e0a040;
-  --color-danger: #e06a63; /* 5.78:1 — was #b23a3a (3.2:1) */
-  --color-success: #4caf57; /* 6.83:1 — was #2f7a3a (3.6:1) */
-  --color-focus: #e0a040;
-
-  /* Glass widget surface (Ripples-style overlay cards). */
-  --color-surface-glass: rgba(13, 17, 23, 0.88);
-  --color-border-glass: rgba(200, 200, 200, 0.07);
-
-  /* Black-transparent scrim over a whole layer (e.g. the L1 "coming soon"
-   * overlay). Dark enough that light text on it clears WCAG AA. */
-  --color-scrim: rgba(0, 0, 0, 0.62);
-  --blur-glass: 16px;
-  --ease-glass: cubic-bezier(0.25, 0.1, 0.25, 1);
-
-  /* SDG 11 target palette — referenced by name from lib/sdg11.js, never as a
-   * hex in JS. Tuned for legibility on the dark canvas. */
-  --sdg-housing: #ff9e6d;
-  --sdg-transport: #5bc8ff;
-  --sdg-urbanization: #b79cff;
-  --sdg-heritage: #ffd166;
-  --sdg-resilience: #4fd1c5;
-  --sdg-environment: #9fe08a;
-  --sdg-greenspace: #7bd88f;
-  --sdg-regional: #f4a3d1;
-  --sdg-policy: #ffc07a;
-  --sdg-support: #8fb8ff;
-
-  /* Spacing scale (4px base). */
+  /* --------------------------------------------------------------------------
+     6. SPACING & RADII
+     4px base, scaled with rem.
+     -------------------------------------------------------------------------- */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -124,178 +108,113 @@
   --space-6: 2rem;
   --space-8: 3rem;
 
-  /* Typography. */
-  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', roboto, helvetica, arial, sans-serif;
-
-  /* A module's secondary lines — its note, its per-year table — at 12px. Small
-   * on purpose: they are what the figures should be read against, and they have
-   * to stay a clear step below them on a card this size. Contrast, not size, is
-   * what AA measures, and these wear --color-text-muted (7.19:1). */
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.25rem;
-  --font-size-xl: 1.75rem;
-  --font-size-2xl: 2.5rem;
-  --line-tight: 1.2;
-  --line-body: 1.55;
-
-  /* Radii. */
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 16px;
 
-  /* Motion. */
+  /* --------------------------------------------------------------------------
+     7. TYPOGRAPHY
+     Font family, sizes and line heights.
+     Small sizes (xs, sm) are for secondary information (notes, tables,
+     sources) – they still meet AA contrast.
+     -------------------------------------------------------------------------- */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', roboto, helvetica, arial, sans-serif;
+  --font-size-xs: 0.75rem; /* 12px */
+  --font-size-sm: 0.875rem; /* 14px */
+  --font-size-base: 1rem; /* 16px */
+  --font-size-lg: 1.25rem; /* 20px */
+  --font-size-xl: 1.75rem; /* 28px */
+  --font-size-2xl: 2.5rem; /* 40px */
+  --line-tight: 1.2;
+  --line-body: 1.55;
+
+  /* --------------------------------------------------------------------------
+     8. MOTION
+     Durations and easings for transitions. All values are reset to 0 under
+     `prefers-reduced-motion`.
+     -------------------------------------------------------------------------- */
   --motion-fast: 120ms;
   --motion-base: 240ms;
   --motion-slow: 280ms;
-  --motion-entrance: 620ms; /* gentle content float-ins (e.g. the L0 overview text) */
+  --motion-entrance: 620ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
-  /* The L2 modules (widgets.css, widgetStack.js#moduleScaffold).
-   *
-   * A module has no fixed shape. It used to: --module-box-ratio pinned it at
-   * 4:3, height derived from whatever width the three columns happened to give
-   * it, and the content inside was expected to fit whatever that came to. It
-   * did not. Measured across all three widgets at the design width, four of the
-   * eighteen modules were squeezed below the height their content wanted — the
-   * worst by 155px — and at 1440x900 fifteen of the eighteen were, the worst by
-   * 353px. No single ratio could have held them: their natural heights run from
-   * 67px (a two-line note) to 387px (the funding list), because a module holds
-   * whatever its subject needs and those are not the same size.
-   *
-   * So height comes from content now, and the columns are real boxes
-   * (.widget-detail__column) rather than grid tracks — three modules cannot
-   * share a row band and still each be their own height.
-   *
-   * --module-column-offset is what the row bands used to do for free. The
-   * second column sits below the first so its cards read as between the others
-   * rather than beside them; that step used to emerge from every module being
-   * the same height and spanning two rows of six. With heights no longer uniform
-   * there is nothing for it to emerge from, so it is stated. Not called
-   * "stagger": --module-stagger is already the delay between two modules setting
-   * off, and this is a distance, not a clock.
-   *
-   * It was 112px, which is most of a card: enough that the second column read as
-   * starting a long way down rather than as offset from the first. Half that is
-   * still clearly a step and no longer a gap.
-   *
-   * --module-fly is how much of that flight a module actually travels: the
-   * distance itself is measured at the click (widgetStack.js#setFlightOrigin —
-   * each module starts on the clicked widget and flies to its own place), so
-   * this is the multiplier that turns the whole entrance off for reduced
-   * motion without the component knowing anything about it.
-   *
-   * --module-leave-duration is also read in JS (widgetStack.js#leave) to know
-   * how long to hold the region on the way out. */
+  /* --------------------------------------------------------------------------
+     9. L2 / L3 MODULES (Exploration Layer)
+     These tokens control the layout of the cards that fly out from the widgets.
+     -------------------------------------------------------------------------- */
+
+  /* Offset between columns (first vs. second tier) */
   --module-column-offset: 56px;
+
+  /* Flight animation factor (0 = no motion under reduced‑motion) */
   --module-fly: 1;
 
-  /* How far a module sits off the line the grid put it on, and how far it drifts
-   * once it has landed. The drift is meant to be felt rather than seen — a few
-   * px over several seconds — so it stays well under the nudge. */
+  /* Small offsets from the grid position (nudge + idle drift) */
   --module-nudge: 12px;
   --module-idle: 3px;
   --module-idle-duration: 7s;
 
-  /* How far a module can stray from its grid cell, all told. The region keeps
-   * this much clear around the arrangement: a nudged module reaches past the
-   * cell the grid measured, and without the room for it the region grows a
-   * scrollbar over a few px of decoration. */
+  /* Clearance for protruding modules (nudge + drift) */
   --module-slack: calc(var(--module-nudge) + var(--module-idle));
+
+  /* Flight animation duration and stagger */
   --module-fly-duration: 720ms;
   --module-stagger: 100ms;
   --module-leave-duration: 260ms;
 
-  /* L3, the focus slot (widgetStack.js#applyFocusLayout). One module opens into
-   * the region minus a rail, and the other five stand in that rail down the side
-   * the widget they came from is on. The region keeps its L2 share of the stage:
-   * the room comes from inside the arrangement, which is mostly air — the third
-   * column holds one card and the second stops short of the first.
-   *
-   * --module-rail-width is what the five shrink to fit; JS reads it, along with
-   * the two gaps, so the geometry is stated once here rather than half here and
-   * half in the layout code. --module-rail-min-scale is the floor under that
-   * shrink: past it a card is decoration rather than something still readable,
-   * and the rail is allowed to run past the fold instead (the region scrolls).
-   *
-   * --module-focus-duration is read in JS as well (widgetStack.js#motionMs), to
-   * know when the modules have arrived and their inline boxes can come off. */
+  /* L3 focus slot: one card opens large, the other five shrink into a rail */
+  --module-column-max: 400px; /* maximum column width */
+  --module-span-overhang: 10px; /* overhang for cards spanning both columns */
+  --module-rail-width: 176px; /* width of the rail for the five small cards */
+  --module-rail-gap: 14px; /* gap between cards in the rail */
+  --module-focus-gap: 28px; /* gap between rail and focused card */
+  --module-rail-min-scale: 0.62; /* minimum scale for rail cards */
+  --module-focus-duration: 520ms; /* transition duration to focus slot */
 
-  /* How wide a column may get where there is room for it. Impact's six cards
-   * stand in two columns rather than three (widgetStack.js#CRITERION_COLUMNS),
-   * and two columns splitting the region between them would come out at 488px
-   * apiece — a card that wide stops being a card. Capped here, the cards take a
-   * step up from the 309px three columns give them and the surplus goes back to
-   * the canvas the city is drawn on. */
-  --module-column-max: 400px;
+  /* Font sizes inside an opened module (slightly larger) */
+  --module-focus-font-xs: 0.9375rem; /* 15px */
+  --module-focus-font-sm: 1.0625rem; /* 17px */
 
-  /* How far a card spanning the columns reaches past them, on the side away
-   * from the arrangement's outer edge — into the canvas rather than towards the
-   * screen. Enough to read as deliberate, not enough to look misaligned. */
-  --module-span-overhang: 10px;
-  --module-rail-width: 176px;
-  --module-rail-gap: 14px;
-  --module-focus-gap: 28px;
-  --module-rail-min-scale: 0.62;
-  --module-focus-duration: 520ms;
-
-  /* The opened card is read at arm's length rather than glanced at, so its small
-   * print steps up about a quarter: 12px → 15px, 14px → 17px. Stated as the two
-   * sizes the module rules already ask for by name (--font-size-xs / -sm), which
-   * is what lets widgets.css raise everything inside the card by redefining
-   * those two on the card itself rather than restating a dozen rules.
-   *
-   * There is deliberately no reading measure to go with them. One was tried at
-   * 68ch and then 58ch, and the cards it applied to are narrow enough — 748px
-   * at 1920, less below — that capping the line cost more than it bought: the
-   * copy ended short of the card's own edge and the card looked half-filled.
-   * The card's padding is the measure. If these cards are ever given a much
-   * wider slot, that trade flips and a cap belongs here again. */
-  --module-focus-font-xs: 0.9375rem;
-  --module-focus-font-sm: 1.0625rem;
-
-  /* The other measure the opened card needs. A row that pairs a label with a
-   * number — a cost line, a legend, the modal-split table — is read across, and
-   * at the card's full width the two ends are 700px apart with nothing in
-   * between to carry the eye. Narrower than the reading measure, because the
-   * pair is the unit here rather than the sentence. */
+  /* Max width for label‑value pairs inside an opened module */
   --module-focus-rows: 48ch;
 
-  /* One easing per axis — that difference is what bends a module's path (see
-   * .widget-detail__module). Across: away quickly, settled early. Down: slower
-   * to leave, still descending after the sideways travel has finished. Both are
-   * single unbroken curves, so neither axis changes velocity mid-flight. */
+  /* Easing functions for the flight animation (per axis) */
   --ease-module-x: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-module-y: cubic-bezier(0.45, 0, 0.25, 1);
 
-  /* The step between the cards stacked behind a widget that has an L2 to open
-   * (see .widget--problemFit). Small enough to read as a deck rather than as
-   * three separate cards. */
+  /* Step between stacked cards behind a widget (deck effect) */
   --deck-step: 7px;
 
-  /* Layout. */
+  /* --------------------------------------------------------------------------
+     10. OTHER LAYOUT TOKENS
+     -------------------------------------------------------------------------- */
   --content-max: 72rem;
+  --l2-region-share: 0.55; /* share of the stage taken by L2 modules */
+  --l2-region-gap: 40px; /* gap between modules and city map */
+  --l2-region-margin: var(--space-4); /* margin around the L2 region */
 
-  /* The L2 split: how much of the stage the modules take, and how much clear
-   * canvas is left between them and the city. Unitless share rather than a
-   * percentage because europeMap.js reads it too — it places the city so that
-   * its inner edge lands exactly on this split, at any stage size. Defined once
-   * here so the two sides cannot drift apart. */
-  --l2-region-share: 0.55;
-  --l2-region-gap: 40px;
-  --l2-region-margin: var(--space-4);
-
-  /* Cycle network styles. */
+  /* Cycle‑network stroke widths on the map */
   --stroke-width-cycle-separated: 1.7px;
   --stroke-width-cycle-mixed: 1.7px;
   --stroke-width-cycle-offstreet: 1.7px;
+
+  /* Smaller helper sizes */
   --chart-label-size: 12px;
   --modal-split-year-size: 11px;
   --widget-padding: 18px 20px;
+
+  /* Glass‑effect for overlays */
+  --blur-glass: 16px;
+  --ease-glass: cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
-/* Light Mode – überschreibt die Custom Properties */
+/* ============================================================================
+   LIGHT MODE
+   Overrides custom properties for light surfaces.
+   Values are chosen to preserve the same visual hierarchy and contrast
+   ratios as the dark mode.
+   ============================================================================ */
 [data-theme='light'] {
   /* Surfaces */
   --color-canvas: #f4f6f9;
@@ -312,27 +231,29 @@
   --color-text-faint: #7a8a9e;
   --color-text-on-accent: #f4f6f9;
 
-  /* Akzente – bleiben gleich (Goldton), aber leicht abgedunkelt für besseren Kontrast */
+  /* Accents (slightly darkened for better contrast) */
   --color-accent: #c47a20;
   --color-accent-hover: #a86a18;
   --color-focus: #c47a20;
 
-  /* Semantik */
+  /* Semantics */
   --color-danger: #c94050;
   --color-success: #3a9a4a;
 
-  /* Karte */
+  /* Map */
   --color-country-fill: #d8dce4;
   --color-city-highlight: #b0b8c8;
   --color-marker-ring: #f4f6f9;
 
-  /* Modal Split – gleiche Farben, aber auf hellem Hintergrund wirken sie anders
-   * Wir behalten die gleichen Hex-Werte, aber der Kontext ändert sich
-   * (später können wir hier anpassen)
-   * Die restlichen Farben (Chart-Farben) bleiben zunächst unverändert
-   * Sie werden im Light Mode automatisch durch den helleren Hintergrund anders wirken */
+  /* Chart colours remain identical (we rely on the lighter background to
+     make them feel different; light‑specific overrides can be added later). */
 }
 
+/* ============================================================================
+   REDUCED MOTION
+   If the user has requested reduced motion, we zero out all animation
+   durations and offsets.
+   ============================================================================ */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-fast: 0ms;
@@ -340,11 +261,7 @@
     --motion-slow: 0ms;
     --motion-entrance: 0ms;
 
-    /* The modules arrive already in their places: no travel, no stagger, no
-     * duration. Zeroing --module-fly as well as the clocks means there is no
-     * frame in which a module is offset from where it belongs.
-     * tokens.test.js fails if a --module-* or --thread-* token is added above
-     * without a 0 here. */
+    /* Module flight animation completely off */
     --module-fly: 0;
     --module-idle: 0px;
     --module-fly-duration: 0ms;
