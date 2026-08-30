@@ -890,27 +890,22 @@ describe('adoptionModules', () => {
     const modules = adoptionModules(contextRows, 'koeln');
     expect(modules.map((module) => module.key)).toEqual([
       'cost',
-      'funding',
       'context',
+      'funding',
       'politics',
       'timeline',
     ]);
-    // Timeline is named but unresearched: a placeholder rather than an empty
-    // shell, which is what a topic with no rows for *this city* gets.
     expect(modules.map((module) => module.kind)).toEqual([
       'cost',
-      'linkGroups',
       'facts',
+      'linkGroups',
       'policy',
       'placeholder',
     ]);
-    // Two cards carry no closing block: the Politik card's recommendations and
-    // the funding card's routes already are what one would hold, so both opt out
-    // rather than showing an empty "Sources". Every card keeps its info point.
     expect(modules[1].detailKey).toBeUndefined();
     expect(modules[3].detailKey).toBeUndefined();
     expect(modules[3].infoKey).toBe('adoption.info.politics');
-    expect(modules[1].infoKey).toBe('adoption.info.funding');
+    expect(modules[2].infoKey).toBe('adoption.info.funding');
   });
 
   it('builds the cost card from the published sum and what it bought', () => {
@@ -944,33 +939,27 @@ describe('adoptionModules', () => {
   });
 
   it('builds the context card from the sourced rows, with density derived', () => {
-    const [, , context] = adoptionModules(contextRows, 'koeln');
+    const [, context] = adoptionModules(contextRows, 'koeln');
     expect(context.facts).toEqual([
       { key: 'population', value: 1028273, unit: 'people', year: 2025 },
       { key: 'ringCorridor', value: 10, unit: 'km', year: 2024 },
       { key: 'area', value: 405, unit: 'km²', year: null },
       { key: 'density', value: 2539, unit: 'per km²' },
     ]);
-    // One chip per document behind the card — three rows, three sources, and
-    // the derived figure adds none because it is computed from two of them.
     expect(context.sources).toHaveLength(3);
     expect(context.sources.map((source) => source.label)).toContain('citypopulation.de');
   });
 
   it('drops a context fact the city has no row for', () => {
-    const [, , context] = adoptionModules(contextRows.slice(0, 1), 'koeln');
+    const [, context] = adoptionModules(contextRows.slice(0, 1), 'koeln');
     expect(context.facts.map((fact) => fact.key)).toEqual(['population']);
   });
 
   it('groups the funding routes by level, and names the ones with no page to open', () => {
-    const funding = adoptionModules(contextRows, 'koeln')[1];
-    expect(funding.groups.map((group) => group.key)).toEqual(['eu', 'federal', 'civic', 'private']);
+    const [, , funding] = adoptionModules(contextRows, 'koeln');
+    expect(funding.groups.map((group) => group.key)).toEqual(['eu', 'federal']);
     expect(funding.groups[0].links).toHaveLength(5);
-    expect(funding.groups[3].links).toEqual([]);
-    expect(funding.groups[3].plain).toEqual([
-      'adoption.funding.sponsorship',
-      'adoption.funding.transitAuthorities',
-    ]);
+    expect(funding.groups[1].links).toHaveLength(3);
   });
 
   it('is six empty slots for a city with no researched adoption content', () => {

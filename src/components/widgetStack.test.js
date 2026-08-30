@@ -993,7 +993,10 @@ describe('the adoption cards', () => {
       kind: 'policy',
       labelKey: 'adoption.politics',
       infoKey: 'adoption.info.politics',
-      authorities: [{ key: 'a', textKey: 'adoption.politics', url: 'https://example.org/amt' }],
+      authorities: [
+        { key: 'a', textKey: 'adoption.politics', url: 'https://example.org/amt' },
+        { key: 'b', textKey: 'adoption.politics', url: 'https://example.org/amt2' },
+      ],
       alliance: { key: 'r', textKey: 'adoption.politics' },
       members: [{ key: 'm', textKey: 'adoption.politics' }],
       recommendations: ['movement', 'phased'].map((key) => ({
@@ -1083,9 +1086,10 @@ describe('the adoption cards', () => {
     expect(card(3).querySelectorAll('.module__fact')).toHaveLength(0);
     expect(card(3).querySelectorAll('.module__policy-lead')).toHaveLength(1);
     const names = card(3).querySelectorAll('.module__policy-list .module__link-item');
-    expect(names).toHaveLength(2);
-    // A name with a page worth opening is the link; the rest are named without.
-    expect(names[0].querySelector('.module__link')).not.toBeNull();
+    // Zwei Behörden + ein Mitglied = 3
+    expect(names).toHaveLength(3);
+    // Der erste Eintrag (Behörde) hat eine URL und trägt .source-chip
+    expect(names[0].querySelector('.source-chip')).not.toBeNull();
   });
 
   it('names the recommendations in a column and opens them in the slot', () => {
@@ -1170,9 +1174,10 @@ describe('the adoption cards', () => {
   // rendered as text is a dead end wearing the right clothes.
   it('keeps every link an outbound link', () => {
     open();
-    // The politics card's names, and the arrow beside a funding route.
-    const links = [...region().querySelectorAll('.module__link, .module__programme-link')];
-    expect(links).toHaveLength(2);
+    // Alle Links auf der Seite: source‑chips (Datenquellen + Politik‑Links) + programme‑links (Finanzierung)
+    const links = [...region().querySelectorAll('.source-chip, .module__programme-link')];
+    // Zähle: cost (1), context (2), politics (2), funding (1) = 6
+    expect(links).toHaveLength(6);
     expect(links.every((link) => link.getAttribute('rel') === 'noopener noreferrer')).toBe(true);
     expect(links.map((link) => link.getAttribute('href'))).toContain('https://example.org/life');
   });

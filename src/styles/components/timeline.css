@@ -50,7 +50,7 @@
    and this is the ground they sit on. */
 .timeline__band {
   fill: var(--phase, var(--color-surface));
-  fill-opacity: 0.12;
+  fill-opacity: 0.18;
 }
 
 /* The dot before a phase's name. Colour is never the only thing telling two

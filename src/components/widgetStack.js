@@ -678,7 +678,7 @@ const MODULE_COLUMNS = [3, 2, 1];
  * 3/2/1 stagger every criterion started on left the last card alone in a column
  * of its own, which read as a leftover rather than as the last of a set — and
  * two columns leave room for the cards to be wider, which the charts want. */
-const CRITERION_COLUMNS = { impact: [3, 3], adoption: [2, 2], problemFit: [2, 2] };
+const CRITERION_COLUMNS = { impact: [3, 3], adoption: [3, 1], problemFit: [1, 1, 2] };
 
 // Which of a criterion's cards its L1 widget is drawn from. The card has to be
 // one that carries its own content at that size: Impact's cycle network is a

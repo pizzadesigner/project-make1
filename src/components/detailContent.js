@@ -407,12 +407,20 @@ function policyBody(module, index, expanded) {
  * than among them: #RingFrei is not a seventh organisation, it is the six of
  * them together. A name with a page worth opening is the link. */
 function namedList(headingKey, entries, lead = null) {
-  const line = (entry) =>
-    `<li class="module__link-item">${entry.url ? outboundLink(entry.url, t(entry.textKey)) : t(entry.textKey)}</li>`;
+  const line = (entry) => {
+    const label = t(entry.textKey);
+    // Link-Button (source-chip) rechts vom Text, nur wenn URL vorhanden
+    const linkHtml = entry.url
+      ? `<a class="source-chip" data-hint href="${encodeURI(entry.url)}" target="_blank" rel="noopener noreferrer" aria-label="${t('adoption.funding.programmePage')}: ${label}"><span class="link-hint" aria-hidden="true">${formatHostname(entry.url)}</span></a>`
+      : '';
+    return `<li class="module__link-item">${label} ${linkHtml}</li>`;
+  };
+  // lead (Allianz) wird ohne Link ausgegeben, nur als normaler Text
+  const leadHtml = lead ? `<p class="module__policy-lead">${t(lead.textKey)}</p>` : '';
   return `
     <div class="module__panel module__policy-list">
       <h3 class="module__link-heading">${t(headingKey)}</h3>
-      ${lead ? `<p class="module__policy-lead">${lead.url ? outboundLink(lead.url, t(lead.textKey)) : t(lead.textKey)}</p>` : ''}
+      ${leadHtml}
       <ul class="module__links">${entries.map(line).join('')}</ul>
     </div>`;
 }
@@ -755,12 +763,6 @@ function programmeHtml(textKey, url) {
 function programmeLink(url, name) {
   const label = `${t('adoption.funding.programmePage')}: ${name}`;
   return `<a class="source-chip module__programme-link" data-hint href="${encodeURI(url)}" target="_blank" rel="noopener noreferrer" aria-label="${label}"><span class="link-hint" aria-hidden="true">${formatHostname(url)}</span></a>`;
-}
-
-/** An outbound link with the host on it, the way every other one on these cards
- * carries it (hintLayer.js draws the hint). */
-function outboundLink(url, text) {
-  return `<a class="module__link" data-hint href="${encodeURI(url)}" target="_blank" rel="noopener noreferrer">${text}<span class="link-hint" aria-hidden="true">${formatHostname(url)}</span></a>`;
 }
 
 // --- shared pieces ---------------------------------------------------------

@@ -885,7 +885,7 @@ export function problemFitModules(problemFit, milestones = []) {
 // Down the near column first, then the far one, then the card spanning both:
 // what it costs and where the money comes from together, the city it was built
 // in and the politics that built it together, and the timeline under both.
-const ADOPTION_ORDER = ['cost', 'funding', 'context', 'politics', 'timeline'];
+const ADOPTION_ORDER = ['cost', 'context', 'funding', 'politics', 'timeline'];
 
 // The context card's four figures. The first three are sourced rows in
 // `cities.csv`; density is derived from two of them the way the research source
@@ -980,21 +980,11 @@ const ADOPTION_FUNDING = [
         url: 'https://www.klimaschutz.de/de/foerderung-der-nki/foerderprogramme/kommunalrichtlinie',
       },
       {
-        key: 'jungeGeneration',
-        url: 'https://www.mobilitaetsforum.bund.de/DE/Foerderungen/Foerderaufruf-Junge-Generation-Fahrrad/foerderaufruf-junge-generation-fahrrad_node.html',
-      },
-      {
         key: 'bundesstrassen',
         url: 'https://www.bmv.de/SharedDocs/DE/Artikel/StV/Radverkehr/finanzielle-foerderung-des-radverkehrs.html',
       },
     ],
   },
-  {
-    key: 'civic',
-    links: [{ key: 'startnext', url: 'https://www.startnext.com/' }],
-    plain: ['crowdfunding'],
-  },
-  { key: 'private', links: [], plain: ['sponsorship', 'transitAuthorities'] },
 ];
 
 /**
