@@ -5,7 +5,7 @@
   "map.markerCountOne": "{count} Projekt",
   "map.markerCountMany": "{count} Projekte",
   "overview.title": "SDG-11 Best Practice Dashboard",
-  "overview.lead": "Wie setzen Städte das SDG 11 in die Praxis um? SDG 11 – „Nachhaltige Städte und Gemeinden“ – fordert sichere, bezahlbare und umweltfreundliche Städte. Dieses Dashboard beleuchtet wegweisende städtische Projekte in ganz Europa – und zeigt, was nötig ist, um sie zu übertragen. Jede hervorgehobene Stadt führt ein Vorzeigeprojekt durch, das sich mit den Teilzielen des SDG befasst. Jedes Projekt stützt sich auf messbare Daten und nachvollziehbare Quellen. Sie können die gesamte Projektgeschichte (Problem Fit), die erzielten Ergebnisse (Impact) und die Voraussetzungen für die Übertragung (Adoption Requirements) erkunden.",
+  "overview.lead": "Wie setzen Städte das SDG 11 in die Praxis um?<br>SDG 11 – „Nachhaltige Städte und Gemeinden“ – fordert sichere, bezahlbare und umweltfreundliche Städte.<br>Dieses Dashboard beleuchtet wegweisende städtische Projekte mit Bezug auf die Teilziele des SDG in ganz Europa – und zeigt, was nötig ist, um sie zu übertragen.<br>Jede hervorgehobene Stadt führt ein Vorzeigeprojekt durch, das sich mit den Teilzielen des SDG befasst. Jedes Projekt stützt sich auf messbare Daten und nachvollziehbare Quellen. Sie können die gesamte Projektgeschichte (Problem Fit), die erzielten Ergebnisse (Impact) und die Voraussetzungen für die Übertragung (Adoption Requirements) erkunden.",
   "overview.hint": "Wählen Sie eine Stadt auf der Karte, um deren Projekte, Daten und Erkenntnisse zu erkunden.",
   "detail.back": "Zurück",
   "criteria.legend": "Nach Kriterium filtern [Löschen?]",

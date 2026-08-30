@@ -290,7 +290,7 @@ function buildShell(container, props) {
     const lead = overview.querySelector('.map-overview__lead');
     const hint = overview.querySelector('.map-overview__hint');
     title.textContent = t('overview.title');
-    lead.textContent = t('overview.lead');
+    lead.innerHTML = t('overview.lead');
     hint.textContent = t('overview.hint');
     back.textContent = `← ${t('detail.back')}`;
     reset.textContent = t('map.resetView');
