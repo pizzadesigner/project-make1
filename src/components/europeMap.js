@@ -24,7 +24,7 @@ const MARKER_ARROWS = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 
 const MIN_ZOOM = 1;
 // A city is a speck on a continent map, so fitting its silhouette needs a very
 // deep zoom (~120x for Cologne); the ceiling leaves headroom above that.
-const MAX_ZOOM = 200;
+const MAX_ZOOM = 300;
 const FOCUS_ZOOM = 5; // L1 fallback for cities without a silhouette to fit
 const MAP_PADDING = 16; // uniform gap between the fitted continent and the stage
 // Width kept clear on each side for a widget column, so the focused city fits
@@ -161,11 +161,14 @@ export function render(container, props) {
 
       for (const layer of layers) {
         if (!layer.data) continue;
+        // Prüfen, ob der Layer im aktuellen Kontext sichtbar sein soll
+        const visible = !layer.context || layer.context === currentCriterion;
+        if (!visible) continue;
+
         const layerFeatures = layer.data.features || [layer.data];
         for (const feature of layerFeatures) {
           features.push({
             ...feature,
-            // Klasse aus dem Layer übernehmen, oder Fallback
             className: layer.className || 'europe-map__cycle-path',
           });
         }
@@ -175,7 +178,7 @@ export function render(container, props) {
     // Daten-Join mit eindeutigem Key (falls vorhanden, sonst Geometrie)
     infra
       .selectAll(
-        '.europe-map__cycle-path, .europe-map__cycle-path--mixed, .europe-map__cycle-path--separated, .europe-map__cycle-path--offstreet',
+        '.europe-map__cycle-path, .europe-map__cycle-path--mixed, .europe-map__cycle-path--separated, .europe-map__cycle-path--offstreet, .europe-map__cycle-path--highlight',
       )
       .data(features, (d) => d.id || JSON.stringify(d.geometry))
       .join('path')
@@ -253,12 +256,19 @@ export function render(container, props) {
   });
   resizeObserver.observe(container);
 
+  let currentCriterion = null;
+
   return {
     update(next) {
       const nextFocused = next.focusedCity ?? null;
       const nextSide = next.citySide ?? null;
       const nextDeepZoom = next.deepZoom ?? false;
       const nextLocale = next.locale ?? locale;
+      const nextCriterion = next.activeCriterion ?? null;
+      if (nextCriterion !== currentCriterion) {
+        currentCriterion = nextCriterion;
+        drawCityLayers();
+      }
       if (nextLocale !== locale) {
         locale = nextLocale;
         updateMarkerLabels();

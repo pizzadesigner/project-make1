@@ -34,6 +34,18 @@ export const CITY_GEO = {
         className: 'europe-map__cycle-path--offstreet',
         colorVar: '--color-cycle-offstreet',
       },
+      {
+        id: 'ringe-gruen',
+        path: 'geo/infrastructure/koeln-ringe-gruen.geojson',
+        className: 'europe-map__cycle-path--highlight',
+        context: 'problemFit',
+      },
+      {
+        id: 'ringe-gelb',
+        path: 'geo/infrastructure/koeln-ringe-gelb.geojson',
+        className: 'europe-map__cycle-path--highlight',
+        context: 'problemFit',
+      },
     ],
   },
   'paris-marne-la-vallee': {

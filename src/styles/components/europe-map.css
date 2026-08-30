@@ -176,16 +176,6 @@
   opacity: 0;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .marker__pin {
-    transition: none;
-  }
-
-  .marker__ripple {
-    animation: none;
-  }
-}
-
 .europe-map__cycle-path--mixed {
   fill: none;
   stroke: var(--color-cycle-mixed);
@@ -215,4 +205,48 @@
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
   pointer-events: none;
+}
+
+.europe-map__cycle-path--highlight {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 4px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+  animation: pulse-highlight 2.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px var(--color-accent-light));
+}
+
+@keyframes pulse-highlight {
+  0%,
+  100% {
+    stroke-width: 2.5px;
+    opacity: 0.85;
+    filter: drop-shadow(0 0 4px var(--color-accent-subtle));
+  }
+
+  50% {
+    stroke-width: 4px;
+    opacity: 1;
+    filter: drop-shadow(0 0 12px var(--color-accent));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marker__pin {
+    transition: none;
+  }
+
+  .marker__ripple {
+    animation: none;
+  }
+
+  .europe-map__cycle-path--highlight {
+    animation: none;
+    stroke-width: 4px;
+    opacity: 1;
+    filter: none;
+  }
 }
