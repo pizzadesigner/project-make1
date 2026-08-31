@@ -169,6 +169,7 @@
 
   /* L3 focus slot: one card opens large, the other five shrink into a rail */
   --module-column-max: 400px; /* maximum column width */
+  --module-focus-max: 820px; /* max width of the opened card — the L2 overlay region is far wider */
   --module-rail-width: 176px; /* width of the rail for the five small cards */
   --module-rail-gap: 14px; /* gap between cards in the rail */
   --module-focus-gap: 28px; /* gap between rail and focused card */

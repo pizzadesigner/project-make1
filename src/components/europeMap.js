@@ -36,6 +36,11 @@ const MAP_PADDING = 16; // uniform gap between the fitted continent and the stag
 const WIDGET_STRIP = 340;
 const WIDGET_STRIP_MAX_FRACTION = 0.22;
 const CITY_FILL = 0.75;
+// L2/L3 zoom the city in past its L1 fit so the map fills the screen behind the
+// floating module panel rather than sitting small in the middle of it. Centred,
+// not cut to one side — the panel is an overlay (mapView, widgets.css). Tune
+// here: higher = the city fills more (and overflows the viewport sooner).
+const L2_MAP_ZOOM = 4;
 // Above this scale, the country/border geometry is swapped for a flat backdrop
 // (see buildDom) — well above FOCUS_ZOOM (the regional zoom for cities without a
 // silhouette), well below a real city fit (40x-120x+).
@@ -94,6 +99,9 @@ export function render(container, props) {
   bindKeyboard(dom.markers, markers);
 
   let focusedCity = null;
+  // Whether a widget's L2/L3 panel is open — the map zooms the city in while it
+  // is (L2_MAP_ZOOM), and back to the L1 fit when it closes.
+  let overlayOpen = false;
   // The focused city's geometry, kept rather than only drawn: a resize has to
   // redraw it against the re-fitted projection. Only ever one city's, so its fit
   // (which lets L1 frame the city in one step) is a single value beside it.
@@ -190,11 +198,11 @@ export function render(container, props) {
   }
 
   // The city transform for the current layer: the centred frame once the fit is
-  // known (L1 and L2 alike — L2 floats its panel over this rather than cutting
-  // the map away), otherwise a regional fallback until the geometry loads.
+  // known, zoomed in while a panel is open (L2/L3 float over this rather than
+  // cutting the map away); a regional fallback until the geometry loads.
   function cityTransform(focused) {
     const fit = cityLayers.slug === focused.citySlug ? cityFit : null;
-    if (fit) return cityFitTransform(size, fit);
+    if (fit) return cityFitTransform(size, fit, overlayOpen ? L2_MAP_ZOOM : 1);
     return focusTransform(size, ...projection([focused.lon, focused.lat]), FOCUS_ZOOM);
   }
 
@@ -251,6 +259,7 @@ export function render(container, props) {
       const nextFocused = next.focusedCity ?? null;
       const nextLocale = next.locale ?? locale;
       const nextCriterion = next.activeCriterion ?? null;
+      const nextOverlay = Boolean(nextCriterion);
       if (nextCriterion !== currentCriterion) {
         currentCriterion = nextCriterion;
         drawCityLayers();
@@ -261,14 +270,18 @@ export function render(container, props) {
         const focused = markers.find((m) => m.project.citySlug === focusedCity)?.project ?? null;
         if (focused) applyFocusHeader(dom, focused);
       }
-      if (nextFocused === focusedCity) return;
+      if (nextFocused === focusedCity && nextOverlay === overlayOpen) return;
+      const focusChanged = nextFocused !== focusedCity;
       focusedCity = nextFocused;
+      overlayOpen = nextOverlay;
       const focused = markers.find((m) => m.project.citySlug === focusedCity)?.project ?? null;
-      applyCountryFocus(dom, focused);
-      applyMarkerFocus(markers, focusedCity);
-      applyFocusHeader(dom, focused);
-      // L0 resets to the overview; L1 and L2 both frame the city — L2 floats its
-      // module panel over the map rather than cutting it away.
+      if (focusChanged) {
+        applyCountryFocus(dom, focused);
+        applyMarkerFocus(markers, focusedCity);
+        applyFocusHeader(dom, focused);
+      }
+      // L0 resets to the overview; L1 frames the city; L2/L3 zoom it in under the
+      // floating panel rather than cutting the map away.
       const transform = focused ? cityTransform(focused) : zoomIdentity;
       animateZoom(dom.svg, zoomBehavior, transform);
       if (!focused) releaseMarkerFocus(markers, keyboardSelection);
@@ -580,12 +593,13 @@ export function cityFitInfo(path, size, districts) {
   };
 }
 
-/** Transform centring the fitted city between the two widget columns. Used at L1
- * and L2 alike — the L2 module panel floats over this framing (see mapView). */
-function cityFitTransform(size, info) {
+/** Transform centring the fitted city in the stage. `multiplier` is 1 at L1 and
+ * L2_MAP_ZOOM while a panel is open — the city stays centred either way and the
+ * panel floats over it (see mapView). */
+function cityFitTransform(size, info, multiplier = 1) {
   return zoomIdentity
     .translate(size.width / 2, size.height / 2)
-    .scale(info.scale)
+    .scale(Math.min(info.scale * multiplier, MAX_ZOOM))
     .translate(-info.cx, -info.cy);
 }
 

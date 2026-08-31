@@ -204,9 +204,9 @@ export function render(container, props) {
 
     mapHandle.update({
       focusedCity: next.focusedCity,
-      // L2 no longer cuts the map to one side — the module panel floats over the
-      // city's L1 framing (see widgets.css .widget-detail, europeMap). The
-      // criterion still comes down so the map can switch its cycle-route layers.
+      // L2/L3 no longer cut the map to one side — the module panel floats over
+      // it. The criterion still comes down so the map can zoom the city in while
+      // a panel is open (europeMap#L2_MAP_ZOOM) and switch its cycle-route layers.
       activeCriterion: next.activeCriterion,
       locale: next.locale,
     });

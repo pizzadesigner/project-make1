@@ -149,7 +149,7 @@ describe('entering L2', () => {
   it('opens the region with its full set of modules', () => {
     stack.update({ ...props, activeCriterion: 'adoption' });
     expect(region().hidden).toBe(false);
-    // Adoption is five cards, in two columns (three then two).
+    // Adoption is five cards, across three columns (2 / 2 / 1).
     expect(modules()).toHaveLength(5);
   });
 

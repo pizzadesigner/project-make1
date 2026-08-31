@@ -388,10 +388,11 @@
 }
 
 /* Two columns instead of three (Impact — see widgetStack.js#CRITERION_COLUMNS).
-   Splitting the region between them would make each 488px, so they are capped
-   and the arrangement keeps to the side its widget is on, handing the strip it
-   does not need back to the map. The mirror below reverses the direction, so
-   `flex-start` is the widget's side either way. */
+   Six cards split across two full-width columns would be ~730px each; capped,
+   they stay a readable width and the surplus is left to the map behind them.
+   Three-column criteria (Problem Fit, Adoption) are uncapped and fill the
+   region. The mirror below reverses the direction, so `flex-start` is the
+   widget's side either way. */
 .widget-detail__modules--2 .widget-detail__column {
   max-width: var(--module-column-max);
 }
@@ -408,6 +409,14 @@
    correct. Bottom-aligning tracks it by itself. */
 .widget-detail__column--3 {
   justify-content: flex-end;
+}
+
+/* Adoption's third column is the timeline alone (CRITERION_COLUMNS). Bottom-
+   aligning a single card would float it at the foot of a column stretched to a
+   much taller neighbour, with a slab of empty space above it — it belongs at
+   the top, with the room below. */
+.widget-detail--right .widget-detail__column--3 {
+  justify-content: flex-start;
 }
 
 /* One module, in two parts. A curved path needs its two axes eased differently,

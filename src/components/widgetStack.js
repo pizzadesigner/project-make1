@@ -1,8 +1,8 @@
 // The three Exploration-layer widgets (Problem Fit, Impact, Adoption
 // Requirements) shown while a city is focused (L1). Problem Fit sits top-left;
-// Impact + Adoption stack top-right. Clicking one enters its L2: a data panel
-// opens on that widget's side (the map cuts to the opposite half — see mapView
-// and europeMap), and the widgets dim in place.
+// Impact + Adoption stack top-right. Clicking one enters its L2: a glass panel
+// unpacks on that widget's side, floating over the map (which zooms the city in
+// under it — see mapView, europeMap), and the other widgets dim in place.
 //
 // The L2 does not replace the widget so much as unpack it: the modules start
 // stacked on the card that was clicked and fly out to their own places, so what
@@ -10,11 +10,11 @@
 // setFlightOrigin for the measurement that ties the two together.
 //
 // Clicking one of those modules enters L3: that card opens into a focus slot
-// taking most of the region, and the other five step aside into a rail down the
-// side the widget is on, scaled down together rather than pushed off screen. The
-// region keeps its L2 share of the stage — the room comes from inside the
-// arrangement, which is mostly air. See applyFocusLayout, and buildDetail for
-// why the movement is measured rather than declared.
+// (capped at --module-focus-max, standing against the rail), and the other five
+// step aside into a rail down the side the widget is on, scaled down together
+// rather than pushed off screen. The room comes from inside the arrangement,
+// which is mostly air. See applyFocusLayout, and buildDetail for why the
+// movement is measured rather than declared.
 //
 // render(container, { project, activeCriterion, activeModule, metrics,
 // impactModules, problemFitModules, adoptionModules, comingSoon,
@@ -224,8 +224,8 @@ function buildWidget(kind, onSelectCriterion) {
   return { node, kind };
 }
 
-/** The L2 region: one reused element, shown on the active widget's side while
- * the map cuts to the other half. It carries no back control of its own — the
+/** The L2 region: one reused element, a glass panel shown on the active widget's
+ * side and floating over the map. It carries no back control of its own — the
  * screen's Back button (and Escape) already step back one layer from anywhere,
  * and a second one inside the region was a duplicate of that.
  *
@@ -614,10 +614,18 @@ function focusPlaces(arrangement, focusIndex, side) {
   // arrangement rather than as a card with a list running on past it. What is
   // inside the card still takes only the height it needs (.is-expanded).
   const height = Math.max(area.height, y - railGap - area.y);
+  // The region is now an overlay far wider than one card wants to be, so the
+  // slot is capped (--module-focus-max) and stands against the rail — the width
+  // it does not take is left towards the centre, where the map shows through.
+  const focusMax = pxToken('--module-focus-max') || Infinity;
+  const slotWidth = Math.min(Math.max(area.width - taken - focusGap, taken), focusMax);
   places[focusIndex] = {
-    x: side === 'right' ? area.x : area.x + taken + focusGap,
+    x:
+      side === 'right'
+        ? area.x + area.width - taken - focusGap - slotWidth
+        : area.x + taken + focusGap,
     y: area.y,
-    width: Math.max(area.width - taken - focusGap, taken),
+    width: slotWidth,
     height,
   };
   places.height = height;
@@ -728,12 +736,13 @@ function modulesFor(activeCriterion, props) {
 const MODULE_COLUMNS = [3, 2, 1];
 
 /** How many cards stand in each column, per criterion, in reading order. Impact's
- * six go two columns of three; Adoption's five a column of three then one of two;
- * Problem Fit's four across three columns (1 / 1 / 2). Two columns leave the
- * cards room to be wider, which the charts want, and the last card never stands
- * alone in a column of its own — which read as a leftover rather than the last
- * of a set. */
-const CRITERION_COLUMNS = { impact: [3, 3], adoption: [3, 2], problemFit: [1, 1, 2] };
+ * six go two columns of three; Adoption's five go 2 / 2 / 1 — three columns so
+ * they spread across the wide overlay region rather than packing to one side,
+ * with the timeline alone in the last (outermost) column where it has room to
+ * breathe; Problem Fit's four go 1 / 1 / 2. Three columns are uncapped and fill
+ * the region; two are capped (--module-column-max) so a six-card criterion's
+ * cards do not stretch too wide. */
+const CRITERION_COLUMNS = { impact: [3, 3], adoption: [2, 2, 1], problemFit: [1, 1, 2] };
 
 // Which of a criterion's cards its L1 widget is drawn from. The card has to be
 // one that carries its own content at that size: Impact's cycle network is a

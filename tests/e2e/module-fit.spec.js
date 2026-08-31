@@ -185,30 +185,29 @@ test('impact stands its six in two columns of three, wider than three would be',
   expect(second - first).toBeGreaterThan(50);
 });
 
-// Adoption is five cards, not six, in two columns — a column of three and one of
-// two, with no card spanning. The timeline is the last of them, a normal card in
-// the column flow: at L2 it is a compact vertical track (milestone-line style),
-// and only opened does it become the serpentine.
-test('adoption stands its five in two columns, the timeline a normal card', async ({ page }) => {
+// Adoption is five cards, not six, in three columns (2 / 2 / 1) so they spread
+// across the wide overlay region rather than packing to one side. Nothing spans;
+// the timeline is alone in the last column, where it has room. At L2 it is a
+// compact vertical track (milestone-line style) — only opened does it become the
+// serpentine.
+test('adoption spreads its five across three columns, the timeline alone in the last', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await openWidget(page, 'adoption');
 
   const columns = page.locator('.widget-detail__column');
-  await expect(columns).toHaveCount(2);
+  await expect(columns).toHaveCount(3);
   const counts = await columns.evaluateAll((nodes) =>
     nodes.map((node) => node.querySelectorAll('.widget-detail__module').length),
   );
-  expect(counts).toEqual([3, 2]);
+  expect(counts).toEqual([2, 2, 1]);
 
-  // Nothing spans, and the timeline stands inside a column like any other card.
+  // Nothing spans; the timeline is the whole of the third column.
   await expect(page.locator('.widget-detail__module--span')).toHaveCount(0);
-  const timeline = page.locator('.widget-detail__module:has(.module__timeline)');
-  await expect(timeline).toHaveCount(1);
-  const [timelineBox, columnBox] = await Promise.all([
-    timeline.boundingBox(),
-    columns.first().boundingBox(),
-  ]);
-  expect(timelineBox.width).toBeLessThan(columnBox.width * 1.2);
+  const timelineColumn = page.locator('.widget-detail__column').nth(2);
+  await expect(timelineColumn.locator('.module__timeline')).toHaveCount(1);
+  await expect(timelineColumn.locator('.widget-detail__module')).toHaveCount(1);
 
   // The compact reading, not the serpentine: a vertical track with no wrapped
   // event titles (those are the opened reading).
