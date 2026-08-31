@@ -169,7 +169,6 @@
 
   /* L3 focus slot: one card opens large, the other five shrink into a rail */
   --module-column-max: 400px; /* maximum column width */
-  --module-span-overhang: 10px; /* overhang for cards spanning both columns */
   --module-rail-width: 176px; /* width of the rail for the five small cards */
   --module-rail-gap: 14px; /* gap between cards in the rail */
   --module-focus-gap: 28px; /* gap between rail and focused card */
@@ -194,9 +193,15 @@
      10. OTHER LAYOUT TOKENS
      -------------------------------------------------------------------------- */
   --content-max: 72rem;
-  --l2-region-share: 0.55; /* share of the stage taken by L2 modules */
-  --l2-region-gap: 40px; /* gap between modules and city map */
-  --l2-region-margin: var(--space-4); /* margin around the L2 region */
+
+  /* L2 is an overlay: the module panel floats over the city map, which keeps its
+     L1 framing rather than cutting away to make room. --l2-region-margin insets
+     the panel from its own screen edge; --l2-overlay-clear is the strip left on
+     the far side for the dimmed Impact/Adoption (or Problem Fit) widgets plus a
+     gap, so the panel's cards never sit under them. widgets.css sizes
+     .widget-detail from the two. */
+  --l2-region-margin: var(--space-4);
+  --l2-overlay-clear: 336px;
 
   /* Sanity stop on scaling the L2 arrangement down to fit its region
      (widgetStack.js#fitModules) — kept low on purpose: a small arrangement still

@@ -266,19 +266,20 @@
   text-align: right;
 }
 
-/* The L2 region: the half of the screen the active widget hands its detail to,
- * while the map cuts to the other half. Deliberately no surface of its own —
- * one slab holding everything made three sub-metrics read as one figure. What
- * stands here is a set of separate modules; this element is only the space they
- * are placed in, and their scroll container. */
+/* The L2 region: a glass panel the active widget hands its detail to, floating
+ * over the city map (which keeps its L1 framing — see europeMap/mapView).
+ * Deliberately no surface of its own — one slab holding everything made three
+ * sub-metrics read as one figure. What stands here is a set of separate modules;
+ * this element is only the space they are placed in, and their scroll container.
+ *
+ * It runs from its own edge to a strip left clear on the far side for the dimmed
+ * bystander widgets (--l2-overlay-clear), so the cards use most of the width
+ * without ever sitting under Impact/Adoption or Problem Fit. */
 .widget-detail {
   position: absolute;
   top: var(--space-6); /* aligns with the widget stack (STACK_TOP in widgetStack.js) */
   bottom: var(--space-4);
-
-  /* The modules' share of the stage. europeMap.js reads the same token and
-     stops the city on the other side of it, so the two cannot drift apart. */
-  width: calc(var(--l2-region-share) * 100%);
+  width: calc(100% - var(--l2-region-margin) - var(--l2-overlay-clear));
   z-index: 20;
   pointer-events: auto;
   display: flex;
@@ -342,9 +343,7 @@
 .widget-detail__modules {
   display: flex;
 
-  /* Down the page now, not across it: the columns are one row inside this, and
-     a card may stand below them spanning the whole width (Adoption's timeline —
-     widgetStack.js#CRITERION_SPANNING). */
+  /* The columns of cards are a single row inside this. */
   flex-direction: column;
   gap: var(--space-4);
 
@@ -377,20 +376,6 @@
   align-items: stretch;
   gap: var(--space-8);
   min-width: 0;
-}
-
-/* A card standing below the columns rather than in one, as wide as the two of
-   them plus a little. Lined up under them and not with the region: the columns
-   pack to the side their widget is on and leave the rest as canvas, so a card
-   stretched across the whole region would start out over the map. */
-.widget-detail__module--span {
-  align-self: flex-start;
-  width: calc(2 * var(--module-column-max) + var(--space-8) + var(--module-span-overhang));
-  max-width: 100%;
-}
-
-.widget-detail--right .widget-detail__module--span {
-  align-self: flex-end;
 }
 
 /* One column. */
@@ -558,9 +543,9 @@
    still differ in size, which is what keeps the gaps uneven and the arrangement
    read as placed rather than ruled; it is only their direction that is fixed.
 
-   The columns the
-   region has room around — the middle one, and the last one, which faces the
-   map across --l2-region-gap — still stray both ways. */
+   The columns the region has room around — the middle one, and the last one,
+   which faces the clear strip left for the bystander widgets — still stray both
+   ways. */
 .widget-detail__module--1 {
   --module-index: 0;
   --nudge-x-step: 0.6;

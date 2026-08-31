@@ -23,12 +23,6 @@ import * as europeMap from '../components/europeMap.js';
 import * as widgetStack from '../components/widgetStack.js';
 import * as hintLayer from '../components/hintLayer.js';
 
-/** The map cuts to the side opposite the active widget's data panel. */
-function citySideFor(activeCriterion) {
-  if (!activeCriterion) return null;
-  return widgetStack.widgetSide(activeCriterion) === 'left' ? 'right' : 'left';
-}
-
 // L0 reserves a left column for the project overview panel; the map frames
 // Europe in the space to its right. Below OVERVIEW_MIN_WIDTH a side column is
 // too cramped, so the panel is dropped and the map re-centres (inset 0).
@@ -210,8 +204,9 @@ export function render(container, props) {
 
     mapHandle.update({
       focusedCity: next.focusedCity,
-      citySide: citySideFor(next.activeCriterion),
-      deepZoom: Boolean(next.activeCriterion),
+      // L2 no longer cuts the map to one side — the module panel floats over the
+      // city's L1 framing (see widgets.css .widget-detail, europeMap). The
+      // criterion still comes down so the map can switch its cycle-route layers.
       activeCriterion: next.activeCriterion,
       locale: next.locale,
     });

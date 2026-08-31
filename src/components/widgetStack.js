@@ -587,12 +587,10 @@ function focusPlaces(arrangement, focusIndex, side) {
   const scale = railScale(rail, area.height - railGap * (rail.length - 1));
   // What the rail actually takes, which is not always what it was asked for: a
   // card held at the scale floor stays wider than the nominal width, and one
-  // that overflows the rail is scaled down to it instead (see below). Measured
-  // rather than assumed, so the slot beside it gets the room that is really left.
-  // What the rail takes: the typical card at the shared scale. Typical, not
-  // widest, because one card can be nothing like the others — Adoption's
-  // timeline spans both columns — and letting it set the width would give the
-  // rail twice the room it needs and the slot beside it half.
+  // that overflows the rail is scaled down to it instead (see below). The
+  // typical card sets it, not the widest — one odd card among five should move
+  // the rail's width by nothing — so the slot beside it gets the room that is
+  // really left.
   const taken = medianWidth(rail) * scale;
 
   let y = area.y;
@@ -627,8 +625,7 @@ function focusPlaces(arrangement, focusIndex, side) {
 }
 
 /** The width of the rail's typical card. The middle of the sorted widths rather
- * than the mean, so one card of a different order — a spanning one — moves it by
- * nothing at all. */
+ * than the mean, so one card of a different order moves it by nothing at all. */
 function medianWidth(rail) {
   const widths = rail.map((box) => box.width).sort((a, b) => a - b);
   return widths[Math.floor((widths.length - 1) / 2)];
@@ -730,12 +727,13 @@ function modulesFor(activeCriterion, props) {
  * whole arrangement — they carry the entrance order and the nudges. */
 const MODULE_COLUMNS = [3, 2, 1];
 
-/** How many cards stand in each column, per criterion. Impact's six go in two
- * columns of three; Adoption's four and Problem Fit's four go two and two. The
- * 3/2/1 stagger every criterion started on left the last card alone in a column
- * of its own, which read as a leftover rather than as the last of a set — and
- * two columns leave room for the cards to be wider, which the charts want. */
-const CRITERION_COLUMNS = { impact: [3, 3], adoption: [3, 1], problemFit: [1, 1, 2] };
+/** How many cards stand in each column, per criterion, in reading order. Impact's
+ * six go two columns of three; Adoption's five a column of three then one of two;
+ * Problem Fit's four across three columns (1 / 1 / 2). Two columns leave the
+ * cards room to be wider, which the charts want, and the last card never stands
+ * alone in a column of its own — which read as a leftover rather than the last
+ * of a set. */
+const CRITERION_COLUMNS = { impact: [3, 3], adoption: [3, 2], problemFit: [1, 1, 2] };
 
 // Which of a criterion's cards its L1 widget is drawn from. The card has to be
 // one that carries its own content at that size: Impact's cycle network is a
@@ -743,13 +741,6 @@ const CRITERION_COLUMNS = { impact: [3, 3], adoption: [3, 1], problemFit: [1, 1,
 // Fit's SDGs is the two targets. A criterion whose card is missing for this city
 // falls back to the figure or the empty shell below.
 const PREVIEW_CARD = { impact: 'cycleNetwork', adoption: 'cost', problemFit: 'sdgs' };
-
-// How many of a criterion's cards stand below the columns rather than inside
-// one, spanning the whole arrangement. Adoption's timeline is the only one so
-// far: a timeline runs along its long axis, so the widest place in the
-// arrangement is the one that suits it — and spanning both columns is also what
-// makes it read as belonging to neither.
-const CRITERION_SPANNING = { adoption: 1 };
 
 function columnsFor(criterion) {
   return CRITERION_COLUMNS[criterion] ?? MODULE_COLUMNS;
@@ -761,31 +752,26 @@ function columnsFor(criterion) {
 function moduleScaffold(modules = [], criterion = null) {
   let slot = 0;
   const layout = columnsFor(criterion);
-  const spanning = CRITERION_SPANNING[criterion] ?? 0;
   const total = Math.min(MODULE_SLOTS, modules.length || MODULE_SLOTS);
-  const box = (span) => {
+  const box = () => {
     const index = slot;
     slot += 1;
-    const wide = span ? ' widget-detail__module--span' : '';
-    return `<div class="widget-detail__module widget-detail__module--${index + 1}${wide}">
+    return `<div class="widget-detail__module widget-detail__module--${index + 1}">
        ${cardHtml(modules[index], index)}
      </div>`;
   };
   const columns = layout
     .map((count, column) => {
-      const room = Math.max(Math.min(count, total - spanning - slot), 0);
-      const boxes = Array.from({ length: room }, () => box(false)).join('');
+      const room = Math.max(Math.min(count, total - slot), 0);
+      const boxes = Array.from({ length: room }, () => box()).join('');
       return `<div class="widget-detail__column widget-detail__column--${column + 1}">${boxes}</div>`;
     })
     .join('');
-  // Whatever the columns do not take stands below them, across the full width.
-  const full = Array.from({ length: spanning }, () => box(true)).join('');
   // The column count is on the element because it decides how wide a column may
   // be: two columns have room to be wider than three, and the surplus goes back
   // to the canvas rather than into the cards (see .widget-detail__modules--2).
   return `<div class="widget-detail__modules widget-detail__modules--${layout.length}">
      <div class="widget-detail__columns">${columns}</div>
-     ${full}
    </div>`;
 }
 
