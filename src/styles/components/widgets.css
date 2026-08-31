@@ -273,7 +273,7 @@
  * are placed in, and their scroll container. */
 .widget-detail {
   position: absolute;
-  top: 72px; /* aligns with the widget stack (STACK_TOP in widgetStack.js) */
+  top: var(--space-6); /* aligns with the widget stack (STACK_TOP in widgetStack.js) */
   bottom: var(--space-4);
 
   /* The modules' share of the stage. europeMap.js reads the same token and
@@ -289,7 +289,22 @@
      drift a few px at rest, and both reach past what the grid measured. The
      grid takes what is left, so the arrangement still fits the screen. */
   padding: calc(var(--space-2) + var(--module-slack)) var(--space-4) var(--module-slack);
-  overflow-y: auto;
+
+  /* No *visible* scrollbar at L2. The arrangement is scaled to fit first
+     (widgetStack.js#fitModules + the .widget-detail__modules transform below).
+     Past the fit's floor — roughly 130% browser zoom and up — the block is
+     genuinely taller than the region, so the region scrolls, but the bar itself
+     is hidden: a native bar down this borderless panel reads as floating in the
+     middle of the map, attached to nothing. Content stays reachable by wheel,
+     trackpad and keyboard. A transform does not shrink the scroll box, which is
+     why hiding the bar, not overflow:hidden, is the mechanism. */
+  overflow: hidden auto; /* x clipped, y scrolls */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge */
+}
+
+.widget-detail::-webkit-scrollbar {
+  display: none; /* WebKit / Blink */
 }
 
 /* Which way the arrangement fans out from the widget that was clicked, as the
@@ -338,6 +353,21 @@
      three columns. Left at `auto` it widened past the region and handed the
      columns the surplus, putting the outer card out over the map. */
   min-width: 0;
+
+  /* Scaled down to whatever the region can show without a scrollbar
+     (widgetStack.js#fitModules sets --l2-fit-scale, floored at
+     --l2-fit-min-scale). Transform only, so layout is unchanged and the L3
+     focus math that reads module offsets still holds; .has-focus below turns it
+     off outright while a card is open. Origin is the corner the arrangement is
+     already packed against, so it shrinks away from the map. Set instantly, not
+     eased — it is a fit correction, not a move the user made, and easing it
+     would run a zoom into the L2→L3 transition. */
+  transform: scale(var(--l2-fit-scale, 1));
+  transform-origin: top left;
+}
+
+.widget-detail--right .widget-detail__modules {
+  transform-origin: top right;
 }
 
 /* The row the columns stand in. `stretch` gives all of them the tallest one's
@@ -1501,6 +1531,15 @@
    The columns collapse the moment their contents go absolute, so the region is
    told what they were holding (--modules-height) and keeps the space.
    --------------------------------------------------------------------------- */
+
+/* The fit-scale is an L2 device. At L3 every module is positioned outright from
+   offsets measured against the region's padding edge (widgetStack.js#moduleRect),
+   and a scale on this element would resolve those numbers against a shrunk box. */
+.widget-detail.has-focus .widget-detail__modules,
+.widget-detail.is-pinned .widget-detail__modules {
+  transform: none;
+}
+
 .widget-detail.is-pinned .widget-detail__modules {
   height: var(--modules-height, auto);
 

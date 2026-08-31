@@ -198,6 +198,14 @@
   --l2-region-gap: 40px; /* gap between modules and city map */
   --l2-region-margin: var(--space-4); /* margin around the L2 region */
 
+  /* Sanity stop on scaling the L2 arrangement down to fit its region
+     (widgetStack.js#fitModules) — kept low on purpose: a small arrangement still
+     beats a scrollbar, and anything below this is one click from its full self
+     at L3. Only the tallest criterion (Adoption) on a very short viewport
+     reaches it; there the foot of the arrangement is clipped rather than
+     scrolled. */
+  --l2-fit-min-scale: 0.4;
+
   /* Cycle‑network stroke widths on the map */
   --stroke-width-cycle-separated: 1.7px;
   --stroke-width-cycle-mixed: 1.7px;

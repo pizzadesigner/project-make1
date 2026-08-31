@@ -257,6 +257,16 @@ function buildDetail(sourceNodeFor, onSelectModule) {
   // only true while the arrangement they were read off is untouched.
   let resting = null;
 
+  // Re-fit the L2 arrangement whenever what it has to fit changes: the region's
+  // own size (a window resize, the overview panel crossing its breakpoint) and
+  // the module block's height, which settles a frame or two after sync() as the
+  // charts lay their SVGs out — the synchronous measure in sync() is only a
+  // first guess. Guarded inside fitModules against firing at L3. A transform
+  // does not change a content box, so scaling here never re-triggers this.
+  const fitObserver =
+    typeof ResizeObserver === 'function' ? new ResizeObserver(() => fitModules(node)) : null;
+  fitObserver?.observe(node);
+
   /** Empty the region: nothing left in the DOM, no pending timer, and every
    * chart and chip the modules mounted destroyed rather than orphaned — the
    * region is rebuilt from innerHTML, so anything not torn down here leaks its
@@ -316,6 +326,13 @@ function buildDetail(sourceNodeFor, onSelectModule) {
     mountModuleExtras(node, modules, contents);
     setFlightOrigin(node, sourceNodeFor(activeCriterion));
 
+    // Watch this sync's module block for the height it settles at once the
+    // charts have drawn (see the observer's note). observe() on an element
+    // already seen is a no-op; the previous block is gone, and the observer
+    // holds only a weak reference to it.
+    const moduleBlock = node.querySelector('.widget-detail__modules');
+    if (moduleBlock) fitObserver?.observe(moduleBlock);
+
     if (isNewOpen) {
       node.classList.add('is-animating');
       const duration = motionMs('--module-fly-duration');
@@ -337,6 +354,8 @@ function buildDetail(sourceNodeFor, onSelectModule) {
       resting = measureArrangement(node);
       renderCard(focusedKey, true);
       applyFocusLayout(false);
+    } else {
+      fitModules(node);
     }
     return undefined;
   }
@@ -438,7 +457,14 @@ function buildDetail(sourceNodeFor, onSelectModule) {
     else focusTimer = setTimeout(unpin, hold);
   }
 
-  return { node, sync, destroy: teardown };
+  return {
+    node,
+    sync,
+    destroy() {
+      fitObserver?.disconnect();
+      teardown();
+    },
+  };
 }
 
 /** What a click inside the region means, as the module key to open — null to
@@ -623,6 +649,37 @@ function railScale(rail, availableHeight) {
  * it. Unitless tokens (the scale floor) come back as the bare number. */
 function pxToken(name) {
   return Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0;
+}
+
+/** Scale the L2 arrangement down until it fits its region — no scrollbar, at any
+ * zoom.
+ *
+ * The region is a fixed box (the viewport minus the corner controls); the
+ * arrangement is the sum of cards whose content decides how tall they are, so on
+ * a shorter viewport — or at higher browser zoom, or with a longer translation —
+ * it overflows and the browser draws a bar down the middle of the map, attached
+ * to no surface. The region is overflow:hidden at L2 (widgets.css); this shrinks
+ * the module block with a transform so nothing is left outside to clip. Layout
+ * is untouched, so every offset the L3 focus math reads still means what it did,
+ * and .has-focus turns the transform off there.
+ *
+ * --l2-fit-min-scale is only a sanity stop on a division blowing up (a region a
+ * few px tall). It is deliberately low: a small arrangement still beats a
+ * scrollbar, and anything the shrink genuinely can't hold is a preview whose
+ * full text is one click away at L3. */
+function fitModules(node) {
+  if (node.hidden || node.classList.contains('has-focus')) return;
+  const modules = node.querySelector('.widget-detail__modules');
+  if (!modules) return;
+  // Measure the natural height, not whatever a previous fit left it at.
+  node.style.setProperty('--l2-fit-scale', '1');
+  const paddingBottom = Number.parseFloat(getComputedStyle(node).paddingBottom) || 0;
+  const available = node.clientHeight - modules.offsetTop - paddingBottom;
+  const needed = modules.scrollHeight;
+  if (available <= 0 || needed <= 0) return;
+  const floor = pxToken('--l2-fit-min-scale') || 0.5;
+  const scale = Math.max(floor, Math.min(1, available / needed));
+  node.style.setProperty('--l2-fit-scale', String(round(scale, 3)));
 }
 
 /** The region's classes: which side it opens on, when it is being re-synced
