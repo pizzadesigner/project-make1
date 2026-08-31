@@ -749,7 +749,7 @@ const CRITERION_COLUMNS = { impact: [3, 3], adoption: [2, 2, 1], problemFit: [1,
 // figure with its legend, Adoption's cost is the sum and what it bought, Problem
 // Fit's SDGs is the two targets. A criterion whose card is missing for this city
 // falls back to the figure or the empty shell below.
-const PREVIEW_CARD = { impact: 'cycleNetwork', adoption: 'cost', problemFit: 'sdgs' };
+const PREVIEW_CARD = { impact: 'cycleNetwork', adoption: 'cost', problemFit: 'problemFit' };
 
 function columnsFor(criterion) {
   return CRITERION_COLUMNS[criterion] ?? MODULE_COLUMNS;

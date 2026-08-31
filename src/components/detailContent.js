@@ -328,7 +328,7 @@ function mountChart(root, module, index, children, expanded) {
       // The card states the unit over the chart where it has words for it, so
       // the axis does not repeat it as a bare symbol. The chart keeps the unit
       // either way — its tooltips and its spoken summary are built from it.
-      unitLabel: !module.unitKey,
+      unitLabel: module.lines.length > 1 && !module.unitKey,
     }),
   });
 }

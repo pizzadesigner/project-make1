@@ -160,12 +160,12 @@ function drawThresholds(svg, x, y, thresholds, margin) {
 // point is the shape of local variation, which a real quantity like car
 // density (370-378) would lose entirely against a 0 baseline; it zooms to the
 // data's own range instead, like the reference chart this pattern came from.
-function yDomain(points, compact) {
+function yDomain(points) {
   const lo = min(points, (d) => d.value);
   const hi = max(points, (d) => d.value);
-  if (!compact) return [0, hi || 1];
   const span = hi - lo;
-  const pad = span > 0 ? span * 0.15 : Math.max(hi * 0.05, 1);
+  // 15% Puffer nach oben und unten, mindestens aber 1 Einheit
+  const pad = Math.max(span * 0.15, 1);
   return [lo - pad, hi + pad];
 }
 

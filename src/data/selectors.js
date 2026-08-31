@@ -937,12 +937,15 @@ const ADOPTION_POLICY = {
         url: 'https://www.stadt-koeln.de/service/adressen/amt-fuer-verkehrsmanagement',
       },
     ],
-    alliance: { key: 'ringfrei', url: 'https://nationaler-radverkehrsplan.de/de/praxis/ringfrei' },
+    alliance: { key: 'ringfrei', url: 'https://ringfrei.chayns.site/unterst%C3%BCtzerinnen' },
     members: [
       { key: 'adfc', url: 'https://koeln.adfc.de/artikel/uebersicht-zum-projekt-ringfrei' },
-      { key: 'agora' },
-      { key: 'einrichtungsmeile' },
-      { key: 'radkomm' },
+      { key: 'agora', url: 'https://www.agorakoeln.de/' },
+      {
+        key: 'einrichtungsmeile',
+        url: 'https://web.archive.org/web/20250815111910/http://www.einrichtungsmeile.koeln/',
+      },
+      { key: 'radkomm', url: 'https://radkomm.de/' },
       { key: 'vcd', url: 'https://nrw.vcd.org/der-vcd-in-nrw/koeln/' },
     ],
     // Each opens into what Cologne did and what another city should take from
