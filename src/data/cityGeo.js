@@ -18,31 +18,31 @@ export const CITY_GEO = {
     infrastructure: [
       {
         id: 'separated',
-        path: 'geo/infrastructure/gelbes_netz_4326.geojson',
+        path: 'geo/infrastructure/optimized/gelbes_netz_4326.geojson',
         className: 'europe-map__cycle-path--separated',
         colorVar: '--color-cycle-separated',
       },
       {
         id: 'mixed',
-        path: 'geo/infrastructure/gruenes_netz_4326.geojson',
+        path: 'geo/infrastructure/optimized/gruenes_netz_4326.geojson',
         className: 'europe-map__cycle-path--mixed',
         colorVar: '--color-cycle-mixed',
       },
       {
         id: 'offstreet',
-        path: 'geo/infrastructure/strassenunabhaengige_verbindungen_4326.geojson',
+        path: 'geo/infrastructure/optimized/strassenunabhaengige_verbindungen_4326.geojson',
         className: 'europe-map__cycle-path--offstreet',
         colorVar: '--color-cycle-offstreet',
       },
       {
         id: 'ringe-gruen',
-        path: 'geo/infrastructure/koeln-ringe-gruen.geojson',
+        path: 'geo/infrastructure/optimized/koeln-ringe-gruen.geojson',
         className: 'europe-map__cycle-path--highlight',
         context: 'problemFit',
       },
       {
         id: 'ringe-gelb',
-        path: 'geo/infrastructure/koeln-ringe-gelb.geojson',
+        path: 'geo/infrastructure/optimized/koeln-ringe-gelb.geojson',
         className: 'europe-map__cycle-path--highlight',
         context: 'problemFit',
       },
