@@ -685,7 +685,7 @@ const CRITERION_COLUMNS = { impact: [3, 3], adoption: [3, 1], problemFit: [1, 1,
 // figure with its legend, Adoption's cost is the sum and what it bought, Problem
 // Fit's SDGs is the two targets. A criterion whose card is missing for this city
 // falls back to the figure or the empty shell below.
-const PREVIEW_CARD = { impact: 'cycleNetwork', adoption: 'cost', problemFit: 'sdgs' };
+const PREVIEW_CARD = { impact: 'cycleNetwork', adoption: 'cost', problemFit: 'problemFit' };
 
 // How many of a criterion's cards stand below the columns rather than inside
 // one, spanning the whole arrangement. Adoption's timeline is the only one so

@@ -1,8 +1,8 @@
-city_slug,year,event
-koeln,2015,Gründung von #RingFrei und Vorstellung des 10-Punkte-Plans
-koeln,2016,Ratsbeschluss zur Prüfung und Umsetzung des 10-Punkte-Plans
-koeln,2019,Auszeichnung von #RingFrei mit dem Deutschen Fahrradpreis (Kategorie Kommunikation)
-koeln,2019,Einführung von Tempo 30 auf den gesamten Ringen
-koeln,2022,Fertigstellung von drei Kilometern neuen Radfahrstreifen
-koeln,2023,Lückenschluss am Rudolfplatz (neun Kilometer durchgängig)
-koeln,2024,Letzter Lückenschluss am Barbarossaplatz – 10 km durchgängige Radverkehrsführung
+city_slug,year,event,source_url,source_label,source_accessed
+koeln,2015,Gründung von #RingFrei und Vorstellung des 10-Punkte-Plans,https://koeln.adfc.de/artikel/uebersicht-zum-projekt-ringfrei,ADFC Köln – Übersicht zum Projekt #RingFrei,
+koeln,2016,Ratsbeschluss zur Prüfung und Umsetzung des 10-Punkte-Plans,https://www.stadt-koeln.de/mediaasset/content/pdf66/radverkehr/radverkehrskonzept-innenstadt-gutachten.pdf,Stadt Köln – Radverkehrskonzept Innenstadt (Gutachten),
+koeln,2019,Auszeichnung von #RingFrei mit dem Deutschen Fahrradpreis (Kategorie Kommunikation),https://www.der-deutsche-fahrradpreis.de/preistraeger-2019/,Deutscher Fahrradpreis – Preisträger 2019,
+koeln,2019,Einführung von Tempo 30 auf den gesamten Ringen,https://www.ksta.de/koeln/koelner-innenstadt/koeln-bald-durchgaengig-tempo-30-auf-den-gesamten-koelner-ringen-210616,Kölner Stadt-Anzeiger – Tempo 30 auf den Ringen,
+koeln,2022,Fertigstellung von drei Kilometern neuen Radfahrstreifen,https://www.stadt-koeln.de/politik-und-verwaltung/presse/mitteilungen/24596/index.html,Stadt Köln – Pressemitteilung 24596,
+koeln,2023,Lückenschluss am Rudolfplatz (neun Kilometer durchgängig),https://www.stadt-koeln.de/politik-und-verwaltung/presseservice/neun-kilometer-fahrradinfrastruktur-auf-den-koelner-ringen,Stadt Köln – Neun Kilometer Fahrradinfrastruktur,
+koeln,2024,Letzter Lückenschluss am Barbarossaplatz – 10 km durchgängige Radverkehrsführung,https://www.stadt-koeln.de/politik-und-verwaltung/presseservice/meilenstein-fuer-den-radverkehr,Stadt Köln – Meilenstein für den Radverkehr,

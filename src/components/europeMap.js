@@ -38,11 +38,11 @@ const WIDGET_STRIP_MAX_FRACTION = 0.22;
 const CITY_FILL = 0.75;
 // L2 pushes the city into one half and zooms a touch deeper — a city-level
 // cutout, freeing the opposite half for the widget's modules.
-const CITY_L2_ZOOM = 1.2;
+//const CITY_L2_ZOOM = 1.2;
 // Impact's L2 goes deeper still: the city is pushed almost off-canvas on its
 // side (just a corner staying visible) so its modules can use most of the freed
 // width for the sub-metric breakdown.
-const IMPACT_L2_ZOOM = 2.4;
+const IMPACT_L2_ZOOM = 5;
 // Above this scale, the country/border geometry is swapped for a flat backdrop
 // (see buildDom) — well above FOCUS_ZOOM (the regional zoom for cities without a
 // silhouette), well below a real city fit (40x-120x+).
@@ -623,12 +623,12 @@ function cityFitTransform(size, info) {
  * inner edge now lands on the same split the modules are sized from, whatever
  * shape the stage is. */
 function cityL2Transform(size, info, side, deepZoom) {
-  const zoomMultiplier = deepZoom ? IMPACT_L2_ZOOM : CITY_L2_ZOOM;
+  const zoomMultiplier = deepZoom ? IMPACT_L2_ZOOM : IMPACT_L2_ZOOM;
   const scale = Math.min(info.scale * zoomMultiplier, MAX_ZOOM);
   const edge = l2SplitEdge(size.width);
   // Half the city's own width once scaled — the distance from its centre to the
   // edge that faces the modules.
-  const reach = info.halfWidth * scale;
+  const reach = (info.halfWidth / 1.5) * scale;
   const anchorX = side === 'left' ? edge - reach : size.width - edge + reach;
   return zoomIdentity
     .translate(anchorX, size.height / 2)
