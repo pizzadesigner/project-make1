@@ -9,7 +9,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "infra:build": "node scripts/infrastructure-build.mjs",
+    "build": "npm run infra:build && vite build",
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
