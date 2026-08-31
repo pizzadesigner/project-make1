@@ -149,13 +149,13 @@ describe('entering L2', () => {
   it('opens the region with its full set of modules', () => {
     stack.update({ ...props, activeCriterion: 'adoption' });
     expect(region().hidden).toBe(false);
-    // Adoption is five cards: four in two columns and the timeline below them.
+    // Adoption is five cards, in two columns (three then two).
     expect(modules()).toHaveLength(5);
   });
 
-  // Each module's position in the three staggered columns, the order it flies
-  // out in, and the path it takes all hang off this class (see widgets.css), so
-  // a module without one would land on top of module 1.
+  // Each module's position in the staggered columns, the order it flies out in,
+  // and the path it takes all hang off this class (see widgets.css), so a module
+  // without one would land on top of module 1.
   it('gives every module its own place in the arrangement', () => {
     stack.update({ ...props, activeCriterion: 'adoption' });
     const places = [...modules()].map((module) =>
@@ -997,14 +997,15 @@ describe('the adoption cards', () => {
     expect(card(1).querySelectorAll('.module__link-group')).toHaveLength(2);
   });
 
-  // The timeline is one card read two ways. In a column it is dots and nothing
-  // else — the shape of the whole story — and the hover names the event. Opened,
-  // the names are written beside the dots and the hover brings the account
-  // instead: at each size, what is written is what there is room to read.
-  it('shows the timeline as dots alone, and names them once opened', () => {
+  // The timeline is one card read two ways. In a column it is a compact vertical
+  // track — a mark and its date per event, no wrapped titles — and the hover
+  // names the event. Opened, it becomes the serpentine with the titles written
+  // out and the hover bringing the account instead.
+  it('shows the timeline as a bare track, and names the events once opened', () => {
     open();
     const events = card(4).querySelectorAll('.timeline__event');
     expect(events).toHaveLength(3);
+    expect(card(4).querySelector('.timeline--vertical')).not.toBeNull();
     expect(card(4).querySelectorAll('.timeline__label')).toHaveLength(0);
     // The text a hover shows rides in the event's <desc>, which is what the hint
     // layer draws and what a screen reader takes as the description.

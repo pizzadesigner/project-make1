@@ -78,6 +78,19 @@
   text-anchor: middle;
 }
 
+/* The compact reading (timelineChart.js#drawVertical): a straight track down the
+   card rather than the serpentine. Its date and phase-name labels sit to the
+   right of the track and read toward it, so they anchor at the start and centre
+   on the mark rather than sitting above it. */
+.timeline--vertical .timeline__when {
+  text-anchor: start;
+  dominant-baseline: central;
+}
+
+.timeline--vertical .timeline__phase {
+  text-anchor: start;
+}
+
 .timeline__label {
   fill: var(--color-text);
   text-anchor: middle;

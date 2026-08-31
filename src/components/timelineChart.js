@@ -1,18 +1,20 @@
-// The project's own story as a chart: a serpentine track that runs across, turns
-// and runs back, with one dot per event on it.
+// The project's own story as a chart, with two readings the card switches
+// between:
 //
-// Drawn the way the other charts here are — one SVG in a fixed viewBox scaled to
-// the card's width (lineChart.js works the same way), marks in the accent colour
+//   - In a column (!expanded): a straight track down the card, one mark per
+//     event with its date beside it and each phase's name at the head of its
+//     run — the shape of the whole story at a glance, milestone-line style
+//     (drawVertical, and milestoneChart.js is the near neighbour). Hovering a
+//     mark names the event.
+//   - Opened into the focus slot (expanded): a serpentine that runs across,
+//     turns and runs back, with the event titles written under the dots and the
+//     account on hover (drawSerpentine).
+//
+// Both are drawn the way the other charts here are — marks in the phase colour
 // with a ring the colour of the canvas behind them, rules at the grid's weight,
-// labels at 12 viewBox units in the muted text colour. It began as HTML dots on
-// a CSS grid, which worked but read as a different kind of object from the
-// charts beside it.
-//
-// Two readings, as the card has. In a column the track carries dots and nothing
-// else — the shape of the whole thing at a glance — and hovering a dot names the
-// event. Opened, the names are written under the dots and hovering brings the
-// account instead. At each size, what is written is what there is room to read,
-// and the hover holds the next layer down.
+// muted 12-unit labels. The serpentine scales a fixed viewBox to the card;
+// the vertical reading measures the card and draws at its width (1 unit = 1px),
+// like milestoneChart, because a fixed wide viewBox would shrink its text.
 //
 // The hover box is the floating one every other card uses (hintLayer.js), not
 // the charts' own `.tooltip`: that one is positioned inside its container, and
@@ -38,11 +40,9 @@ const MARGIN = { top: 24, bottom: 14 };
 // A row is two lanes: the track along the top, and the text under it. Keeping
 // them apart is half of why nothing overlaps — the turn drops through the outer
 // margin, past the text lane, and never through it. `mark` is how far the track
-// sits below the row's top; `date` and `title` are measured from the mark.
-const LAYOUT = {
-  compact: { perRow: 4, row: 44, mark: 22 },
-  expanded: { perRow: 4, row: 108, mark: 30, date: 20, title: 38, line: 15 },
-};
+// sits below the row's top; `date` and `title` are measured from the mark. This
+// is the serpentine's grid; the compact reading has its own (V, below).
+const LAYOUT = { perRow: 4, row: 108, mark: 30, date: 20, title: 38, line: 15 };
 
 const MARK = 6;
 
@@ -61,6 +61,15 @@ const TURN_CLEARANCE = 10;
 // bow still clipping the outer titles — it cleared them only at its deepest.
 const BOW_REACH = 0.75;
 
+// The compact (vertical) reading's geometry, in viewBox units = pixels — the
+// card is measured, so 12-unit text stays 12-unit text. The track hugs the left
+// edge; the date and, at the head of each phase run, its name sit to the right
+// of it. `run` is the extra room where a new phase begins, so its name clears
+// the previous run's last date; `padTop` holds the first run's name off the top
+// edge.
+const V = { line: 12, text: 24, step: 26, run: 14, padTop: 28, padBottom: 14, phaseRise: 15 };
+const V_FALLBACK_WIDTH = 300;
+
 /**
  * @param {HTMLElement} container
  * @param {{ events: object[], phases: object[], expanded?: boolean }} props
@@ -68,35 +77,93 @@ const BOW_REACH = 0.75;
  */
 export function render(container, props) {
   const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('class', 'timeline');
   svg.setAttribute('role', 'group');
   container.append(svg);
 
+  let current = props;
+  // The width the vertical reading was last drawn at, so its observer redraws
+  // only on a real change (the serpentine ignores width — it scales a fixed
+  // viewBox — so it never needs one).
+  let drawnAt = 0;
+
   function draw(next) {
-    const expanded = Boolean(next.expanded);
-    const lay = expanded ? LAYOUT.expanded : LAYOUT.compact;
-    const box = frame(lay.perRow, expanded);
-    const places = serpentine(next.events.length, lay.perRow);
+    current = next;
+    svg.setAttribute('aria-label', t('adoption.timeline'));
+    if (next.expanded) drawSerpentine(next);
+    else drawVertical(next);
+  }
+
+  /** The opened reading: the serpentine track with the event titles under it. */
+  function drawSerpentine(next) {
+    svg.setAttribute('class', 'timeline');
+    svg.removeAttribute('preserveAspectRatio');
+    const box = frame(LAYOUT.perRow);
+    const places = serpentine(next.events.length, LAYOUT.perRow);
     const rows = Math.max(...places.map((place) => place.row)) + 1;
-    const height = MARGIN.top + rows * lay.row + MARGIN.bottom;
-    const points = places.map((place) => centre(place, box, lay.row, lay.mark));
+    const height = MARGIN.top + rows * LAYOUT.row + MARGIN.bottom;
+    const points = places.map((place) => centre(place, box, LAYOUT.row, LAYOUT.mark));
 
     svg.setAttribute('viewBox', `0 0 ${W} ${height}`);
-    svg.setAttribute('aria-label', t('adoption.timeline'));
     svg.replaceChildren(
-      ...rules(rows, lay, box),
-      ...bands(next, places, points, lay, box),
-      ...track(next, places, points, lay, box),
-      ...marks(next, points, lay, box, expanded),
+      ...rules(rows, LAYOUT, box),
+      ...bands(next, places, points, LAYOUT, box),
+      ...track(next, places, points, LAYOUT, box),
+      ...marks(next, points, LAYOUT, box),
     );
+    for (const line of svg.querySelectorAll('.timeline__line')) drawOn(line);
+  }
+
+  /** The compact reading: a straight track down the card, one mark per event
+   * with its date, and each phase's name at the head of its run. */
+  function drawVertical(next) {
+    svg.setAttribute('class', 'timeline timeline--vertical');
+    // 1 unit = 1px, top-left anchored, so the track sits where it is drawn
+    // whatever the card's height turns out to be (milestoneChart does the same).
+    svg.setAttribute('preserveAspectRatio', 'xMinYMin meet');
+    const width = container.clientWidth || V_FALLBACK_WIDTH;
+    drawnAt = width;
+    const events = next.events ?? [];
+    if (events.length === 0) {
+      svg.setAttribute('viewBox', `0 0 ${round(width)} ${V.padTop + V.padBottom}`);
+      svg.replaceChildren();
+      return;
+    }
+    // Marks are placed by event order, not by date — the events are not points
+    // in time (selectors.js#timelineModule) — with a little extra room wherever
+    // a new phase begins.
+    const ys = [];
+    let y = V.padTop;
+    events.forEach((event, index) => {
+      if (index > 0 && event.phase !== events[index - 1].phase) y += V.run;
+      ys.push(y);
+      y += V.step;
+    });
+    const height = ys[ys.length - 1] + V.padBottom;
+    svg.setAttribute('viewBox', `0 0 ${round(width)} ${round(height)}`);
+    svg.replaceChildren(...verticalTrack(events, ys), ...verticalMarks(events, ys));
     for (const line of svg.querySelectorAll('.timeline__line')) drawOn(line);
   }
 
   draw(props);
 
+  // The card's width at mount is not the width it settles at — a card opening
+  // into the focus slot is measured before it is flown to its new size — so the
+  // vertical reading redraws when the width actually changes. milestoneChart.js
+  // does the same for the same reason.
+  const observer =
+    typeof ResizeObserver === 'function'
+      ? new ResizeObserver(() => {
+          if (!current.expanded && container.clientWidth && container.clientWidth !== drawnAt) {
+            draw(current);
+          }
+        })
+      : null;
+  observer?.observe(container);
+
   return {
     update: draw,
     destroy() {
+      observer?.disconnect();
       svg.remove();
     },
   };
@@ -123,17 +190,9 @@ function serpentine(count, perRow) {
  * two neighbours can never touch), the bow must clear half of that, and the
  * margin must hold the bow. Substituting the three gives the margin directly,
  * and the wrap limit falls out of the column width that is left.
- *
- * The compact reading writes no labels at all, so its lane only has to hold the
- * bow.
  */
-function frame(perRow, expanded) {
+function frame(perRow) {
   const gaps = Math.max(perRow - 1, 1);
-  if (!expanded) {
-    const margin = 56;
-    const step = (W - 2 * margin) / gaps;
-    return { margin, step, bow: Math.min(step * 0.42, margin - 8), wrapAt: 0 };
-  }
   // Solved, not chosen. A label may take LABEL_SHARE of the gap between columns,
   // so two neighbours can never touch; the curve has to reach past half of that
   // plus a clearance, which costs bow/BOW_REACH of lane; and the margin has to
@@ -273,14 +332,14 @@ function track(props, places, points, lay, box) {
   );
 }
 
-/** One mark per event, and — once the card is opened — its date and title under
- * it.
+/** One mark per event on the serpentine, with its date and title in the text
+ * lane under the track.
  *
  * A focusable group rather than a bare circle: the charts here leave their dots
  * out of the tab order, which makes their hovers mouse-only, and an event on a
  * timeline is content rather than a point on a line. The `<desc>` is what the
  * hint layer draws and what a screen reader reads as the description. */
-function marks(props, points, lay, box, expanded) {
+function marks(props, points, lay, box) {
   return props.events.map((event, index) => {
     const [x, y] = points[index];
     const group = el('g', {
@@ -292,7 +351,7 @@ function marks(props, points, lay, box, expanded) {
     group.dataset.hint = '';
     const desc = document.createElementNS(SVG_NS, 'desc');
     desc.setAttribute('class', 'link-hint');
-    desc.textContent = expanded ? event.details : event.title;
+    desc.textContent = event.details;
     group.append(
       desc,
       el('circle', { class: 'timeline__mark', cx: x, cy: y, r: MARK }),
@@ -300,17 +359,71 @@ function marks(props, points, lay, box, expanded) {
       // not have to find a six-unit circle.
       el('circle', { class: 'timeline__hit', cx: x, cy: y, r: MARK * 3 }),
     );
-    if (expanded) {
-      // In the row's text lane, under the track and never across it. Kept inside
-      // the chart as well: the outer columns sit on the margin, and a title
-      // centred on one would otherwise run off the side.
-      group.append(text(inside(x, event.when), y + lay.date, event.when, 'timeline__when'));
-      wrap(event.title, box.wrapAt).forEach((line, row) => {
-        group.append(
-          text(inside(x, line), y + lay.title + row * lay.line, line, 'timeline__label'),
-        );
-      });
+    // In the row's text lane, under the track and never across it. Kept inside
+    // the chart as well: the outer columns sit on the margin, and a title
+    // centred on one would otherwise run off the side.
+    group.append(text(inside(x, event.when), y + lay.date, event.when, 'timeline__when'));
+    wrap(event.title, box.wrapAt).forEach((line, row) => {
+      group.append(text(inside(x, line), y + lay.title + row * lay.line, line, 'timeline__label'));
+    });
+    return group;
+  });
+}
+
+/** The compact track, one path per phase run so each stretch carries that
+ * phase's colour. A run starts at the previous event's mark, not its own, so
+ * the colour changes without a gap opening in the line (the same trick the
+ * serpentine's `track` uses). */
+function verticalTrack(events, ys) {
+  const out = [];
+  let start = 0;
+  events.forEach((event, index) => {
+    const last = index === events.length - 1;
+    if (!last && events[index + 1].phase === event.phase) return;
+    const line = d3path();
+    line.moveTo(V.line, ys[start === 0 ? 0 : start - 1]);
+    line.lineTo(V.line, ys[index]);
+    out.push(
+      el('path', { class: `timeline__line timeline__line--${event.phase}`, d: line.toString() }),
+    );
+    start = index + 1;
+  });
+  return out;
+}
+
+/** One mark per event on the compact track: its date beside it, and — where a
+ * phase run begins — that phase's name above the first date. A focusable group
+ * for the same reason as the serpentine's marks: an event is content, and its
+ * `<desc>` is what the hint layer and a screen reader read. */
+function verticalMarks(events, ys) {
+  return events.map((event, index) => {
+    const cy = ys[index];
+    const group = el('g', {
+      class: `timeline__event timeline__event--${event.phase}${event.planned ? ' timeline__event--planned' : ''}`,
+      tabindex: '0',
+      role: 'button',
+      'aria-label': `${event.when}: ${event.title}`,
+    });
+    group.dataset.hint = '';
+    const desc = document.createElementNS(SVG_NS, 'desc');
+    desc.setAttribute('class', 'link-hint');
+    desc.textContent = event.title;
+    group.append(
+      desc,
+      el('circle', { class: 'timeline__mark', cx: V.line, cy, r: MARK }),
+      el('circle', { class: 'timeline__hit', cx: V.line, cy, r: MARK * 3 }),
+    );
+    if (index === 0 || events[index - 1].phase !== event.phase) {
+      group.append(
+        text(
+          V.text,
+          round(cy - V.phaseRise),
+          t(`adoption.timeline.phase.${event.phase}`),
+          'timeline__phase',
+        ),
+      );
     }
+    group.append(text(V.text, round(cy), event.when, 'timeline__when'));
     return group;
   });
 }
@@ -363,4 +476,11 @@ function text(x, y, content, className) {
   const node = el('text', { class: className, x, y });
   node.textContent = content;
   return node;
+}
+
+/** Coordinates to a tenth of a unit — full precision writes eleven decimal
+ * places into the DOM and reads no better. Only the vertical reading needs it;
+ * the serpentine's are already whole from its integer grid. */
+function round(value) {
+  return Math.round(value * 10) / 10;
 }

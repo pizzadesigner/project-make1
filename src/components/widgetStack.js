@@ -257,6 +257,16 @@ function buildDetail(sourceNodeFor, onSelectModule) {
   // only true while the arrangement they were read off is untouched.
   let resting = null;
 
+  // Re-fit the L2 arrangement whenever what it has to fit changes: the region's
+  // own size (a window resize, the overview panel crossing its breakpoint) and
+  // the module block's height, which settles a frame or two after sync() as the
+  // charts lay their SVGs out — the synchronous measure in sync() is only a
+  // first guess. Guarded inside fitModules against firing at L3. A transform
+  // does not change a content box, so scaling here never re-triggers this.
+  const fitObserver =
+    typeof ResizeObserver === 'function' ? new ResizeObserver(() => fitModules(node)) : null;
+  fitObserver?.observe(node);
+
   /** Empty the region: nothing left in the DOM, no pending timer, and every
    * chart and chip the modules mounted destroyed rather than orphaned — the
    * region is rebuilt from innerHTML, so anything not torn down here leaks its
@@ -316,6 +326,13 @@ function buildDetail(sourceNodeFor, onSelectModule) {
     mountModuleExtras(node, modules, contents);
     setFlightOrigin(node, sourceNodeFor(activeCriterion));
 
+    // Watch this sync's module block for the height it settles at once the
+    // charts have drawn (see the observer's note). observe() on an element
+    // already seen is a no-op; the previous block is gone, and the observer
+    // holds only a weak reference to it.
+    const moduleBlock = node.querySelector('.widget-detail__modules');
+    if (moduleBlock) fitObserver?.observe(moduleBlock);
+
     if (isNewOpen) {
       node.classList.add('is-animating');
       const duration = motionMs('--module-fly-duration');
@@ -337,6 +354,8 @@ function buildDetail(sourceNodeFor, onSelectModule) {
       resting = measureArrangement(node);
       renderCard(focusedKey, true);
       applyFocusLayout(false);
+    } else {
+      fitModules(node);
     }
     return undefined;
   }
@@ -438,7 +457,14 @@ function buildDetail(sourceNodeFor, onSelectModule) {
     else focusTimer = setTimeout(unpin, hold);
   }
 
-  return { node, sync, destroy: teardown };
+  return {
+    node,
+    sync,
+    destroy() {
+      fitObserver?.disconnect();
+      teardown();
+    },
+  };
 }
 
 /** What a click inside the region means, as the module key to open — null to
@@ -561,12 +587,10 @@ function focusPlaces(arrangement, focusIndex, side) {
   const scale = railScale(rail, area.height - railGap * (rail.length - 1));
   // What the rail actually takes, which is not always what it was asked for: a
   // card held at the scale floor stays wider than the nominal width, and one
-  // that overflows the rail is scaled down to it instead (see below). Measured
-  // rather than assumed, so the slot beside it gets the room that is really left.
-  // What the rail takes: the typical card at the shared scale. Typical, not
-  // widest, because one card can be nothing like the others — Adoption's
-  // timeline spans both columns — and letting it set the width would give the
-  // rail twice the room it needs and the slot beside it half.
+  // that overflows the rail is scaled down to it instead (see below). The
+  // typical card sets it, not the widest — one odd card among five should move
+  // the rail's width by nothing — so the slot beside it gets the room that is
+  // really left.
   const taken = medianWidth(rail) * scale;
 
   let y = area.y;
@@ -601,8 +625,7 @@ function focusPlaces(arrangement, focusIndex, side) {
 }
 
 /** The width of the rail's typical card. The middle of the sorted widths rather
- * than the mean, so one card of a different order — a spanning one — moves it by
- * nothing at all. */
+ * than the mean, so one card of a different order moves it by nothing at all. */
 function medianWidth(rail) {
   const widths = rail.map((box) => box.width).sort((a, b) => a - b);
   return widths[Math.floor((widths.length - 1) / 2)];
@@ -623,6 +646,37 @@ function railScale(rail, availableHeight) {
  * it. Unitless tokens (the scale floor) come back as the bare number. */
 function pxToken(name) {
   return Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0;
+}
+
+/** Scale the L2 arrangement down until it fits its region — no scrollbar, at any
+ * zoom.
+ *
+ * The region is a fixed box (the viewport minus the corner controls); the
+ * arrangement is the sum of cards whose content decides how tall they are, so on
+ * a shorter viewport — or at higher browser zoom, or with a longer translation —
+ * it overflows and the browser draws a bar down the middle of the map, attached
+ * to no surface. The region is overflow:hidden at L2 (widgets.css); this shrinks
+ * the module block with a transform so nothing is left outside to clip. Layout
+ * is untouched, so every offset the L3 focus math reads still means what it did,
+ * and .has-focus turns the transform off there.
+ *
+ * --l2-fit-min-scale is only a sanity stop on a division blowing up (a region a
+ * few px tall). It is deliberately low: a small arrangement still beats a
+ * scrollbar, and anything the shrink genuinely can't hold is a preview whose
+ * full text is one click away at L3. */
+function fitModules(node) {
+  if (node.hidden || node.classList.contains('has-focus')) return;
+  const modules = node.querySelector('.widget-detail__modules');
+  if (!modules) return;
+  // Measure the natural height, not whatever a previous fit left it at.
+  node.style.setProperty('--l2-fit-scale', '1');
+  const paddingBottom = Number.parseFloat(getComputedStyle(node).paddingBottom) || 0;
+  const available = node.clientHeight - modules.offsetTop - paddingBottom;
+  const needed = modules.scrollHeight;
+  if (available <= 0 || needed <= 0) return;
+  const floor = pxToken('--l2-fit-min-scale') || 0.5;
+  const scale = Math.max(floor, Math.min(1, available / needed));
+  node.style.setProperty('--l2-fit-scale', String(round(scale, 3)));
 }
 
 /** The region's classes: which side it opens on, when it is being re-synced
@@ -673,12 +727,13 @@ function modulesFor(activeCriterion, props) {
  * whole arrangement — they carry the entrance order and the nudges. */
 const MODULE_COLUMNS = [3, 2, 1];
 
-/** How many cards stand in each column, per criterion. Impact's six go in two
- * columns of three; Adoption's four and Problem Fit's four go two and two. The
- * 3/2/1 stagger every criterion started on left the last card alone in a column
- * of its own, which read as a leftover rather than as the last of a set — and
- * two columns leave room for the cards to be wider, which the charts want. */
-const CRITERION_COLUMNS = { impact: [3, 3], adoption: [3, 1], problemFit: [1, 1, 2] };
+/** How many cards stand in each column, per criterion, in reading order. Impact's
+ * six go two columns of three; Adoption's five a column of three then one of two;
+ * Problem Fit's four across three columns (1 / 1 / 2). Two columns leave the
+ * cards room to be wider, which the charts want, and the last card never stands
+ * alone in a column of its own — which read as a leftover rather than the last
+ * of a set. */
+const CRITERION_COLUMNS = { impact: [3, 3], adoption: [3, 2], problemFit: [1, 1, 2] };
 
 // Which of a criterion's cards its L1 widget is drawn from. The card has to be
 // one that carries its own content at that size: Impact's cycle network is a
@@ -686,13 +741,6 @@ const CRITERION_COLUMNS = { impact: [3, 3], adoption: [3, 1], problemFit: [1, 1,
 // Fit's SDGs is the two targets. A criterion whose card is missing for this city
 // falls back to the figure or the empty shell below.
 const PREVIEW_CARD = { impact: 'cycleNetwork', adoption: 'cost', problemFit: 'problemFit' };
-
-// How many of a criterion's cards stand below the columns rather than inside
-// one, spanning the whole arrangement. Adoption's timeline is the only one so
-// far: a timeline runs along its long axis, so the widest place in the
-// arrangement is the one that suits it — and spanning both columns is also what
-// makes it read as belonging to neither.
-const CRITERION_SPANNING = { adoption: 1 };
 
 function columnsFor(criterion) {
   return CRITERION_COLUMNS[criterion] ?? MODULE_COLUMNS;
@@ -704,31 +752,26 @@ function columnsFor(criterion) {
 function moduleScaffold(modules = [], criterion = null) {
   let slot = 0;
   const layout = columnsFor(criterion);
-  const spanning = CRITERION_SPANNING[criterion] ?? 0;
   const total = Math.min(MODULE_SLOTS, modules.length || MODULE_SLOTS);
-  const box = (span) => {
+  const box = () => {
     const index = slot;
     slot += 1;
-    const wide = span ? ' widget-detail__module--span' : '';
-    return `<div class="widget-detail__module widget-detail__module--${index + 1}${wide}">
+    return `<div class="widget-detail__module widget-detail__module--${index + 1}">
        ${cardHtml(modules[index], index)}
      </div>`;
   };
   const columns = layout
     .map((count, column) => {
-      const room = Math.max(Math.min(count, total - spanning - slot), 0);
-      const boxes = Array.from({ length: room }, () => box(false)).join('');
+      const room = Math.max(Math.min(count, total - slot), 0);
+      const boxes = Array.from({ length: room }, () => box()).join('');
       return `<div class="widget-detail__column widget-detail__column--${column + 1}">${boxes}</div>`;
     })
     .join('');
-  // Whatever the columns do not take stands below them, across the full width.
-  const full = Array.from({ length: spanning }, () => box(true)).join('');
   // The column count is on the element because it decides how wide a column may
   // be: two columns have room to be wider than three, and the surplus goes back
   // to the canvas rather than into the cards (see .widget-detail__modules--2).
   return `<div class="widget-detail__modules widget-detail__modules--${layout.length}">
      <div class="widget-detail__columns">${columns}</div>
-     ${full}
    </div>`;
 }
 
