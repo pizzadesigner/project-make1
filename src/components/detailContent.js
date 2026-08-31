@@ -329,6 +329,12 @@ function mountChart(root, module, index, children, expanded) {
       // the axis does not repeat it as a bare symbol. The chart keeps the unit
       // either way — its tooltips and its spoken summary are built from it.
       unitLabel: module.lines.length > 1 && !module.unitKey,
+      // Where the series never approaches 0, anchor the axis at a stated value
+      // so its foot is not mistaken for a 0 baseline (selectors.js#AXIS_FLOOR).
+      axisFloor: module.axisFloor,
+      // EU / WHO limits only on the opened chart — a sparkline has no room to
+      // carry them, and drawThresholds keeps only the ones within range.
+      thresholds: expanded ? module.thresholds : undefined,
     }),
   });
 }

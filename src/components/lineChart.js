@@ -64,11 +64,17 @@ export function render(container, props) {
   const x = scaleLinear()
     .domain(extent(points, (d) => d.year))
     .range([margin.left, W - margin.right]);
-  // One scale for every line — see the note at the top of this file.
+  // One scale for every line — see the note at the top of this file. The floor
+  // only applies where there is an axis to read: a compact sparkline shows shape,
+  // not values, so it stays zoomed to the data.
+  const floor = compact ? null : (props.axisFloor ?? null);
   const y = scaleLinear()
-    .domain(yDomain(points, compact))
+    .domain(yDomain(points, { floor }))
     .nice()
     .range([height - margin.bottom, margin.top]);
+  // .nice() rounds the domain outward for tick-friendliness; pull the bottom
+  // back to the exact floor so the axis starts on the stated value.
+  if (floor != null) y.domain([floor, y.domain()[1]]);
 
   if (!compact) drawAxes(svg, x, y, points, props);
   // One line needs no naming — the chart's own label says what it is; several
@@ -79,7 +85,9 @@ export function render(container, props) {
     drawDots(svg, x, y, entry, compact, { container, tooltip, props, named });
   }
 
-  drawThresholds(svg, x, y, thresholds, margin);
+  // Limit lines belong on the read-in-full chart, not the sparkline — and
+  // detailContent only passes them when expanded anyway.
+  if (!compact) drawThresholds(svg, x, y, thresholds, margin);
 
   return {
     update() {},
@@ -90,87 +98,80 @@ export function render(container, props) {
   };
 }
 
+// EU / WHO air-quality limits, as faint reference lines in each pollutant's own
+// colour. Only limits that fall inside the plotted range are drawn — a line
+// pinned to the chart edge (or off it) would be a mark the data has not earned,
+// so a limit far above the city's values simply does not appear. The pollutant
+// colour is set inline (it is data, keyed by series); the dash and the fade are
+// in line-chart.css.
 function drawThresholds(svg, x, y, thresholds, margin) {
   if (!thresholds || thresholds.length === 0) return;
-  const right = x.domain()[1]; // oder wir nehmen den rechten Rand der x-Achse
+  const [bottom, top] = y.range();
+  const xRight = x(x.domain()[1]) || W - margin.right;
 
-  for (const entry of thresholds) {
-    const { eu, who, key } = entry;
+  for (const { eu, who, key } of thresholds) {
     const color =
       getComputedStyle(document.documentElement).getPropertyValue(`--color-air-${key}`).trim() ||
-      '#888';
+      'currentColor';
+    const limits = [
+      { kind: 'eu', value: eu?.value, label: t('impact.limit.eu') },
+      { kind: 'who', value: who?.value, label: t('impact.limit.who') },
+    ];
+    for (const limit of limits) {
+      if (limit.value == null) continue;
+      const yy = y(limit.value);
+      if (!Number.isFinite(yy) || yy < top || yy > bottom) continue;
 
-    // EU-Grenzwert
-    const euY = y(eu.value);
-    if (isFinite(euY)) {
-      svg
-        .append('line')
-        .attr('class', 'line-chart__threshold')
-        .attr('x1', margin.left)
-        .attr('x2', x(right) || margin.left + 200)
-        .attr('y1', euY)
-        .attr('y2', euY)
-        .style('stroke', color)
-        .style('stroke-dasharray', '4 4')
-        .style('stroke-width', 1.5)
-        .style('opacity', 0.5);
+      const rule = el('line', {
+        class: `line-chart__threshold line-chart__threshold--${limit.kind}`,
+        x1: margin.left,
+        x2: xRight,
+        y1: yy,
+        y2: yy,
+      });
+      rule.style.stroke = color;
+      svg.append(rule);
 
-      // Beschriftung am rechten Rand
-      svg
-        .append('text')
-        .attr('x', x(right) || margin.left + 200)
-        .attr('y', euY - 4)
-        .attr('text-anchor', 'end')
-        .style('font-size', '10px')
-        .style('fill', color)
-        .style('opacity', 0.7)
-        .text(`EU ${eu.value}`);
-    }
-
-    // WHO-Empfehlung
-    const whoY = y(who.value);
-    if (isFinite(whoY)) {
-      svg
-        .append('line')
-        .attr('class', 'line-chart__threshold')
-        .attr('x1', margin.left)
-        .attr('x2', x(right) || margin.left + 200)
-        .attr('y1', whoY)
-        .attr('y2', whoY)
-        .style('stroke', color)
-        .style('stroke-dasharray', '2 4')
-        .style('stroke-width', 1.5)
-        .style('opacity', 0.4);
-
-      svg
-        .append('text')
-        .attr('x', x(right) || margin.left + 200)
-        .attr('y', whoY - 4)
-        .attr('text-anchor', 'end')
-        .style('font-size', '10px')
-        .style('fill', color)
-        .style('opacity', 0.7)
-        .text(`WHO ${who.value}`);
+      const label = text(
+        xRight,
+        yy - 4,
+        `${limit.label} ${limit.value}`,
+        'line-chart__threshold-label',
+      );
+      label.style.fill = color;
+      svg.append(label);
     }
   }
 }
 
-// The full chart starts at 0 — never exaggerate a trend by cropping the axis
-// (Neutrality). A compact sparkline has no axis to mislead with, and its whole
-// point is the shape of local variation, which a real quantity like car
-// density (370-378) would lose entirely against a 0 baseline; it zooms to the
-// data's own range instead, like the reference chart this pattern came from.
-function yDomain(points) {
-  const lo = min(points, (d) => d.value);
+// The axis is fitted to the data's own range, not forced to 0 — a real quantity
+// like car density (356-378) or the cyclist count (2343-3288) would lose all its
+// shape against a 0 baseline, and there is no measured "start" at 0 to honour.
+// The risk of a cropped axis is that an unlabelled foot reads as 0; `floor`
+// answers that by anchoring the bottom of the scale at a stated non-zero value
+// (selectors.js#AXIS_FLOOR), which drawAxes then always labels. A compact
+// sparkline has no axis at all, so it just zooms to the data.
+function yDomain(points, { floor } = {}) {
+  const lo = floor ?? min(points, (d) => d.value);
   const hi = max(points, (d) => d.value);
   const span = hi - lo;
-  // 15% Puffer nach oben und unten, mindestens aber 1 Einheit
+  // 15% headroom, at least 1 unit. No headroom below a set floor — the point of
+  // the floor is that the axis starts exactly there.
   const pad = Math.max(span * 0.15, 1);
-  return [lo - pad, hi + pad];
+  return [floor != null ? floor : lo - pad, hi + pad];
 }
 
 function drawAxes(svg, x, y, points, props) {
-  for (const tick of y.ticks(4)) {
+  // A set floor is always drawn and labelled, even if d3's own ticks skip it —
+  // an unlabelled axis foot is exactly what makes a cropped scale read as 0.
+  const [lo, hi] = y.domain();
+  const ticks =
+    props.axisFloor != null
+      ? [...new Set([props.axisFloor, ...y.ticks(4)])]
+          .filter((tick) => tick >= lo && tick <= hi)
+          .sort((a, b) => a - b)
+      : y.ticks(4);
+  for (const tick of ticks) {
     const yy = y(tick);
     svg.append(
       el('line', {

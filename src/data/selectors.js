@@ -182,6 +182,13 @@ const CAR_SLOT_INDICATORS = [
   { indicatorKey: 'car_ownership', metric: 'carOwnership' },
 ];
 
+// A Y-axis anchor for the line-chart modules whose series never come near 0, so
+// its foot is a stated value rather than something a reader mistakes for a 0
+// baseline (lineChart.js#yDomain / #drawAxes). Keyed by sub-metric and only for
+// the count-style indicators — a percentage like car ownership has a real 0 and
+// gets none. A city whose values dip below its anchor would need this revisited.
+const AXIS_FLOOR = { carDensity: 350, cyclists: 2000 };
+
 /** The car sub-metric for a city — density or ownership, whichever it has —
  * tagged with the metric key that names it. Null when the city has neither. */
 function carSlotForCity(cityIndicators, citySlug) {
@@ -634,6 +641,7 @@ function carModule(cityIndicators, citySlug) {
     labelKey: `impact.${car.metric}`,
     lines: [{ key: 'car', points: car.series }],
     unit: car.unit,
+    axisFloor: AXIS_FLOOR[car.metric],
     latest: car.series[car.series.length - 1],
     // How far the line has travelled, and from when. Derived rather than
     // written down (CLAUDE.md), so the sentence that quotes it cannot drift
@@ -740,6 +748,7 @@ function cyclistsModule(cityIndicators, citySlug) {
     labelKey: 'impact.cyclists',
     lines: [{ key: 'cyclists', points }],
     unit,
+    axisFloor: AXIS_FLOOR.cyclists,
     latest: points[points.length - 1],
     source,
     note: noteFor(citySlug, 'cyclists'),
@@ -788,10 +797,12 @@ function milestonesModule(milestones, citySlug) {
   if (rows.length === 0) {
     return { key: 'milestones', kind: 'placeholder', labelKey: 'problemFit.card.milestones' };
   }
+  // `events` carries i18n keys, not text — the chart resolves them at draw time
+  // (milestoneChart.js) so a locale switch rewrites the line.
   const byYear = new Map();
   for (const row of rows) {
     if (!byYear.has(row.year)) byYear.set(row.year, []);
-    byYear.get(row.year).push(row.event);
+    byYear.get(row.year).push(`milestone.${row.key}`);
   }
   return {
     key: 'milestones',

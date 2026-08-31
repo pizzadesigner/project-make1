@@ -34,6 +34,7 @@
 
 import { scaleLinear } from 'd3';
 import { motionMs } from '../lib/a11y.js';
+import { t } from '../lib/i18n.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -131,10 +132,16 @@ function chart(props, width) {
     1,
     Math.floor((width - COLUMN.event - COLUMN.right) / (font * CHAR_RATIO)),
   );
-  const blocks = props.years.map((entry) => ({
-    ...entry,
-    lines: expanded ? entry.events.map((event) => wrap(event, wrapAt)) : [],
-  }));
+  const blocks = props.years.map((entry) => {
+    // entry.events holds i18n keys (selectors.js#milestonesModule); resolve them
+    // here so a locale switch that redraws the chart picks up the new language.
+    const events = entry.events.map((key) => t(key));
+    return {
+      ...entry,
+      events,
+      lines: expanded ? events.map((event) => wrap(event, wrapAt)) : [],
+    };
+  });
   const needs = blocks.map((block) =>
     expanded ? block.lines.flat().length * step + block.lines.length * GAP.event : GAP.closed,
   );

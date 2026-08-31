@@ -58,6 +58,31 @@
   fill: var(--color-text);
 }
 
+/* EU / WHO reference limits on the air-quality chart
+   (lineChart.js#drawThresholds). The pollutant's own colour is set inline; this
+   is the faint, dashed treatment that keeps a limit reading as a reference mark
+   behind its series rather than as a fourth line. */
+.line-chart__threshold {
+  stroke-width: 1.5;
+  opacity: 0.45;
+}
+
+.line-chart__threshold--eu {
+  stroke-dasharray: 4 4;
+}
+
+.line-chart__threshold--who {
+  stroke-dasharray: 2 4;
+}
+
+.line-chart__threshold-label {
+  fill: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-sans);
+  text-anchor: end;
+  opacity: 0.75;
+}
+
 /* Sparkline mode (see lineChart.js#compact) — the line and dots only, sized
    to fit a narrow widget slot rather than a full card. */
 .line-chart--compact .line-chart__dot {

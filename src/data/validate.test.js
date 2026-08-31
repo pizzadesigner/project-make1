@@ -177,17 +177,32 @@ describe('validateDataset — milestones', () => {
   const milestone = (overrides = {}) => ({
     city_slug: 'koeln',
     year: '2019',
-    event: 'Einführung von Tempo 30 auf den gesamten Ringen',
+    key: 'koeln.tempo30',
     ...overrides,
   });
 
   it('reads a milestone row and sorts the line by year', () => {
     const { milestones } = validateDataset({
       projectRows: [koeln],
-      milestoneRows: [milestone({ year: '2024', event: 'Barbarossaplatz' }), milestone()],
+      milestoneRows: [milestone({ year: '2024', key: 'koeln.barbarossaplatz' }), milestone()],
     });
     expect(milestones.map((row) => row.year)).toEqual([2019, 2024]);
-    expect(milestones[0].event).toBe('Einführung von Tempo 30 auf den gesamten Ringen');
+    expect(milestones[0].key).toBe('koeln.tempo30');
+  });
+
+  it('rejects a milestone row with no key', () => {
+    expect(() =>
+      validateDataset({ projectRows: [koeln], milestoneRows: [milestone({ key: '' })] }),
+    ).toThrow(DataError);
+  });
+
+  it('rejects two milestone rows sharing a key', () => {
+    expect(() =>
+      validateDataset({
+        projectRows: [koeln],
+        milestoneRows: [milestone(), milestone({ year: '2024' })],
+      }),
+    ).toThrow(DataError);
   });
 
   it('rejects a milestone for a city nobody has heard of', () => {

@@ -29,6 +29,19 @@ body {
   height: 100%;
 }
 
+/* One fluid type scale for the whole app. There is no other root font-size, so
+ * every rem — spacing, radii, the --font-size-* tokens — is measured from this,
+ * and CSS px alone do not track display size (they are normalised to ~96dpi, so
+ * a 4K panel just fits more). Keying the root to the viewport width makes the L2
+ * / L3 widgets read at a comparable size on a 1366 laptop and a wide 4K monitor
+ * instead of "too big" on one and "lost" on the other. Clamped both ends so it
+ * never runs away; tune the slope/caps here. The px geometry constants in
+ * widgetStack.js / the --module-* tokens are not on this scale yet — see
+ * track.md (A2). */
+html {
+  font-size: clamp(0.875rem, 0.6875rem + 0.3125vw, 1.375rem);
+}
+
 body {
   background: var(--color-canvas);
   color: var(--color-text);

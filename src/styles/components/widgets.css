@@ -1340,6 +1340,14 @@
   margin-top: var(--space-2);
 }
 
+/* On the L2 card the paragraphs are spaced by the card's own flex `gap`; the L1
+   widget draws the same body straight into .widget with no gap, so consecutive
+   blocks ran together there. Match the card's rhythm so the preview reads like
+   the card it opens into (todo #2). */
+.widget .module__prose + .module__prose {
+  margin-top: var(--space-2);
+}
+
 /* A card whose body is a list rather than a chart. This was the worst of the
    squeezes: the funding list wanted 387px inside a 232px card and put the
    difference behind a scrollbar. The name is now a leftover — it is the class

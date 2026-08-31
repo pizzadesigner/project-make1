@@ -213,6 +213,9 @@ export function render(container, props) {
     syncCityLayers(next.focusedCity);
     widgetHandle.update(widgetProps);
     comingSoonNode.hidden = !comingSoon;
+    // buildComingSoon() bakes the label once; without this it keeps whatever
+    // locale was active when the node was first built (todo #7).
+    comingSoonNode.querySelector('.map-coming-soon__label').textContent = t('city.comingSoon');
   }
 
   function teardownMap() {

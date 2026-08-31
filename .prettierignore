@@ -5,3 +5,7 @@ geoJSONFiles
 package-lock.json
 CLAUDE.MD
 Prompt_1.md
+
+# Freeform working notes — not code, kept out of the format gate.
+todo.md
+track.md

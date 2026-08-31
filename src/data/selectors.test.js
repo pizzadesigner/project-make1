@@ -792,17 +792,18 @@ describe('problemFitModules', () => {
   // them both — so the grouping is the selector's answer, not the chart's.
   it('groups the milestones into the years they fall in', () => {
     const milestones = [
-      { citySlug: 'koeln', year: 2019, event: 'Deutscher Fahrradpreis' },
-      { citySlug: 'koeln', year: 2015, event: 'Gründung von #RingFrei' },
-      { citySlug: 'koeln', year: 2019, event: 'Tempo 30 auf den Ringen' },
-      { citySlug: 'paris-marne-la-vallee', year: 2020, event: 'Coronapistes' },
+      { citySlug: 'koeln', year: 2019, key: 'koeln.fahrradpreis' },
+      { citySlug: 'koeln', year: 2015, key: 'koeln.ringfrei-gruendung' },
+      { citySlug: 'koeln', year: 2019, key: 'koeln.tempo30' },
+      { citySlug: 'paris-marne-la-vallee', year: 2020, key: 'paris.coronapistes' },
     ];
     const card = problemFitModules(problemFitForCity('koeln'), milestones)[3];
     expect(card.kind).toBe('milestones');
     expect(card.detailKey).toBeUndefined();
+    // events carry i18n keys now, not text (milestoneChart resolves them).
     expect(card.years).toEqual([
-      { year: 2015, events: ['Gründung von #RingFrei'] },
-      { year: 2019, events: ['Deutscher Fahrradpreis', 'Tempo 30 auf den Ringen'] },
+      { year: 2015, events: ['milestone.koeln.ringfrei-gruendung'] },
+      { year: 2019, events: ['milestone.koeln.fahrradpreis', 'milestone.koeln.tempo30'] },
     ]);
   });
 

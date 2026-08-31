@@ -68,7 +68,8 @@ export {};
  * @typedef {Object} Milestone
  * @property {string} citySlug
  * @property {number} year
- * @property {string} event
+ * @property {string} key  i18n suffix — the event sentence is `milestone.<key>`
+ *   in both string bundles.
  */
 
 /**

@@ -178,11 +178,12 @@ export function validateDataset({
   }
   timeline.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
-  // The milestone line, one row per event. Narrative like the timeline above and
-  // unsourced for the same reason — but the year is a figure the chart is drawn
-  // to, so a row without a usable one is dropped rather than placed at zero,
-  // where it would put a mark on the line in a year nothing happened.
+  // The milestone line, one row per event. The event text itself lives in i18n
+  // (milestone.<key> in both bundles), so a row carries only structure: the city,
+  // the year the chart draws it to — a row without a usable one is dropped rather
+  // than placed at zero — and the stable key naming its sentence.
   const milestones = [];
+  const milestoneKeys = new Set();
   for (const row of milestoneRows) {
     const citySlug = toText(row.city_slug);
     if (!citySlug) continue;
@@ -195,7 +196,17 @@ export function validateDataset({
       issues.push(`Milestone row for "${citySlug}" has no usable year: "${row.year}"`);
       continue;
     }
-    milestones.push({ citySlug, year, event: toText(row.event) });
+    const key = toText(row.key);
+    if (!key) {
+      issues.push(`Milestone row for "${citySlug}" (${year}) has no key`);
+      continue;
+    }
+    if (milestoneKeys.has(key)) {
+      issues.push(`Duplicate milestone key: "${key}"`);
+      continue;
+    }
+    milestoneKeys.add(key);
+    milestones.push({ citySlug, year, key });
   }
   milestones.sort((a, b) => a.year - b.year);
 
